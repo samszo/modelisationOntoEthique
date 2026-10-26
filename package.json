@@ -1,0 +1,42 @@
+{
+  "name": "modelisation-onto-ethique",
+  "version": "1.0.0",
+  "description": "Écosystème d'agents IA pour la modélisation onto-éthique des existences informationnelles (Laboratoire Paragraphe - Université Paris 8)",
+  "main": "src/ui/server.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx src/runners/ontoethique.ts",
+    "ui": "tsx src/ui/server.ts ontoethique",
+    "docs": "tsx scripts/build-docs.ts",
+    "ontoethique": "tsx src/runners/ontoethique.ts",
+    "ui:ontoethique": "tsx src/ui/server.ts ontoethique"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samszo/modelisationOntoEthique.git"
+  },
+  "keywords": ["onto-éthique", "existences informationnelles", "humanités numériques", "agents", "Albert", "Zotero", "Omeka S"],
+  "author": "Samuel Szoniecky",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/samszo/modelisationOntoEthique/issues"
+  },
+  "homepage": "https://github.com/samszo/modelisationOntoEthique#readme",
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.75",
+    "@mastra/core": "^1.71.0",
+    "ai": "^7.0.114",
+    "dotenv": "^18.0.4",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.296",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/pdf-parse": "^1.1.5",
+    "marked": "^15.0.12",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

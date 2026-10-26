@@ -1,0 +1,25 @@
+# Une application, un serveur (même image pour les applications à venir) :
+#   ontoÉthique : http://127.0.0.1:7280
+# Lancement : docker compose up -d --build
+x-common: &common
+  build: .
+  image: modelisation-onto-ethique:latest
+  restart: unless-stopped
+  # données persistantes : .env (+ .env.ontoethique), fichiers de configuration et résultats
+  volumes:
+    - ./data:/data
+  # accès à un Omeka S installé sur la machine hôte : OMKS_API_URL=http://localhost/... est redirigé automatiquement
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  ontoethique:
+    <<: *common
+    container_name: modelisation-onto-ethique
+    environment:
+      WORKFLOW_APP: ontoethique
+      HOST: 0.0.0.0
+      ONTOETHIQUE_PORT: 7280
+    # interface publiée uniquement sur la machine hôte : elle manipule des clés d'API
+    ports:
+      - "127.0.0.1:7280:7280"

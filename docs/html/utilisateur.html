@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide de l'utilisateur – Écosystème d'agents</title>
+<style>
+  :root { --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9; --accent: #2f5d8a; --code: #f0eee8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a; --accent: #7fb0e0; --code: #111317; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  header .bar { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  header .brand { font-weight: 650; }
+  header nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  header nav a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; }
+  header nav a[aria-current] { color: var(--ink); background: var(--bg); }
+  .layout { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 32px; }
+  main { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 32px 32px; min-width: 0; }
+  .toc { position: sticky; top: 70px; align-self: start; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 90px); overflow: auto; }
+  .toc strong { margin-bottom: 4px; }
+  .toc a { color: var(--muted); text-decoration: none; }
+  .toc a.l3 { padding-left: 12px; }
+  .toc a:hover { color: var(--accent); }
+  h1 { font-size: 28px; line-height: 1.25; }
+  h2 { font-size: 21px; margin-top: 36px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 17px; margin-top: 26px; }
+  .anchor { color: var(--line); text-decoration: none; margin-right: 6px; font-weight: 400; }
+  h2:hover .anchor, h3:hover .anchor { color: var(--accent); }
+  a { color: var(--accent); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow: auto; font-size: 13.5px; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  pre.mermaid { background: var(--panel); border: 1px solid var(--line); text-align: center; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 12px 0 20px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--bg); }
+  blockquote { margin: 12px 0; padding: 4px 14px; border-left: 3px solid var(--accent); color: var(--muted); background: var(--bg); border-radius: 0 6px 6px 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .toc { display: none; } main { padding: 4px 16px 24px; } }
+</style>
+</head>
+<body>
+<header><div class="bar"><span class="brand">Écosystème d'agents – documentation</span><nav><a href="index.html">Accueil</a><a href="installation.html">Installation</a><a href="utilisateur.html" aria-current="page">Utilisateur</a><a href="technique.html">Technique</a></nav></div></header>
+<div class="layout">
+<main>
+<h1 id="guide-de-l-39-utilisateur"><a class="anchor" href="#guide-de-l-39-utilisateur">#</a>Guide de l&#39;utilisateur</h1>
+<p><strong>ontoÉthique</strong> (<a href="http://127.0.0.1:7280" target="_blank" rel="noopener">http://127.0.0.1:7280</a>) évalue la <strong>symbiose</strong> entre les actants humains, les agents numériques (IA) et l&#39;environnement documentaire d&#39;une <strong>activité située</strong> : un cours, une rédaction assistée, une curation collaborative… Il applique le protocole de mesure des fluctuations du métamodèle onto-éthique :</p>
+<ul>
+<li>chaque <strong>existence informationnelle</strong> est décrite par quatre dimensions : matérielle (parties extensives), conceptuelle (essence), sociale (actant), temporelle (rapport) ;</li>
+<li>à chaque <strong>pulsation</strong> de l&#39;activité, une existence exprime quatre <strong>pouvoirs</strong> : discerner, raisonner, résonner, agir ;</li>
+<li>chaque pouvoir reçoit un score <strong>de -100 (diminution, tristesse) à +100 (augmentation, joie)</strong>, 0 marquant l&#39;indifférence, rattaché à sa séquence de sémiose (par exemple <em>physique → crible → actant → concept</em> pour discerner).</li>
+</ul>
+<h2 id="1-preparer-les-traces"><a class="anchor" href="#1-preparer-les-traces">#</a>1. Préparer les traces</h2>
+<ol>
+<li>Dans Zotero (de préférence une <strong>bibliothèque de groupe</strong>, pour que chaque annotation garde son auteur), créer une collection contenant les traces de l&#39;activité : comptes rendus, journaux de bord, captures, transcriptions d&#39;échanges avec une IA, observations.</li>
+<li>Les participants annotent ces traces dans le lecteur de Zotero : commentaires, notes, surlignages.</li>
+<li><strong>Auto-évaluation</strong> (facultative) : un participant ajoute à une annotation un marqueur comme <code>discerner+40</code>, <code>raisonner-30</code>, <code>résonner:60</code> ou <code>agir=-10</code>. L&#39;annotation devient une pulsation de ce participant, <strong>validée d&#39;office</strong> (souveraineté de l&#39;expertise humaine).</li>
+</ol>
+<h2 id="2-lancer-une-modelisation"><a class="anchor" href="#2-lancer-une-modelisation">#</a>2. Lancer une modélisation</h2>
+<ol>
+<li><strong>⚙ Paramètres</strong> : renseigner Albert, Zotero et Omeka S, puis <strong>Enregistrer et tester les connexions</strong>.</li>
+<li>Onglet <strong>Activité</strong> : titre et description de l&#39;activité (tâche, participants, agents numériques, environnement, période), collection Zotero, réglages de lecture.</li>
+<li><strong>Enregistrer et modéliser</strong> : le journal s&#39;affiche dans l&#39;onglet <strong>Exécution</strong> ; à la fin, l&#39;évaluation s&#39;ouvre dans l&#39;onglet <strong>Diagrammes</strong>.</li>
+</ol>
+<p>Le traitement identifie les existences, évalue les pulsations de chaque trace, mesure les fluctuations et rédige une synthèse. Les <strong>agents numériques n&#39;ont pas accès au pouvoir de résonance</strong> : leur score de Résonner est fixé par la règle de la barrière numérique (0 par défaut, réglable dans <em>Règles et seuils</em>).</p>
+<p><strong>Sans collection ni modèle de langage</strong> : <strong>Nouvelle évaluation manuelle</strong> crée une évaluation vide (existences et pulsations à saisir) ; <strong>Charger l&#39;exemple de l&#39;article</strong> reprend les scénarios A (rédaction manuelle) et B (rédaction assistée par une IA connexionniste).</p>
+<h2 id="3-lire-et-corriger-l-39-evaluation"><a class="anchor" href="#3-lire-et-corriger-l-39-evaluation">#</a>3. Lire et corriger l&#39;évaluation</h2>
+<table>
+<thead>
+<tr>
+<th>Onglet</th>
+<th>Contenu</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Existences</strong></td>
+<td>une fiche par existence : genre, éléments des quatre dimensions, cribles, traces, complexité ontologique ; cliquer pour modifier, <strong>Ajouter une existence</strong></td>
+</tr>
+<tr>
+<td><strong>Matrice des affects</strong></td>
+<td>une ligne par pulsation : scores colorés (rouge : diminution, vert : augmentation), origine (<em>agent</em>, <em>humain</em>, <em>autoevaluation</em>, <em>regle</em>) et ✔ si validé. Cliquer sur une ligne ouvre l&#39;éditeur : score (curseur), état de la grille, maillons de la séquence de sémiose, justification, citation, valeurs tardiennes</td>
+</tr>
+<tr>
+<td><strong>Diagrammes</strong></td>
+<td>indice et équilibre de la symbiose, alertes, <strong>spirales coniques de Pappus</strong>, profils des pouvoirs, moyennes par genre, tableau des moyennes et des états</td>
+</tr>
+<tr>
+<td><strong>Synthèse</strong></td>
+<td>discours de l&#39;ADA onto-éthique (les références <code>[p3]</code> ouvrent la pulsation) ; <strong>Nouvelle synthèse</strong> après corrections</td>
+</tr>
+<tr>
+<td><strong>Rapport</strong></td>
+<td>rapport de l&#39;exécution (consommation, coût) et fichiers : modèle JSON, matrice CSV, Turtle, JSON-LD, spirales</td>
+</tr>
+<tr>
+<td><strong>Évaluations</strong></td>
+<td>toutes les évaluations (archive locale et Omeka S) : ouvrir, supprimer</td>
+</tr>
+</tbody></table>
+<p><strong>Corriger et valider</strong> : dans l&#39;éditeur, une évaluation modifiée devient <em>humaine</em> ; la case <strong>validé</strong> (ou <strong>Tout valider et enregistrer</strong>) confirme une proposition de l&#39;agent. Indiquer <strong>votre nom</strong> et le <strong>motif</strong> : chaque correction est tracée dans l&#39;historique des <strong>révisions</strong>, exporté avec le modèle. Les indicateurs, les spirales et les fichiers sont recalculés à chaque enregistrement.</p>
+<p><strong>Enregistrer dans Omeka S</strong> (bandeau de l&#39;évaluation) dépose la version corrigée dans l&#39;item de configuration de l&#39;évaluation (créé pour une évaluation manuelle).</p>
+<h2 id="4-interpreter"><a class="anchor" href="#4-interpreter">#</a>4. Interpréter</h2>
+<ul>
+<li><strong>Grille des affects</strong> : Discerner (cécité cognitive / stase / clarté sémiotique), Raisonner (aliénation logique / routinisation / puissance critique), Résonner (impasse intuitive / barrière numérique / scientia intuitiva), Agir (misère symbolique / geste blanc / création autopoïétique).</li>
+<li><strong>Valeurs tardiennes</strong> : utilité et beauté (Désir), vérité (Croyance) de ce qui est discerné ; une valeur-vérité effondrée signale l&#39;<strong>indignation</strong>.</li>
+<li><strong>Symbiose</strong> : l&#39;indice (de -1 à 1) est la valence moyenne des existences ; l&#39;équilibre (de 0 à 1) compare humains, agents et environnement. Un indice positif avec un faible équilibre signale un profit asymétrique.</li>
+<li><strong>Alertes</strong> : notamment le risque de <strong>misère symbolique</strong> — un humain dont les pouvoirs de raisonner et de résonner diminuent tandis qu&#39;un agent agit fortement.</li>
+<li><strong>Spirale de Pappus</strong> : rayon = augmentations de Résonner, altitude = augmentations d&#39;Agir, rotation = Discerner + Raisonner. Un <strong>cône évasé</strong> traduit des intuitions nombreuses, une <strong>flèche</strong> une production sans résonance, un <strong>tube</strong> une activité qui sédimente sans se dilater.</li>
+</ul>
+<p>Les scores sont des <strong>expressions situées et subjectives</strong>, non des mesures physiques : la matrice est un support pour une <strong>éthique de la discussion</strong> entre participants, que la synthèse prolonge par des questions ouvertes.</p>
+
+</main>
+<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-preparer-les-traces">1. Préparer les traces</a><a class="l2" href="#2-lancer-une-modelisation">2. Lancer une modélisation</a><a class="l2" href="#3-lire-et-corriger-l-39-evaluation">3. Lire et corriger l&#39;évaluation</a><a class="l2" href="#4-interpreter">4. Interpréter</a></nav>
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default", flowchart: { htmlLabels: true } });
+</script>
+</body>
+</html>

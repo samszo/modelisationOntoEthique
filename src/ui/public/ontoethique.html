@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ontoÉthique</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9;
+    --accent: #2e7d5b; --accent-ink: #ffffff; --ok: #2e7d4f; --warn: #b26a00; --err: #b3261e;
+    --neg: #c0392b; --pos: #2e7d5b;
+    --code-bg: #f0eee8; --track: #ecebe6; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
+      --accent: #7cc9a3; --accent-ink: #0f2419; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80;
+      --neg: #f08a80; --pos: #7cc9a3;
+      --code-bg: #111317; --track: #262a31; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
+    --accent: #7cc9a3; --accent-ink: #0f2419; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80;
+    --neg: #f08a80; --pos: #7cc9a3; --code-bg: #111317; --track: #262a31; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1180px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  h1 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .spacer { flex: 1; }
+  header a { color: var(--accent); font-size: 14px; }
+  nav { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; overflow-x: auto; }
+  nav button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--muted); font: inherit; cursor: pointer; white-space: nowrap; }
+  nav button.active { color: var(--ink); border-color: var(--accent); }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 80px; }
+  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  section.card > h2 { font-size: 15px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 12px; font-size: 13.5px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field.wide { grid-column: 1 / -1; }
+  label { font-size: 13px; font-weight: 600; }
+  .help { font-size: 12px; color: var(--muted); }
+  input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+  input[type=checkbox] { width: auto; }
+  textarea { resize: vertical; }
+  .check { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 13px; }
+  button.btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  button.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.btn.danger { color: var(--err); }
+  button.btn.small { padding: 3px 10px; font-size: 13px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .badge.running { color: var(--warn); border-color: currentColor; }
+  .badge.success { color: var(--ok); border-color: currentColor; }
+  .badge.failed, .badge.stopped { color: var(--err); border-color: currentColor; }
+  .ok { color: var(--ok); } .ko { color: var(--err); } .muted { color: var(--muted); }
+  table.data { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.data th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+  table.data td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data tr.clickable { cursor: pointer; }
+  table.data tr.clickable:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  table.data tr.selected td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .table-wrap { overflow-x: auto; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .tile .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .tile .l { font-size: 12.5px; color: var(--muted); }
+  .score { display: inline-block; min-width: 46px; text-align: center; border-radius: 6px; padding: 1px 6px; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
+  .origin { font-size: 11px; color: var(--muted); display: block; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin: 2px 4px 2px 0; color: var(--ink); text-decoration: none; }
+  .chip.kind-humain { border-color: #2e7d5b; } .chip.kind-agent { border-color: #2f6db0; } .chip.kind-environnement { border-color: #b8860b; }
+  .exgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .excard { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 12px 14px; }
+  .excard h3 { margin: 0; font-size: 15px; }
+  .excard .dims { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; font-size: 13px; }
+  .excard .dims b { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .alert { border-left: 4px solid var(--warn); background: var(--bg); border-radius: 0 6px 6px 0; padding: 6px 10px; margin: 6px 0; font-size: 13.5px; }
+  .alert.alerte { border-color: var(--err); } .alert.info { border-color: var(--muted); }
+  .plot { width: 100%; min-height: 380px; }
+  .plot.tall { min-height: 560px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  #log { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; height: 60vh; overflow: auto; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; margin: 0; }
+  .md table { border-collapse: collapse; font-size: 13.5px; margin: 8px 0 16px; display: block; overflow-x: auto; }
+  .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+  .md blockquote { margin: 10px 0; padding: 4px 12px; border-left: 3px solid var(--accent); background: var(--bg); }
+  .md code { background: var(--code-bg); padding: 1px 4px; border-radius: 4px; }
+  .md a.pref { color: var(--accent); }
+  .empty { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--line); border-radius: 10px; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
+  .toast.show { opacity: 1; }
+  .power-editor { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+  .power-editor h4 { margin: 0 0 6px; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chain { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+  .range-row { display: flex; gap: 10px; align-items: center; }
+  .range-row input[type=range] { flex: 1; padding: 0; accent-color: var(--accent); }
+  .range-row input[type=number] { width: 80px; }
+  dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); padding: 18px 20px; max-width: min(760px, calc(100vw - 32px)); width: 100%; }
+  dialog::backdrop { background: rgb(0 0 0 / .35); }
+  dialog h2 { margin: 0 0 8px; font-size: 17px; }
+  .hidden { display: none !important; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } .excard .dims { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>ontoÉthique <small>modélisation onto-éthique des existences informationnelles</small></h1>
+    <div class="spacer"></div>
+    <span id="links-apps"></span>
+    <a href="/parametres" title="Connexions Albert, Zotero, Omeka S">⚙ Paramètres</a>
+    <a href="/docs/" target="_blank">Documentation</a>
+    <span id="status" class="badge">aucun traitement</span>
+    <button id="btn-run" class="btn primary">Enregistrer et modéliser</button>
+    <button id="btn-stop" class="btn danger hidden">Arrêter</button>
+  </div>
+  <nav>
+    <button data-tab="activity" class="active">Activité</button>
+    <button data-tab="workflow">Workflow</button>
+    <button data-tab="run">Exécution</button>
+    <button data-tab="runs">Évaluations</button>
+    <button data-tab="existences">Existences</button>
+    <button data-tab="matrix">Matrice des affects</button>
+    <button data-tab="diagrams">Diagrammes</button>
+    <button data-tab="synthesis">Synthèse</button>
+    <button data-tab="report">Rapport</button>
+  </nav>
+</header>
+
+<main>
+  <!-- évaluation affichée dans les onglets de résultats -->
+  <div id="run-banner" class="toolbar hidden" style="background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:8px 12px">
+    <span id="run-banner-text"></span>
+    <div class="spacer"></div>
+    <button id="btn-omeka" class="btn">Enregistrer dans Omeka S</button>
+    <button id="btn-runs" class="btn">Changer d'évaluation</button>
+  </div>
+
+  <!-- ======================= ACTIVITÉ ======================= -->
+  <div id="tab-activity">
+    <section class="card">
+      <h2>Activité située</h2>
+      <p class="lead">L'activité dont on évalue la symbiose entre actants humains, agents numériques et environnement documentaire. Sa description cadre l'identification des existences et la lecture des traces.</p>
+      <div class="grid">
+        <div class="field wide"><label for="a-title">Titre</label><input id="a-title"></div>
+        <div class="field wide"><label for="a-desc">Description</label><textarea id="a-desc" rows="4"></textarea><span class="help">Tâche, participants, agents numériques utilisés, environnement documentaire, période.</span></div>
+        <div class="field wide">
+          <label for="collection">Collection Zotero des traces</label>
+          <select id="collection"></select>
+          <span class="help" id="collection-help">Chargement des collections…</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Lecture des traces</h2>
+      <p class="lead">Chaque document de la collection est une trace de l'activité ; ses annotations et notes sont lues avec leur auteur. Les participants peuvent s'auto-évaluer en ajoutant à une annotation un marqueur Zotero comme <code>discerner+40</code> ou <code>agir:-30</code>.</p>
+      <div class="grid">
+        <div class="field"><label for="n-docs">Documents évalués (maximum)</label><input id="n-docs" type="number" min="1" step="1"><span class="help">Un appel à l'évaluateur des affects par document.</span></div>
+        <div class="field"><label for="n-chars">Caractères transmis par document</label><input id="n-chars" type="number" min="500" step="500"></div>
+        <div class="field"><label for="n-ex">Existences identifiées (maximum)</label><input id="n-ex" type="number" min="1" step="1"></div>
+        <div class="field"><label for="n-conc">Appels simultanés</label><input id="n-conc" type="number" min="1" max="8" step="1"></div>
+        <div class="field"><label class="check"><input id="n-dupes" type="checkbox"> Fusionner les documents en double</label></div>
+        <div class="field"><label class="check"><input id="se-on" type="checkbox"> Lire les auto-évaluations (marqueurs)</label><span class="help">Validées d'office : souveraineté de l'expertise humaine.</span></div>
+        <div class="field wide"><label for="se-re">Forme des marqueurs d'auto-évaluation (expression régulière)</label><input id="se-re"><span class="help">1er groupe : pouvoir ; 2e groupe : score de -100 à +100.</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Règles et seuils</h2>
+      <div class="grid">
+        <div class="field"><label for="r-barrier">Score imposé à Résonner pour les agents numériques</label><input id="r-barrier" type="number" min="-100" max="100" step="1" placeholder="vide : pas de règle"><span class="help">Barrière numérique (0 dans la grille). Vide : pas de contrainte.</span></div>
+        <div class="field"><label class="check"><input id="r-sov" type="checkbox"> Souveraineté de l'expertise humaine</label><span class="help">Une évaluation validée par un humain n'est plus modifiée par les règles.</span></div>
+        <div class="field"><label for="s-low">Seuil de diminution (alertes)</label><input id="s-low" type="number" min="-100" max="0" step="5"></div>
+        <div class="field"><label for="s-high">Seuil d'augmentation (alertes)</label><input id="s-high" type="number" min="0" max="100" step="5"></div>
+        <div class="field"><label for="s-ind">Seuil d'indignation (valeur-vérité)</label><input id="s-ind" type="number" min="-100" max="0" step="5"></div>
+        <div class="field"><label for="sp-turn">Points pour un tour de spirale</label><input id="sp-turn" type="number" min="10" step="10"><span class="help">Discerner + Raisonner nécessaires pour un tour (déplacement topographique).</span></div>
+      </div>
+      <div class="toolbar" style="margin-top:12px">
+        <button id="btn-save" class="btn primary">Enregistrer</button>
+        <button id="btn-reset" class="btn">Rétablir les valeurs par défaut</button>
+        <span id="config-file" class="muted" style="font-size:13px"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Évaluation manuelle</h2>
+      <p class="lead">Sans collection ni modèle de langage : les existences et les pulsations sont saisies dans les onglets Existences et Matrice. L'exemple reprend les scénarios A (rédaction manuelle) et B (rédaction assistée par une IA connexionniste) de l'article.</p>
+      <div class="toolbar">
+        <button id="btn-manual" class="btn primary">Nouvelle évaluation manuelle</button>
+        <button id="btn-example" class="btn">Charger l'exemple de l'article</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Métamodèle onto-éthique</h2>
+      <p class="lead">Quatre dimensions existentielles et leurs correspondances (configuration <code>dimensions</code>).</p>
+      <div class="table-wrap" id="meta-dims"></div>
+    </section>
+    <section class="card">
+      <h2>Grille des affects</h2>
+      <p class="lead">Quatre pouvoirs, leur séquence de sémiose et les états de la matrice selon le sens de la fluctuation (configuration <code>powers</code>).</p>
+      <div class="table-wrap" id="meta-grid"></div>
+    </section>
+  </div>
+
+  <!-- ======================= WORKFLOW ======================= -->
+  <div id="tab-workflow" class="hidden">
+    <section class="card">
+      <h2>Workflow</h2>
+      <p class="lead">Étapes du traitement dans l'ordre d'exécution et agents impliqués. Cliquer sur un agent pour lire et modifier ses instructions, sa demande et son modèle ; les textes enregistrés valent pour les traitements suivants.</p>
+      <div id="workflow" class="muted">Chargement…</div>
+    </section>
+  </div>
+
+  <!-- ======================= EXÉCUTION ======================= -->
+  <div id="tab-run" class="hidden">
+    <div class="toolbar"><span id="run-info" class="muted">Aucun traitement lancé depuis l'ouverture de l'application.</span></div>
+    <pre id="log"></pre>
+  </div>
+
+  <!-- ======================= ÉVALUATIONS ======================= -->
+  <div id="tab-runs" class="hidden">
+    <section class="card">
+      <h2>Évaluations</h2>
+      <p class="lead">Exécutions du workflow et évaluations manuelles, archivées localement et dans Omeka S. <strong>Ouvrir</strong> affiche l'évaluation dans les onglets Existences, Matrice, Diagrammes, Synthèse et Rapport, où elle peut être corrigée et validée.</p>
+      <div class="toolbar"><button id="runs-refresh" class="btn">Actualiser</button><span id="runs-info" class="muted" style="font-size:13px"></span></div>
+      <div id="runs" class="muted">Chargement…</div>
+    </section>
+  </div>
+
+  <!-- ======================= EXISTENCES ======================= -->
+  <div id="tab-existences" class="hidden">
+    <div class="toolbar"><button id="ex-add" class="btn primary">Ajouter une existence</button><span class="muted" style="font-size:13px">Cliquer sur une existence pour la modifier.</span></div>
+    <div id="existences" class="empty">Aucune évaluation ouverte.</div>
+  </div>
+
+  <!-- ======================= MATRICE ======================= -->
+  <div id="tab-matrix" class="hidden">
+    <section class="card">
+      <div class="toolbar">
+        <label for="mx-filter" style="margin:0">Existence</label>
+        <select id="mx-filter" style="width:auto"></select>
+        <button id="mx-add" class="btn primary">Ajouter une pulsation</button>
+        <div class="spacer"></div>
+        <label for="author" style="margin:0">Votre nom</label>
+        <input id="author" style="width:200px" placeholder="traçabilité des corrections">
+      </div>
+      <p class="lead">Scores de -100 (diminution, tristesse) à +100 (augmentation, joie), 0 = indifférence. Origine : <em>agent</em> (proposé par un modèle), <em>humain</em>, <em>autoevaluation</em> (marqueur Zotero), <em>regle</em> (barrière numérique). ✔ = validé. Cliquer sur une ligne pour la corriger ou la valider.</p>
+      <div class="table-wrap" id="matrix"><div class="empty">Aucune évaluation ouverte.</div></div>
+    </section>
+    <section class="card hidden" id="editor">
+      <h2 id="ed-title">Pulsation</h2>
+      <div class="grid">
+        <div class="field"><label for="ed-existence">Existence</label><select id="ed-existence"></select></div>
+        <div class="field"><label for="ed-order">Rang dans la trajectoire</label><input id="ed-order" type="number" min="1" step="1"></div>
+        <div class="field wide"><label for="ed-moment">Moment de l'activité</label><input id="ed-moment"></div>
+        <div class="field wide"><label for="ed-doc">Document (trace)</label><input id="ed-doc"></div>
+      </div>
+      <div id="ed-powers"></div>
+      <div class="grid" style="margin-top:10px" id="ed-values"></div>
+      <div class="grid" style="margin-top:10px">
+        <div class="field wide"><label for="ed-note">Motif de la correction</label><input id="ed-note" placeholder="facultatif, conservé dans l'historique des révisions"></div>
+      </div>
+      <div class="toolbar" style="margin-top:12px">
+        <button id="ed-save" class="btn primary">Enregistrer</button>
+        <button id="ed-validate" class="btn">Tout valider et enregistrer</button>
+        <button id="ed-cancel" class="btn">Fermer</button>
+        <div class="spacer"></div>
+        <button id="ed-delete" class="btn danger">Supprimer la pulsation</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Révisions</h2>
+      <p class="lead">Historique des corrections humaines (oa:motivatedBy), exporté avec le modèle.</p>
+      <div id="revisions" class="muted">—</div>
+    </section>
+  </div>
+
+  <!-- ======================= DIAGRAMMES ======================= -->
+  <div id="tab-diagrams" class="hidden">
+    <div id="diag-empty" class="empty">Aucune évaluation ouverte.</div>
+    <div id="diag" class="hidden">
+      <div class="tiles" id="tiles"></div>
+      <section class="card"><h2>Alertes</h2><div id="alerts"></div></section>
+      <section class="card">
+        <h2>Spirales coniques de Pappus</h2>
+        <p class="lead">Empreinte diagrammatique de chaque existence : le rayon croît avec les augmentations de Résonner (dilatation rhizomatique), l'altitude avec celles d'Agir, la rotation suit Discerner + Raisonner (déplacement topographique). Forme : cône évasé, cône équilibré, flèche (élancé) ou tube.</p>
+        <div id="spiral" class="plot tall"></div>
+        <div class="table-wrap" id="spiral-table"></div>
+      </section>
+      <div class="two">
+        <section class="card"><h2>Profils des pouvoirs</h2><p class="lead">Moyenne de chaque pouvoir par existence.</p><div id="radar" class="plot"></div></section>
+        <section class="card"><h2>Par genre d'existence</h2><p class="lead">Humains, agents numériques, environnement : moyennes des pouvoirs.</p><div id="kinds" class="plot"></div></section>
+      </div>
+      <section class="card"><h2>Matrice des affects (moyennes et états)</h2><div class="table-wrap" id="summary"></div></section>
+    </div>
+  </div>
+
+  <!-- ======================= SYNTHÈSE ======================= -->
+  <div id="tab-synthesis" class="hidden">
+    <section class="card">
+      <div class="toolbar">
+        <button id="btn-synth" class="btn primary">Nouvelle synthèse à partir de la matrice corrigée</button>
+        <span id="synth-info" class="muted" style="font-size:13px"></span>
+      </div>
+      <div id="synthesis" class="md muted">Aucune synthèse pour le moment.</div>
+    </section>
+  </div>
+
+  <!-- ======================= RAPPORT ======================= -->
+  <div id="tab-report" class="hidden">
+    <div class="toolbar" id="files"></div>
+    <section class="card"><div id="report" class="md muted">Aucun rapport pour le moment.</div></section>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<!-- existence : ajout et modification -->
+<dialog id="ex-dialog">
+  <form method="dialog" id="ex-form">
+    <h2 id="ex-title">Existence</h2>
+    <div class="grid">
+      <div class="field"><label for="ex-name">Nom</label><input id="ex-name" required></div>
+      <div class="field"><label for="ex-kind">Genre</label><select id="ex-kind"></select></div>
+      <div class="field wide"><label for="ex-desc">Description</label><textarea id="ex-desc" rows="2"></textarea></div>
+    </div>
+    <div class="grid" id="ex-dims" style="margin-top:10px"></div>
+    <div class="grid" style="margin-top:10px"><div class="field wide"><label for="ex-cribles">Cribles (un par ligne)</label><textarea id="ex-cribles" rows="2"></textarea></div></div>
+    <div class="toolbar" style="margin-top:14px">
+      <button value="delete" id="ex-delete" class="btn danger">Supprimer (et ses pulsations)</button>
+      <div class="spacer"></div>
+      <button value="cancel" class="btn">Annuler</button>
+      <button value="confirm" class="btn primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- suppression d'une évaluation -->
+<dialog id="del-run">
+  <form method="dialog">
+    <h2>Supprimer l'évaluation</h2>
+    <p id="del-run-label"></p>
+    <label class="check" id="del-run-omeka-row"><input type="checkbox" id="del-run-omeka"> Supprimer aussi son item de configuration dans Omeka S (avec ses médias)</label>
+    <p class="ko" style="font-size:13px">Cette suppression est définitive.</p>
+    <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+      <button value="cancel" class="btn">Annuler</button>
+      <button value="confirm" class="btn primary" style="background:var(--err);border-color:var(--err)">Supprimer</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script type="module">
+// ==========================================
+// Utilitaires
+// ==========================================
+const $ = s => document.querySelector(s);
+const el = (tag, props = {}, ...children) => {
+  const e = Object.assign(document.createElement(tag), props);
+  for (const c of children.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const api = async (url, opts = {}) => {
+  const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opts, body: opts.body && JSON.stringify(opts.body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+};
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2800); }
+const md = text => window.marked ? window.marked.parse(text) : `<pre>${esc(text)}</pre>`;
+const fmt = (x, d = 1) => x === null || x === undefined ? "—" : Number(x).toLocaleString("fr-FR", { maximumFractionDigits: d });
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* stockage indisponible */ } } };
+// couleur d'un score : rouge (diminution) → neutre → vert (augmentation)
+const scoreStyle = s => s === null || s === undefined ? "" : `background:color-mix(in srgb, ${s < 0 ? "var(--neg)" : "var(--pos)"} ${Math.round(Math.abs(s) * 0.55)}%, transparent)`;
+const KIND_COLORS = { humain: "#2e7d5b", agent: "#2f6db0", environnement: "#b8860b" };
+const PALETTE = ["#2e7d5b", "#2f6db0", "#b8860b", "#c0392b", "#8a4fb8", "#1f8a8a", "#d0602e", "#c2477d", "#5d6d7e", "#7a8b1f"];
+
+// ==========================================
+// Onglets
+// ==========================================
+const TABS = ["activity", "workflow", "run", "runs", "existences", "matrix", "diagrams", "synthesis", "report"];
+const RESULT_TABS = ["existences", "matrix", "diagrams", "synthesis", "report"];
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(tab) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  for (const t of TABS) $(`#tab-${t}`).classList.toggle("hidden", t !== tab);
+  $("#run-banner").classList.toggle("hidden", !(RESULT_TABS.includes(tab) && currentRun));
+  if (tab === "runs") loadRuns();
+  if (tab === "workflow") loadWorkflow();
+  if (tab === "diagrams") renderDiagrams();
+  if (tab === "report") loadReport();
+  if (tab === "synthesis") loadSynthesis();
+  store.set("onto.tab", tab);
+}
+
+let workflowLoaded = false;
+async function loadWorkflow() {
+  if (workflowLoaded) return;
+  workflowLoaded = true;
+  const { workflowDiagram } = await import("/workflowDiagram.js");
+  $("#workflow").className = "";
+  workflowDiagram($("#workflow"), { toast });
+}
+
+// ==========================================
+// Activité et paramètres
+// ==========================================
+let settings = null, config = null, collections = [];
+const powerLabel = id => config.powers.find(p => p.id === id)?.label ?? id;
+const kindLabel = id => config.kinds.find(k => k.id === id)?.label ?? id;
+
+function renderMeta() {
+  $("#meta-dims").replaceChildren(el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["Dimension", "Spinoza", "Métrique", "Pré-topologie", "Analogie", "Éléments"].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, config.dimensions.map(d => el("tr", {}, [d.label, d.spinoza, d.metric, d.pretopology, d.analogy, d.instruction].map((v, i) => el("td", i ? { textContent: v } : {}, i ? null : el("strong", { textContent: v }))))))));
+  $("#meta-grid").replaceChildren(el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["Pouvoir", "Séquence de sémiose", "Diminution (-100 à -1)", "Neutre (0)", "Augmentation (+1 à +100)"].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, config.powers.map(p => el("tr", {},
+      el("td", {}, el("strong", { textContent: p.label }), el("span", { className: "origin", textContent: p.semiosis })),
+      el("td", { textContent: p.chain.join(" → ") }),
+      ...["negative", "neutral", "positive"].map(k => el("td", {}, el("strong", { textContent: p[k].name }), el("span", { className: "origin", textContent: p[k].description }))))))));
+}
+
+function renderSettings() {
+  $("#a-title").value = config.activity.title;
+  $("#a-desc").value = config.activity.description;
+  $("#n-docs").value = config.analysis.maxDocuments;
+  $("#n-chars").value = config.analysis.maxCharsPerDocument;
+  $("#n-ex").value = config.analysis.maxExistences;
+  $("#n-conc").value = config.analysis.concurrency;
+  $("#n-dupes").checked = config.analysis.mergeDuplicates !== false;
+  $("#se-on").checked = config.selfEvaluation.enabled !== false;
+  $("#se-re").value = config.selfEvaluation.tagPattern;
+  $("#r-barrier").value = config.rules.noResonanceScore ?? "";
+  $("#r-sov").checked = config.rules.humanSovereignty !== false;
+  $("#s-low").value = config.symbiosis.lowThreshold;
+  $("#s-high").value = config.symbiosis.highThreshold;
+  $("#s-ind").value = config.symbiosis.indignationThreshold;
+  $("#sp-turn").value = config.spiral.pointsPerTurn;
+  $("#config-file").textContent = `Modifications enregistrées dans ${settings.configFile}`;
+  renderMeta();
+}
+const bind = (sel, set, num = false) => $(sel).oninput = e => set(num ? Number(e.target.value) : e.target.value);
+bind("#a-title", v => config.activity.title = v);
+bind("#a-desc", v => config.activity.description = v);
+bind("#n-docs", v => config.analysis.maxDocuments = v, true);
+bind("#n-chars", v => config.analysis.maxCharsPerDocument = v, true);
+bind("#n-ex", v => config.analysis.maxExistences = v, true);
+bind("#n-conc", v => config.analysis.concurrency = v, true);
+bind("#se-re", v => config.selfEvaluation.tagPattern = v);
+bind("#s-low", v => config.symbiosis.lowThreshold = v, true);
+bind("#s-high", v => config.symbiosis.highThreshold = v, true);
+bind("#s-ind", v => config.symbiosis.indignationThreshold = v, true);
+bind("#sp-turn", v => config.spiral.pointsPerTurn = v, true);
+$("#r-barrier").oninput = e => { config.rules.noResonanceScore = e.target.value === "" ? null : Number(e.target.value); };
+$("#n-dupes").onchange = e => { config.analysis.mergeDuplicates = e.target.checked; };
+$("#se-on").onchange = e => { config.selfEvaluation.enabled = e.target.checked; };
+$("#r-sov").onchange = e => { config.rules.humanSovereignty = e.target.checked; };
+$("#collection").onchange = e => { config.input.zoteroCollection = e.target.value; };
+
+async function loadCollections() {
+  const sel = $("#collection"), help = $("#collection-help");
+  help.textContent = "Chargement des collections…";
+  try {
+    const res = await api("/api/zotero/collections", { method: "POST", body: {} });
+    collections = res.collections;
+    const byParent = new Map();
+    for (const c of collections) { const k = c.parent ?? ""; if (!byParent.has(k)) byParent.set(k, []); byParent.get(k).push(c); }
+    const opts = [el("option", { value: "", textContent: "(aucune : évaluation manuelle seulement)" })];
+    const walk = (p, d) => (byParent.get(p) ?? []).sort((a, b) => a.name.localeCompare(b.name)).forEach(c => { opts.push(el("option", { value: c.key, textContent: `${"— ".repeat(d)}${c.name} (${c.key}${c.items != null ? `, ${c.items} élément(s)` : ""})` })); walk(c.key, d + 1); });
+    walk("", 0);
+    sel.replaceChildren(...opts);
+    if (config.input.zoteroCollection && !collections.some(c => c.key === config.input.zoteroCollection)) toast(`Collection ${config.input.zoteroCollection} absente de cette bibliothèque`);
+    sel.value = collections.some(c => c.key === config.input.zoteroCollection) ? config.input.zoteroCollection : "";
+    help.textContent = `${collections.length} collection(s) dans la bibliothèque ${res.library}.`;
+  } catch (e) {
+    const current = config.input.zoteroCollection;
+    sel.replaceChildren(el("option", { value: current, textContent: current || "(aucune)" })); sel.value = current;
+    help.replaceChildren(`Collections indisponibles (${e.message}) : vérifier la bibliothèque et la clé Zotero sur la page `, el("a", { href: "/parametres", textContent: "Paramètres", style: "color:var(--accent)" }), ".");
+  }
+}
+
+async function loadSettings() {
+  settings = await api("/api/settings");
+  config = structuredClone(settings.config);
+  renderSettings();
+  loadCollections();
+}
+async function save(silent = false) {
+  await api("/api/settings", { method: "POST", body: { config } });
+  if (!silent) toast(`Configuration enregistrée (${settings.configFile})`);
+}
+$("#btn-save").onclick = () => save().catch(e => toast("Erreur : " + e.message));
+$("#btn-reset").onclick = () => {
+  if (!confirm("Rétablir les valeurs par défaut ? L'activité et la collection choisies sont conservées.")) return;
+  const keep = { activity: config.activity, input: config.input };
+  config = { ...structuredClone(settings.defaults), ...keep };
+  renderSettings(); toast("Valeurs par défaut rétablies — enregistrer pour confirmer");
+};
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && config) loadCollections(); });
+
+$("#btn-manual").onclick = async () => {
+  try {
+    const r = await api("/api/ontoethique/manual", { method: "POST", body: { title: config.activity.title, description: config.activity.description } });
+    await openRun(r.runId, "existences"); toast("Évaluation manuelle créée : ajouter les existences puis les pulsations");
+  } catch (e) { toast("Erreur : " + e.message); }
+};
+$("#btn-example").onclick = async () => {
+  try { const r = await api("/api/ontoethique/manual", { method: "POST", body: { example: true } }); await openRun(r.runId, "diagrams"); toast("Exemple de l'article chargé"); }
+  catch (e) { toast("Erreur : " + e.message); }
+};
+
+// ==========================================
+// Exécution
+// ==========================================
+const STATUS_TEXT = { running: "en cours", success: "terminé", failed: "échec", stopped: "arrêté" };
+let lastState = null, timer = null;
+function renderStatus(s) {
+  lastState = s;
+  const b = $("#status");
+  b.className = `badge ${s?.status ?? ""}`;
+  const sec = s ? Math.round(((s.endedAt ?? Date.now()) - s.startedAt) / 1000) : 0;
+  b.textContent = s ? `${s.label} · ${STATUS_TEXT[s.status]} · ${sec >= 60 ? `${Math.floor(sec / 60)} min ${sec % 60} s` : `${sec} s`}` : "aucun traitement";
+  const running = s?.status === "running";
+  $("#btn-run").disabled = running;
+  $("#btn-stop").classList.toggle("hidden", !running);
+  $("#run-info").textContent = s ? `Traitement n°${s.id} (${s.label}) lancé le ${new Date(s.startedAt).toLocaleString("fr-FR")} — ${STATUS_TEXT[s.status]}` : "Aucun traitement lancé.";
+  clearInterval(timer);
+  if (running) timer = setInterval(() => renderStatus(lastState), 1000);
+}
+const log = $("#log");
+const es = new EventSource("/api/run/events");
+let first = true;
+es.addEventListener("status", async e => {
+  const s = JSON.parse(e.data);
+  if (!first && s?.status === "running" && s.id !== lastState?.id) log.textContent = "";
+  first = false;
+  renderStatus(s);
+  // fin d'un traitement : la nouvelle évaluation (la plus récente) est ouverte
+  if (s && s.status !== "running" && s.endedAt && Date.now() - s.endedAt < 3000) {
+    toast(`Traitement ${STATUS_TEXT[s.status]}`);
+    runsLoaded = false;
+    const data = await api("/api/ontoethique/runs").catch(() => null);
+    const latest = data?.runs.find(r => r.mode !== "manuel");
+    if (latest && s.status === "success") openRun(latest.runId, "diagrams");
+  }
+});
+es.addEventListener("log", e => { log.append(JSON.parse(e.data) + "\n"); log.scrollTop = log.scrollHeight; });
+$("#btn-run").onclick = async () => {
+  if (!config.input.zoteroCollection) return toast("Choisir une collection Zotero (ou créer une évaluation manuelle)");
+  try { await save(true); log.textContent = ""; await api("/api/run", { method: "POST" }); showTab("run"); }
+  catch (e) { toast("Erreur : " + e.message); }
+};
+$("#btn-stop").onclick = async () => { if (confirm("Arrêter le traitement en cours ?")) await api("/api/run/stop", { method: "POST" }); };
+
+// ==========================================
+// Évaluations
+// ==========================================
+let runsLoaded = false, runs = [], currentRun = null, model = null;
+const runLabel = r => `${r.activity?.title || r.collection?.name || r.runId} · ${r.startedAt ? new Date(r.startedAt).toLocaleString("fr-FR") : ""}`;
+async function loadRuns(force = false) {
+  if (runsLoaded && !force) return;
+  const box = $("#runs");
+  box.className = "muted"; box.textContent = "Chargement…";
+  let data;
+  try { data = await api("/api/ontoethique/runs"); }
+  catch (e) { box.textContent = "Évaluations indisponibles : " + e.message; return; }
+  runsLoaded = true; runs = data.runs;
+  $("#runs-info").textContent = `${runs.length} évaluation(s)${data.omekaError ? ` — Omeka S indisponible (${data.omekaError}) : archive locale seulement` : ""}`;
+  if (!runs.length) { box.textContent = "Aucune évaluation : lancer le workflow ou créer une évaluation manuelle (onglet Activité)."; return; }
+  box.className = "";
+  box.replaceChildren(el("div", { className: "table-wrap" }, el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["Date", "Activité", "Mode", "Statut", "Existences", "Pulsations", "Symbiose", "Coût estimé", "Source", ""].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, runs.map(r => el("tr", { className: currentRun === r.runId ? "selected" : "" },
+      el("td", { textContent: r.startedAt ? new Date(r.startedAt).toLocaleString("fr-FR") : "—" }),
+      el("td", {}, r.activity?.title || "—", r.collection?.name ? el("span", { className: "origin", textContent: `collection ${r.collection.name}` }) : null),
+      el("td", { textContent: r.mode === "manuel" ? "manuel" : "workflow" }),
+      el("td", {}, el("span", { className: `badge ${r.status === "success" ? "success" : r.status === "running" ? "running" : "failed"}`, textContent: STATUS_TEXT[r.status] ?? r.status ?? "—" }), r.modified ? el("span", { className: "origin", textContent: "corrigée" }) : null),
+      el("td", { className: "num", textContent: r.totals?.existences ?? "—" }),
+      el("td", { className: "num", textContent: r.totals?.pulsations ?? "—" }),
+      el("td", { className: "num", textContent: r.symbiosis?.index ?? "—", title: r.symbiosis?.interpretation ?? "" }),
+      el("td", { className: "num", textContent: r.impact ? `${fmt(r.impact.energyWh, 2)} Wh · ${fmt(r.impact.apiCost, 4)} ${r.impact.currency}` : "—" }),
+      el("td", {}, r.source.includes("local") ? "archive locale" : "", r.source === "local+omeka" ? " · " : "",
+        r.configItemId && data.omekaAdmin ? el("a", { href: data.omekaAdmin + r.configItemId, target: "_blank", textContent: "Omeka S", style: "color:var(--accent)" }) : (r.source.includes("omeka") ? "Omeka S" : "")),
+      el("td", { style: "min-width:150px" },
+        el("button", { className: "btn primary small", style: "margin:0 4px 4px 0", textContent: "Ouvrir", onclick: () => openRun(r.runId, "diagrams") }),
+        el("button", { className: "btn danger small", textContent: "Supprimer", onclick: () => deleteRun(r) }))))))));
+}
+$("#runs-refresh").onclick = () => loadRuns(true);
+$("#btn-runs").onclick = () => showTab("runs");
+
+function deleteRun(r) {
+  const dlg = $("#del-run"), box = $("#del-run-omeka");
+  $("#del-run-label").textContent = runLabel(r);
+  const omeka = r.source.includes("omeka") || !!r.configItemId;
+  $("#del-run-omeka-row").classList.toggle("hidden", !omeka);
+  box.checked = omeka && !r.source.includes("local");
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== "confirm") return;
+    try {
+      const res = await api("/api/ontoethique/runs/delete", { method: "POST", body: { runId: r.runId, omeka: omeka && box.checked } });
+      toast(`Évaluation supprimée${res.omekaItem ? ` (et l'item ${res.omekaItem} dans Omeka S)` : ""}`);
+      if (currentRun === r.runId) { currentRun = null; model = null; renderModel(); }
+      loadRuns(true);
+    } catch (e) { toast("Suppression impossible : " + e.message); }
+  };
+  dlg.returnValue = "";
+  dlg.showModal();
+}
+
+// ouvre une évaluation dans les onglets de résultats
+async function openRun(runId, tab) {
+  try { model = await api(`/api/ontoethique/model?run=${encodeURIComponent(runId)}`); }
+  catch (e) { return toast("Évaluation illisible : " + e.message); }
+  currentRun = runId; store.set("onto.run", runId);
+  reportLoaded = synthesisLoaded = false; runsLoaded = false;
+  renderModel();
+  if (tab) showTab(tab);
+}
+// modèle renvoyé par le serveur après une modification : indicateurs recalculés
+function setModel(m, msg) { model = m; renderModel(); if (msg) toast(msg); }
+
+function renderModel() {
+  $("#run-banner-text").textContent = model ? `Évaluation : ${model.activity.title} (${model.mode === "manuel" ? "saisie manuelle" : "workflow"}, ${model.existences.length} existence(s), ${model.pulsations.length} pulsation(s), mise à jour le ${new Date(model.updatedAt).toLocaleString("fr-FR")})` : "";
+  const tab = document.querySelector("nav button.active")?.dataset.tab;
+  $("#run-banner").classList.toggle("hidden", !(RESULT_TABS.includes(tab) && currentRun));
+  renderExistences(); renderMatrix(); renderRevisions();
+  if (tab === "diagrams") renderDiagrams();
+}
+
+// ==========================================
+// Existences
+// ==========================================
+function renderExistences() {
+  const box = $("#existences");
+  if (!model) { box.className = "empty"; box.textContent = "Aucune évaluation ouverte."; return; }
+  if (!model.existences.length) { box.className = "empty"; box.textContent = "Aucune existence : en ajouter une."; return; }
+  const metrics = new Map((model.metrics?.existences ?? []).map(e => [e.id, e]));
+  box.className = "exgrid";
+  box.replaceChildren(...model.existences.map(e => {
+    const m = metrics.get(e.id);
+    return el("div", { className: "excard clickable", style: `--c:${KIND_COLORS[e.kind] ?? "#888"};cursor:pointer`, onclick: () => editExistence(e) },
+      el("h3", { textContent: e.name }),
+      el("div", { className: "origin", textContent: `${kindLabel(e.kind)} · ${m?.pulsations ?? 0} pulsation(s) · complexité ontologique ${m ? fmt(m.complexity.index, 2) : "—"}${e.origin ? ` · ${e.origin}` : ""}` }),
+      e.description ? el("p", { style: "margin:6px 0 0;font-size:13.5px", textContent: e.description }) : null,
+      el("div", { className: "dims" }, config.dimensions.map(d => el("div", {}, el("b", { textContent: d.label }), (e.dimensions?.[d.id] ?? []).join(", ") || "—"))),
+      e.cribles?.length ? el("div", { style: "margin-top:8px;font-size:13px" }, el("b", { className: "muted", style: "font-size:11.5px", textContent: "Cribles " }), e.cribles.join(", ")) : null,
+      e.documents?.length ? el("div", { className: "origin", style: "margin-top:6px", textContent: `Traces : ${e.documents.join(" ; ")}` }) : null);
+  }));
+}
+
+let editingExistence = null;
+function editExistence(e) {
+  if (!model) return toast("Ouvrir d'abord une évaluation (onglet Évaluations)");
+  editingExistence = e;
+  $("#ex-title").textContent = e ? `Existence : ${e.name}` : "Nouvelle existence";
+  $("#ex-name").value = e?.name ?? "";
+  $("#ex-kind").replaceChildren(...config.kinds.map(k => el("option", { value: k.id, textContent: k.label, selected: e?.kind === k.id })));
+  $("#ex-desc").value = e?.description ?? "";
+  $("#ex-dims").replaceChildren(...config.dimensions.map(d => el("div", { className: "field" }, el("label", { htmlFor: `exd-${d.id}`, textContent: `${d.label} (un élément par ligne)` }), el("textarea", { id: `exd-${d.id}`, rows: 3, value: (e?.dimensions?.[d.id] ?? []).join("\n") }))));
+  $("#ex-cribles").value = (e?.cribles ?? []).join("\n");
+  $("#ex-delete").classList.toggle("hidden", !e);
+  const dlg = $("#ex-dialog");
+  dlg.onclose = async () => {
+    const lines = v => v.split("\n").map(s => s.trim()).filter(Boolean);
+    try {
+      if (dlg.returnValue === "delete" && e) {
+        if (!confirm(`Supprimer « ${e.name} » et ses pulsations ?`)) return;
+        setModel(await api("/api/ontoethique/existence/delete", { method: "POST", body: { run: currentRun, id: e.id, author: author() } }), "Existence supprimée");
+      } else if (dlg.returnValue === "confirm") {
+        const existence = { ...(e ?? {}), id: e?.id, name: $("#ex-name").value, kind: $("#ex-kind").value, description: $("#ex-desc").value, cribles: lines($("#ex-cribles").value),
+          dimensions: Object.fromEntries(config.dimensions.map(d => [d.id, lines($(`#exd-${d.id}`).value)])), origin: "humain" };
+        setModel(await api("/api/ontoethique/existence", { method: "POST", body: { run: currentRun, existence, author: author() } }), "Existence enregistrée");
+      }
+    } catch (err) { toast("Erreur : " + err.message); }
+  };
+  dlg.returnValue = "";
+  dlg.showModal();
+}
+$("#ex-add").onclick = () => editExistence(null);
+
+// ==========================================
+// Matrice des affects
+// ==========================================
+const author = () => $("#author").value.trim();
+$("#author").value = store.get("onto.author") ?? "";
+$("#author").oninput = e => store.set("onto.author", e.target.value);
+$("#mx-filter").onchange = () => renderMatrix();
+
+function renderMatrix() {
+  const box = $("#matrix");
+  const filter = $("#mx-filter");
+  if (!model) { box.replaceChildren(el("div", { className: "empty", textContent: "Aucune évaluation ouverte." })); return; }
+  const keep = filter.value;
+  filter.replaceChildren(el("option", { value: "", textContent: "toutes" }), ...model.existences.map(e => el("option", { value: e.id, textContent: e.name })));
+  filter.value = model.existences.some(e => e.id === keep) ? keep : "";
+  const names = new Map(model.existences.map(e => [e.id, e]));
+  const rows = model.pulsations.filter(p => !filter.value || p.existence === filter.value)
+    .sort((a, b) => String(names.get(a.existence)?.name).localeCompare(String(names.get(b.existence)?.name)) || a.order - b.order);
+  if (!rows.length) { box.replaceChildren(el("div", { className: "empty", textContent: "Aucune pulsation : en ajouter une." })); return; }
+  box.replaceChildren(el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["", "Existence", "Rang", "Moment", ...config.powers.map(p => p.label), ...config.values.map(v => v.label.replace("Valeur-", ""))].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, rows.map(p => el("tr", { className: `clickable${editing?.id === p.id ? " selected" : ""}`, onclick: () => editPulsation(p) },
+      el("td", { className: "muted", textContent: p.id }),
+      el("td", {}, el("span", { className: `chip kind-${names.get(p.existence)?.kind}`, textContent: names.get(p.existence)?.name ?? p.existence })),
+      el("td", { className: "num", textContent: p.order }),
+      el("td", {}, p.moment, p.document?.title ? el("span", { className: "origin", textContent: p.document.title }) : null),
+      ...config.powers.map(pw => { const e = p.evaluations[pw.id]; return el("td", { title: e ? [e.chain?.join(" → "), e.justification, e.citation && `« ${e.citation} »`].filter(Boolean).join("\n") : "" },
+        e && e.score !== null ? el("span", { className: "score", style: scoreStyle(e.score), textContent: e.score > 0 ? `+${e.score}` : e.score }) : el("span", { className: "muted", textContent: "—" }),
+        e ? el("span", { className: "origin", textContent: `${e.origin}${e.validated ? " ✔" : ""}` }) : null); }),
+      ...config.values.map(v => el("td", { className: "num", textContent: p.values?.[v.id] ?? "—" })))))));
+}
+
+let editing = null;
+function editPulsation(p) {
+  if (!model) return toast("Ouvrir d'abord une évaluation (onglet Évaluations)");
+  if (!model.existences.length) return toast("Ajouter d'abord une existence");
+  editing = p ? structuredClone(p) : { id: "", order: 0, moment: "", existence: $("#mx-filter").value || model.existences[0].id, evaluations: {}, values: {}, origin: "humain" };
+  $("#editor").classList.remove("hidden");
+  $("#ed-title").textContent = p ? `Pulsation ${p.id}` : "Nouvelle pulsation";
+  $("#ed-existence").replaceChildren(...model.existences.map(e => el("option", { value: e.id, textContent: e.name, selected: e.id === editing.existence })));
+  $("#ed-order").value = editing.order || "";
+  $("#ed-moment").value = editing.moment;
+  $("#ed-doc").value = editing.document?.title ?? "";
+  $("#ed-note").value = "";
+  $("#ed-delete").classList.toggle("hidden", !p);
+  $("#ed-powers").replaceChildren(...config.powers.map(pw => powerEditor(pw)));
+  $("#ed-values").replaceChildren(...config.values.map(v => el("div", { className: "field" },
+    el("label", { htmlFor: `edv-${v.id}`, textContent: `${v.label} (${v.force}) : ${v.question}` }),
+    el("input", { id: `edv-${v.id}`, type: "number", min: -100, max: 100, step: 1, value: editing.values?.[v.id] ?? "", placeholder: "inconnue" }))));
+  renderMatrix();
+  $("#editor").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// éditeur d'un pouvoir : score (curseur), état de la grille, maillons de la séquence, justification, citation, validation
+function powerEditor(pw) {
+  const ev = editing.evaluations[pw.id] ?? { score: null, chain: [], origin: "humain", validated: false };
+  const state = el("span", { className: "origin" });
+  const num = el("input", { type: "number", min: -100, max: 100, step: 1, value: ev.score ?? "", placeholder: "non observé" });
+  const range = el("input", { type: "range", min: -100, max: 100, step: 1, value: ev.score ?? 0 });
+  const showState = () => { const s = num.value === "" ? null : Number(num.value); state.textContent = s === null ? "non observé" : s < 0 ? pw.negative.name : s > 0 ? pw.positive.name : pw.neutral.name; num.style.cssText = scoreStyle(s); };
+  range.oninput = () => { num.value = range.value; showState(); };
+  num.oninput = () => { if (num.value !== "") range.value = num.value; showState(); };
+  showState();
+  const box = el("div", { className: "power-editor" },
+    el("h4", {}, pw.label, el("span", { className: "origin", textContent: `${pw.semiosis} · origine ${ev.origin}` }), state,
+      el("label", { className: "check", style: "margin-left:auto" }, el("input", { type: "checkbox", className: "validated", checked: !!ev.validated }), "validé")),
+    el("div", { className: "range-row" }, range, num, el("button", { type: "button", className: "link", textContent: "non observé", onclick: () => { num.value = ""; range.value = 0; showState(); } })),
+    el("div", { className: "chain", style: "margin-top:8px" }, pw.chain.map((c, i) => el("div", { className: "field" }, el("label", { className: "help", textContent: c }), el("input", { className: "link-input", value: ev.chain?.[i] ?? "" })))),
+    el("div", { className: "grid", style: "margin-top:8px" },
+      el("div", { className: "field" }, el("label", { className: "help", textContent: "Justification" }), el("input", { className: "just", value: ev.justification ?? "" })),
+      el("div", { className: "field" }, el("label", { className: "help", textContent: "Citation de la trace" }), el("input", { className: "cit", value: ev.citation ?? "" }))));
+  box.dataset.power = pw.id;
+  box._num = num;
+  return box;
+}
+
+// pulsation lue dans le formulaire ; une évaluation modifiée devient humaine
+function readEditor(validateAll = false) {
+  const p = { ...editing, existence: $("#ed-existence").value, order: Number($("#ed-order").value) || 0, moment: $("#ed-moment").value.trim(),
+    document: $("#ed-doc").value.trim() ? { ...(editing.document ?? {}), title: $("#ed-doc").value.trim() } : undefined, evaluations: {}, values: {} };
+  for (const box of document.querySelectorAll("#ed-powers .power-editor")) {
+    const id = box.dataset.power, before = editing.evaluations[id];
+    const score = box._num.value === "" ? null : Number(box._num.value);
+    const chain = [...box.querySelectorAll(".link-input")].map(i => i.value.trim());
+    while (chain.length && !chain[chain.length - 1]) chain.pop();
+    const ev = { score, chain, justification: box.querySelector(".just").value.trim(), citation: box.querySelector(".cit").value.trim(), validated: validateAll || box.querySelector(".validated").checked, origin: before?.origin ?? "humain" };
+    if (score === null && !before) continue;
+    const changed = !before || before.score !== ev.score || JSON.stringify(before.chain ?? []) !== JSON.stringify(ev.chain) || (before.justification ?? "") !== ev.justification || (before.citation ?? "") !== ev.citation;
+    // une correction rend l'évaluation humaine ; une simple validation garde son origine (proposition d'agent validée)
+    if (changed) ev.origin = "humain";
+    p.evaluations[id] = ev;
+  }
+  for (const v of config.values) { const x = $(`#edv-${v.id}`).value; p.values[v.id] = x === "" ? null : Number(x); }
+  return p;
+}
+async function savePulsation(validateAll) {
+  const pulsation = readEditor(validateAll);
+  if (!pulsation.moment) return toast("Décrire le moment de l'activité");
+  try {
+    const m = await api("/api/ontoethique/pulsation", { method: "POST", body: { run: currentRun, pulsation, author: author(), note: $("#ed-note").value.trim(), motivation: validateAll ? "assessing" : "editing" } });
+    const id = pulsation.id || m.pulsations[m.pulsations.length - 1]?.id;
+    setModel(m, `Pulsation ${id} enregistrée — indicateurs recalculés`);
+    const saved = m.pulsations.find(x => x.id === id);
+    if (saved) editPulsation(saved);
+  } catch (e) { toast("Erreur : " + e.message); }
+}
+$("#ed-save").onclick = () => savePulsation(false);
+$("#ed-validate").onclick = () => savePulsation(true);
+$("#ed-cancel").onclick = () => { editing = null; $("#editor").classList.add("hidden"); renderMatrix(); };
+$("#ed-delete").onclick = async () => {
+  if (!editing?.id || !confirm(`Supprimer la pulsation ${editing.id} ?`)) return;
+  try { setModel(await api("/api/ontoethique/pulsation/delete", { method: "POST", body: { run: currentRun, id: editing.id, author: author(), note: $("#ed-note").value.trim() } }), "Pulsation supprimée"); editing = null; $("#editor").classList.add("hidden"); }
+  catch (e) { toast("Erreur : " + e.message); }
+};
+$("#mx-add").onclick = () => editPulsation(null);
+
+function renderRevisions() {
+  const box = $("#revisions");
+  const list = model?.revisions ?? [];
+  if (!list.length) { box.className = "muted"; box.textContent = "Aucune correction pour le moment."; return; }
+  box.className = "";
+  box.replaceChildren(el("div", { className: "table-wrap" }, el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["Date", "Auteur", "Action", "Cible", "Motivation", "Motif"].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, [...list].reverse().slice(0, 100).map(r => el("tr", {}, [new Date(r.at).toLocaleString("fr-FR"), r.author ?? "—", r.action, `${r.target.type} ${r.target.id}`, r.motivation, r.note ?? ""].map(v => el("td", { textContent: v }))))))));
+}
+
+// ==========================================
+// Diagrammes
+// ==========================================
+function plotLayout(extra = {}) {
+  return { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: css("--ink"), family: "system-ui, sans-serif", size: 12 }, margin: { l: 40, r: 10, t: 10, b: 40 }, legend: { orientation: "h" }, ...extra };
+}
+const axis = title => ({ title, color: css("--muted"), gridcolor: css("--line"), zerolinecolor: css("--muted") });
+const plotConfig = { responsive: true, displaylogo: false };
+
+function renderDiagrams() {
+  const m = model?.metrics;
+  $("#diag-empty").classList.toggle("hidden", !!m);
+  $("#diag").classList.toggle("hidden", !m);
+  if (!m || !window.Plotly) { if (m && !window.Plotly) toast("Plotly indisponible : diagrammes non dessinés"); if (!m) return; }
+  const s = m.symbiosis;
+  $("#tiles").replaceChildren(...[
+    [fmt(s.index, 2), "indice de symbiose (-1 à 1)", s.interpretation], [fmt(s.balance, 2), "équilibre entre genres (0 à 1)", ""], [fmt(m.complexity.mean, 2), "complexité ontologique moyenne", ""],
+    [m.totals.existences, "existences", ""], [m.totals.pulsations, "pulsations", ""], [`${m.totals.validated}/${m.totals.evaluations}`, "évaluations validées", ""], [m.alerts.length, "alertes", ""],
+  ].map(([v, l, t]) => el("div", { className: "tile", title: t }, el("div", { className: "v", textContent: v }), el("div", { className: "l", textContent: l }))));
+  $("#alerts").replaceChildren(...(m.alerts.length ? m.alerts.map(a => el("div", { className: `alert ${a.level}`, textContent: a.message })) : [el("p", { className: "muted", textContent: `Aucune alerte. ${s.interpretation}.` })]));
+
+  // une couleur par existence (la même dans les trois diagrammes)
+  const exColor = (e, i) => PALETTE[m.existences.indexOf(e) % PALETTE.length];
+  if (window.Plotly) {
+    // spirales coniques de Pappus
+    const traces = m.existences.filter(e => e.spiral.points.length > 1).map((e, i) => ({
+      type: "scatter3d", mode: "lines", name: `${e.name} — ${e.spiral.shape}`, line: { width: 6, color: exColor(e, i) },
+      x: e.spiral.points.map(p => p.x), y: e.spiral.points.map(p => p.y), z: e.spiral.points.map(p => p.z), text: e.spiral.points.map(p => p.pulsation ?? ""),
+      hovertemplate: "%{text}<br>altitude %{z}<extra>%{fullData.name}</extra>",
+    }));
+    Plotly.react("spiral", traces.length ? traces : [{ type: "scatter3d", mode: "markers", x: [0], y: [0], z: [0], name: "aucune augmentation" }],
+      plotLayout({ margin: { l: 0, r: 0, t: 0, b: 0 }, scene: { xaxis: axis("x"), yaxis: axis("y"), zaxis: axis("altitude (Agir)"), aspectmode: "cube" } }), plotConfig);
+    // profils des pouvoirs
+    const theta = [...config.powers.map(p => p.label), config.powers[0].label];
+    Plotly.react("radar", m.existences.map((e, i) => { const r = config.powers.map(p => e.powers[p.id]?.mean ?? 0); return { type: "scatterpolar", name: e.name, r: [...r, r[0]], theta, line: { color: exColor(e, i) }, fill: "toself", opacity: 0.55 }; }),
+      plotLayout({ polar: { bgcolor: "rgba(0,0,0,0)", radialaxis: { range: [-100, 100], color: css("--muted"), gridcolor: css("--line") }, angularaxis: { color: css("--muted"), gridcolor: css("--line") } }, margin: { l: 30, r: 30, t: 20, b: 20 } }), plotConfig);
+    // par genre
+    const kinds = Object.entries(m.byKind).filter(([, k]) => k.existences);
+    Plotly.react("kinds", kinds.map(([id, k]) => ({ type: "bar", name: k.label, x: config.powers.map(p => p.label), y: config.powers.map(p => k.powers[p.id] ?? 0), marker: { color: KIND_COLORS[id] ?? "#888" } })),
+      plotLayout({ barmode: "group", yaxis: { ...axis("moyenne"), range: [-100, 100] }, xaxis: axis("") }), plotConfig);
+  }
+  $("#spiral-table").replaceChildren(el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["Existence", "Dilatation (Σ Résonner +)", "Altitude (Σ Agir +)", "Déplacement (Σ Discerner + Raisonner)", "Rayon / altitude", "Forme"].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, m.existences.map(e => el("tr", {}, el("td", { textContent: e.name }), el("td", { className: "num", textContent: fmt(e.spiral.dilation) }), el("td", { className: "num", textContent: fmt(e.spiral.altitude) }),
+      el("td", { className: "num", textContent: `${fmt(e.spiral.displacement)} (${fmt(e.spiral.turns, 2)} tour(s))` }), el("td", { className: "num", textContent: fmt(e.spiral.ratio, 2) }), el("td", { textContent: e.spiral.shape }))))));
+  $("#summary").replaceChildren(el("table", { className: "data" },
+    el("thead", {}, el("tr", {}, ["Existence", ...config.powers.map(p => p.label), "Valence", "Intensité", "Affect", ...config.values.map(v => v.label.replace("Valeur-", ""))].map(h => el("th", { textContent: h })))),
+    el("tbody", {}, m.existences.map(e => el("tr", {},
+      el("td", {}, e.name, el("span", { className: "origin", textContent: `${kindLabel(e.kind)} · ${e.pulsations} pulsation(s)` })),
+      ...config.powers.map(p => { const s = e.powers[p.id]; return el("td", {}, s?.count ? el("span", { className: "score", style: scoreStyle(s.mean), textContent: fmt(s.mean) }) : el("span", { className: "muted", textContent: "—" }), s?.stateName ? el("span", { className: "origin", textContent: s.stateName }) : null); }),
+      el("td", { className: "num", textContent: fmt(e.valence) }), el("td", { className: "num", textContent: fmt(e.intensity) }), el("td", { textContent: e.affect ?? "—" }),
+      ...config.values.map(v => el("td", { className: "num", textContent: fmt(e.values[v.id]) })))))));
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (!$("#tab-diagrams").classList.contains("hidden")) renderDiagrams(); });
+
+// ==========================================
+// Synthèse, rapport, Omeka S
+// ==========================================
+let synthesisLoaded = false, reportLoaded = false;
+const fileUrl = (name, raw = false) => `/api/ontoethique/file?run=${encodeURIComponent(currentRun)}&name=${encodeURIComponent(name)}${raw ? "&raw=1" : ""}`;
+// références [p3] : lien vers la pulsation dans la matrice
+const withRefs = html => html.replace(/\[(p\d+b*)\]/g, (m, id) => model?.pulsations.some(p => p.id === id) ? `<a href="#" class="pref" data-p="${id}">[${id}]</a>` : m);
+$("#synthesis").addEventListener("click", e => { const a = e.target.closest("a.pref"); if (!a) return; e.preventDefault(); const p = model.pulsations.find(x => x.id === a.dataset.p); showTab("matrix"); if (p) editPulsation(p); });
+
+async function loadSynthesis() {
+  if (synthesisLoaded || !currentRun) return;
+  synthesisLoaded = true;
+  const r = await fetch(fileUrl("synthese_ada.md"));
+  const box = $("#synthesis");
+  if (r.ok) { box.className = "md"; box.innerHTML = withRefs(md(await r.text())); }
+  else { box.className = "md muted"; box.textContent = "Aucune synthèse pour cette évaluation : la rédiger à partir de la matrice."; }
+}
+$("#btn-synth").onclick = async () => {
+  if (!currentRun) return toast("Ouvrir d'abord une évaluation");
+  $("#btn-synth").disabled = true; $("#synth-info").textContent = "Rédaction par l'ADA onto-éthique…";
+  try {
+    const r = await api("/api/ontoethique/synthesis", { method: "POST", body: { run: currentRun } });
+    $("#synthesis").className = "md"; $("#synthesis").innerHTML = withRefs(md(r.synthesis));
+    $("#synth-info").textContent = `Rédigée en ${fmt(r.durationMs / 1000)} s · ${r.tokens.toLocaleString("fr-FR")} tokens · ${fmt(r.impact.energyWh, 3)} Wh · ${fmt(r.impact.co2g, 3)} g CO₂e · équivalent API ${fmt(r.impact.apiCost, 5)} ${r.impact.currency}`;
+    reportLoaded = false;
+  } catch (e) { $("#synth-info").textContent = ""; toast("Erreur : " + e.message); }
+  finally { $("#btn-synth").disabled = false; }
+};
+
+async function loadReport() {
+  if (reportLoaded || !currentRun) return;
+  reportLoaded = true;
+  let files = [];
+  try { files = await api(`/api/ontoethique/results?run=${encodeURIComponent(currentRun)}`); } catch (e) { toast("Fichiers indisponibles : " + e.message); }
+  $("#files").replaceChildren(...files.map(f => el("a", { href: fileUrl(f.name, f.name.endsWith(".html")), target: "_blank", className: "chip", textContent: `${f.title}${f.mtime ? ` · ${new Date(f.mtime).toLocaleString("fr-FR")}` : " · Omeka S"}` })));
+  const box = $("#report");
+  if (files.some(f => f.name === "rapport_ontoethique.md")) { box.className = "md"; box.innerHTML = md(await (await fetch(fileUrl("rapport_ontoethique.md"))).text()); }
+  else { box.className = "md muted"; box.textContent = model?.mode === "manuel" ? "Évaluation manuelle : pas de rapport d'exécution (fichiers ci-dessus)." : "Aucun rapport pour cette évaluation."; }
+}
+
+$("#btn-omeka").onclick = async () => {
+  if (!currentRun) return;
+  $("#btn-omeka").disabled = true;
+  try { const r = await api("/api/ontoethique/omeka", { method: "POST", body: { run: currentRun } }); toast(`Enregistrée dans Omeka S : item ${r.itemId}, ${r.media} fichier(s)`); runsLoaded = false; }
+  catch (e) { toast("Omeka S : " + e.message); }
+  finally { $("#btn-omeka").disabled = false; }
+};
+
+// ==========================================
+// Démarrage
+// ==========================================
+loadSettings().then(async () => {
+  // dernière évaluation consultée, sinon la plus récente
+  const remembered = store.get("onto.run");
+  const data = await api("/api/ontoethique/runs").catch(() => null);
+  const target = data?.runs.find(r => r.runId === remembered) ?? data?.runs[0];
+  if (target) await openRun(target.runId);
+  const tab = store.get("onto.tab");
+  if (tab && TABS.includes(tab)) showTab(tab);
+}).catch(e => toast("Erreur de chargement : " + e.message));
+// liens vers les autres applications de l'écosystème (serveurs et ports distincts)
+api("/api/apps").then(a => {
+  $("#links-apps").replaceChildren(...Object.entries(a.apps).filter(([k]) => k !== a.current).map(([, v]) => el("a", { href: v.url, textContent: v.label, style: "margin-right:12px" })));
+}).catch(() => {});
+</script>
+</body>
+</html>

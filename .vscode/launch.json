@@ -1,0 +1,51 @@
+{
+    // Débogage avec tsx : points d'arrêt directement dans les fichiers .ts
+    // Port décalé (7290) pour ne pas entrer en conflit avec le conteneur Docker (7280)
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Workflow ontoÉthique, sans interface (équivalent de npm run ontoethique)
+            "name": "Workflow : ontoÉthique",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/runners/ontoethique.ts",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "sourceMaps": true,
+            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+            "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+        },
+        {
+            // Interface ontoÉthique : les points d'arrêt du serveur ET du workflow lancé depuis l'interface
+            // (processus enfant, suivi grâce à autoAttachChildProcesses)
+            "name": "Interface : ontoÉthique (7290)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/ui/server.ts",
+            "args": ["ontoethique"],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "cwd": "${workspaceFolder}",
+            "env": { "ONTOETHIQUE_PORT": "7290", "ONTOETHIQUE_URL": "http://127.0.0.1:7290" },
+            "autoAttachChildProcesses": true,
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "sourceMaps": true,
+            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+            "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
+            "serverReadyAction": { "action": "openExternally", "pattern": "ontoÉthique : http://127\\.0\\.0\\.1:(\\d+)", "uriFormat": "http://127.0.0.1:%s" }
+        },
+        {
+            // fichier TypeScript ouvert dans l'éditeur
+            "name": "Fichier courant",
+            "type": "node",
+            "request": "launch",
+            "program": "${file}",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+        }
+    ]
+}

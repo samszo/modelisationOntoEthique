@@ -1,0 +1,18 @@
+# dépendances et secrets : jamais dans l'image
+node_modules
+.env
+.env.*
+!.env.example
+# données, résultats et réglages locaux
+data
+resultats
+workflow.config.json
+ontoethique.config.json
+agents.config.json
+# outils
+.git
+.vscode
+.claude
+.DS_Store
+**/.DS_Store
+usage.history.jsonl

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ui-ontoethique",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "ui:ontoethique"],
+      "port": 7280
+    },
+    {
+      "name": "ui-ontoethique-test",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["ONTOETHIQUE_PORT=7281", "ONTOETHIQUE_URL=http://127.0.0.1:7281", "npm", "run", "ui:ontoethique"],
+      "port": 7281
+    }
+  ]
+}

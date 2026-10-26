@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation technique – Écosystème d'agents</title>
+<style>
+  :root { --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9; --accent: #2f5d8a; --code: #f0eee8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a; --accent: #7fb0e0; --code: #111317; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  header .bar { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  header .brand { font-weight: 650; }
+  header nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  header nav a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; }
+  header nav a[aria-current] { color: var(--ink); background: var(--bg); }
+  .layout { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 32px; }
+  main { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 32px 32px; min-width: 0; }
+  .toc { position: sticky; top: 70px; align-self: start; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 90px); overflow: auto; }
+  .toc strong { margin-bottom: 4px; }
+  .toc a { color: var(--muted); text-decoration: none; }
+  .toc a.l3 { padding-left: 12px; }
+  .toc a:hover { color: var(--accent); }
+  h1 { font-size: 28px; line-height: 1.25; }
+  h2 { font-size: 21px; margin-top: 36px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 17px; margin-top: 26px; }
+  .anchor { color: var(--line); text-decoration: none; margin-right: 6px; font-weight: 400; }
+  h2:hover .anchor, h3:hover .anchor { color: var(--accent); }
+  a { color: var(--accent); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow: auto; font-size: 13.5px; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  pre.mermaid { background: var(--panel); border: 1px solid var(--line); text-align: center; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 12px 0 20px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--bg); }
+  blockquote { margin: 12px 0; padding: 4px 14px; border-left: 3px solid var(--accent); color: var(--muted); background: var(--bg); border-radius: 0 6px 6px 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .toc { display: none; } main { padding: 4px 16px 24px; } }
+</style>
+</head>
+<body>
+<header><div class="bar"><span class="brand">Écosystème d'agents – documentation</span><nav><a href="index.html">Accueil</a><a href="installation.html">Installation</a><a href="utilisateur.html">Utilisateur</a><a href="technique.html" aria-current="page">Technique</a></nav></div></header>
+<div class="layout">
+<main>
+<h1 id="documentation-technique"><a class="anchor" href="#documentation-technique">#</a>Documentation technique</h1>
+<p>Écosystème d&#39;agents IA pour la <strong>modélisation onto-éthique des existences informationnelles</strong> dans un environnement humain-numérique (Laboratoire Paragraphe, Université Paris 8). Le projet est écrit en <strong>TypeScript</strong>, exécuté par <strong>tsx</strong> sous <strong>Node.js 22+</strong>, et orchestré par des workflows <strong>Mastra</strong>. Les modèles de langage sont ceux de l&#39;<strong>API Albert</strong> (compatible OpenAI), les traces viennent de <strong>Zotero</strong> et les résultats sont archivés dans <strong>Omeka S</strong>.</p>
+<p>Le socle (connexions, comptage des tokens et coût, onglet Workflow, item de configuration Omeka S, archives, serveur) est repris de l&#39;écosystème <code>ecosysteme-agents-recherche</code> ; chaque application y ajoute son workflow, son lanceur, sa page et son serveur :</p>
+<table>
+<thead>
+<tr>
+<th>Application</th>
+<th>Workflow</th>
+<th>Lanceur</th>
+<th>Page</th>
+<th>Serveur</th>
+<th>Section</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ontoÉthique</td>
+<td><code>ontoEthiqueWorkflow</code> (<code>src/workflow/ontoethiqueWorkflow.ts</code>)</td>
+<td><code>src/runners/ontoethique.ts</code></td>
+<td><code>ontoethique.html</code></td>
+<td><code>ONTOETHIQUE_PORT</code> 7280</td>
+<td>12</td>
+</tr>
+</tbody></table>
+<p>Le cadre théorique et le protocole de mesure sont ceux de l&#39;article « Le tournant ontologique dans les humanités numériques » (S. Szoniecky) : métamodèle à quatre dimensions existentielles, quatre pouvoirs de la pulsation existentielle, grille des affects (-100 à +100), triplets de sémiose, valeurs tardiennes, spirale conique de Pappus.</p>
+<h2 id="1-architecture"><a class="anchor" href="#1-architecture">#</a>1. Architecture</h2>
+<pre class="mermaid">flowchart LR
+    subgraph Client
+        NAV[Navigateur]
+    end
+    subgraph S1[&quot;Serveur ontoethique : src/ui/server.ts (7280)&quot;]
+        UI1[API HTTP + ontoethique.html]
+        CFG1[(.env + .env.ontoethique&lt;br/&gt;ontoethique.config.json)]
+    end
+    subgraph T1[&quot;Processus enfant : runners/ontoethique.ts&quot;]
+        WF1[ontoEthiqueWorkflow]
+    end
+    AG[Agents]
+    LIB[Bibliothèque onto-éthique&lt;br/&gt;règles, mesures, LOD]
+    NAV -- HTTP / SSE --&gt; UI1
+    UI1 -- lit / écrit --&gt; CFG1
+    UI1 -- spawn tsx --&gt; WF1
+    UI1 -- corrections, synthèse --&gt; LIB
+    WF1 --&gt; AG
+    WF1 --&gt; LIB
+    AG -- chat completions --&gt; ALB[(API Albert)]
+    WF1 -- API web v3 --&gt; ZOT[(Zotero)]
+    WF1 &amp; UI1 -- API REST --&gt; OMK[(Omeka S)]
+    WF1 &amp; UI1 -- fichiers --&gt; FS[(resultats/ontoethique)]</pre>
+<ul>
+<li><strong>Interface</strong> (<code>src/ui/server.ts</code>) : serveur <code>node:http</code> sans dépendance, lancé une fois par application, qui gère les connexions et la configuration, lance le workflow dans un <strong>processus enfant</strong> (configuration et connexions relues à chaque exécution), diffuse le journal en <strong>Server-Sent Events</strong> et sert les résultats. Les routes propres à ontoÉthique sont dans <code>src/ui/ontoethiqueRoutes.ts</code>.</li>
+<li><strong>Lanceur</strong> (<code>src/runners/ontoethique.ts</code>) : enregistre la configuration dans Omeka S, exécute le workflow, écrit les fichiers de l&#39;évaluation, importe les documents dans l&#39;item de configuration.</li>
+<li><strong>Bibliothèque</strong> (<code>src/lib/ontoethique/</code>) : fonctions pures partagées par le workflow et les routes (règles du métamodèle, mesures, export Linked Open Data) : une correction humaine recalcule exactement ce que calcule le workflow.</li>
+<li><strong>Paramètres de connexion</strong> : page commune <code>src/ui/public/settings.html</code>, servie sur <code>/parametres</code> ; elle enregistre les connexions dans <code>.env.ontoethique</code> (qui surcharge <code>.env</code>).</li>
+<li><strong>Répertoire de données</strong> : le répertoire courant (racine du projet en local, volume <code>/data</code> dans Docker, le code étant dans <code>/app</code>).</li>
+</ul>
+<p>Règles de passage des données dans Mastra : après un <code>.then(...)</code>, l&#39;étape reçoit la sortie de l&#39;étape précédente ; après un <code>.parallel([...])</code>, <code>{ &quot;&lt;id étape&gt;&quot;: sortie }</code> ; <code>getStepResult(&quot;&lt;id&gt;&quot;)</code> donne la sortie d&#39;une étape antérieure. Les outils sont appelés <strong>directement</strong> (<code>outil.execute({ data })</code>) : les données brutes ne passent jamais par un modèle.</p>
+<h2 id="2-organisation-du-code"><a class="anchor" href="#2-organisation-du-code">#</a>2. Organisation du code</h2>
+<pre><code class="language-">src/
+├── agents/                   ask.ts (askAgent), overrides.ts (agents.config.json) ; existencesAgent, affectsAgent, adaAgent
+├── config/
+│   ├── index.ts              socle commun (defaultWorkflowConfig : modèles Albert, Zotero, extraction, coût, termes Omeka S)
+│   ├── ontoethique.ts        configuration d'ontoÉthique (defaultOntoEthiqueConfig, ontoEthiqueConfig, RUNS_DIR)
+│   ├── models.ts             modèles Albert
+│   └── store.ts              fusion avec workflow.config.json / ontoethique.config.json (REPLACED_PATHS)
+├── lib/
+│   ├── ontoethique/          model (types, règles, auto-évaluations, CSV), metrics (pouvoirs, symbiose, alertes, spirales),
+│   │                         linkedData (Turtle, JSON-LD), spiralHtml, prompts (mise en forme, schémas zod),
+│   │                         synthesis (ADA), outputs (liste blanche, fichiers dérivés), example (scénarios A et B de l'article)
+│   ├── analysis/             annotationPositions (grille de couleurs), codebook (codes des marqueurs), cleanGraph (identifiants)
+│   ├── extraction/           pdfExtract, attachmentExtract, zip, chunkText
+│   ├── metrics/              usage (tokens), impact (énergie, carbone, argent), usageHistory (onglet Workflow)
+│   ├── omeka/                omk (client), oaAnnotations, conceptIndex, zoteroCollections
+│   ├── albert/               albert (client de l'API Albert)
+│   └── zotero/               zotero (client), zoteroToOmeka, duplicates
+├── tools/                    fetchZoteroData (outil Mastra)
+├── workflow/
+│   ├── ontoethiqueWorkflow.ts
+│   ├── steps/common/         fetchLiteratureStep
+│   ├── steps/ontoethique/    existencesStep, pulsationsStep, metricsStep, discourseStep
+│   ├── reports/              ontoethiqueReport, usageReport (consommation et coût, partagé)
+│   ├── runs/                 saveWorkflowConfig (item Omeka), importSynthesis (médias)
+│   └── diagrams.ts           AGENTS + DIAGRAMS (onglet Workflow)
+├── runners/ontoethique.ts
+└── ui/
+    ├── server.ts             serveur d'une application (npm run ui:ontoethique)
+    ├── ontoethiqueRoutes.ts  routes d'ontoÉthique
+    └── public/               ontoethique.html, settings.html, workflowDiagram.js</code></pre>
+<p>Hors de <code>src/</code> : <code>docs/</code> (documentation), <code>scripts/build-docs.ts</code>, <code>docker/entrypoint.sh</code>, <code>.vscode/launch.json</code>, <code>.claude/launch.json</code> (configurations <code>ui-ontoethique</code> et <code>ui-ontoethique-test</code>).</p>
+<h3 id="agents-src-agents"><a class="anchor" href="#agents-src-agents">#</a>Agents (<code>src/agents/</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Modèle</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>existencesAgent</code> (Ontologue des existences)</td>
+<td>analytique</td>
+<td>identifie les existences informationnelles de l&#39;activité (humains, agents numériques, environnement) et décrit leurs quatre dimensions, leurs cribles et les traces où elles apparaissent</td>
+</tr>
+<tr>
+<td><code>affectsAgent</code> (Évaluateur des affects)</td>
+<td>analytique</td>
+<td>un appel par trace : pulsations attestées, score des quatre pouvoirs, séquence de sémiose, justification, citation, valeurs tardiennes</td>
+</tr>
+<tr>
+<td><code>adaAgent</code> (ADA onto-éthique)</td>
+<td>analytique</td>
+<td>synthèse discursive : diagnostic de symbiose, comparaison des existences, risques, ajustement des cribles, questions pour une éthique de la discussion ; cite les pulsations <code>[p3]</code></td>
+</tr>
+</tbody></table>
+<p>Chaque agent exporte ses instructions (<code>XXX_INSTRUCTIONS</code>) et sa demande à variables (<code>XXX_PROMPT</code>), passées par <code>overridable</code> / <code>overridableModel</code> et <code>agentText</code> : elles sont modifiables dans l&#39;onglet <strong>Workflow</strong> (<code>agents.config.json</code>). Les appels passent par <code>askAgent</code> (sortie structurée zod, comptage des tokens, étiquette <code>(nomAgent)</code> dans la source).</p>
+<h3 id="comptage-des-tokens-et-cout"><a class="anchor" href="#comptage-des-tokens-et-cout">#</a>Comptage des tokens et coût</h3>
+<p>Chaque appel à un modèle enregistre sa consommation (<code>recordUsage</code>, fait par <code>askAgent</code>). <code>usageSummary()</code> alimente le rapport, l&#39;item de configuration (<code>curation:data</code>) et l&#39;historique <code>usage.history.jsonl</code> (estimation du coût dans l&#39;onglet Workflow). <code>estimateImpact</code> convertit les tokens en énergie, carbone et argent avec les hypothèses de <code>costs</code> (<code>workflow.config.json</code>). La nouvelle synthèse demandée depuis la page est comptée de la même façon (tâche <code>synthese</code>).</p>
+<h2 id="3-modele-onto-ethique"><a class="anchor" href="#3-modele-onto-ethique">#</a>3. Modèle onto-éthique</h2>
+<p>Le modèle d&#39;une évaluation (<code>OntoModel</code>, <code>src/lib/ontoethique/model.ts</code>, fichier <code>modele.json</code>) :</p>
+<pre class="mermaid">erDiagram
+    ACTIVITE {
+        string runId &quot;exécution ou évaluation manuelle&quot;
+        string mode &quot;workflow ou manuel&quot;
+        string title
+        string description
+    }
+    EXISTENCE {
+        string id
+        string name
+        string kind &quot;humain, agent, environnement&quot;
+        list materielle &quot;parties extensives&quot;
+        list conceptuelle &quot;essence&quot;
+        list sociale &quot;actant&quot;
+        list temporelle &quot;rapport&quot;
+        list cribles
+    }
+    PULSATION {
+        string id &quot;p1, p2…&quot;
+        int order &quot;rang dans la trajectoire&quot;
+        string moment
+        string document &quot;trace Zotero&quot;
+        int utilite &quot;valeurs tardiennes&quot;
+        int verite
+        int beaute
+    }
+    EVALUATION {
+        string pouvoir &quot;discerner, raisonner, resonner, agir&quot;
+        int score &quot;-100 à +100, null = non observé&quot;
+        list chain &quot;séquence de sémiose&quot;
+        string justification
+        string citation
+        string origin &quot;agent, humain, autoevaluation, regle&quot;
+        bool validated
+    }
+    REVISION {
+        date at
+        string author
+        string action &quot;ajout, modification, suppression&quot;
+        string motivation &quot;oa:editing, oa:assessing&quot;
+    }
+    ACTIVITE ||--o{ EXISTENCE : &quot;&quot;
+    EXISTENCE ||--o{ PULSATION : &quot;trajectoire&quot;
+    PULSATION ||--o{ EVALUATION : &quot;quatre pouvoirs&quot;
+    ACTIVITE ||--o{ REVISION : &quot;traçabilité&quot;</pre>
+<p><strong>Règles du métamodèle</strong> (<code>applyRules</code>, appliquées après toute évaluation : agents, auto-évaluations, saisie humaine) :</p>
+<ul>
+<li>scores bornés à [-100, 100] et arrondis ;</li>
+<li><strong>barrière numérique</strong> : pour un genre sans résonance (<code>kinds[].resonance = false</code>), Résonner reçoit <code>rules.noResonanceScore</code> (0 par défaut ; <code>null</code> désactive la règle) avec l&#39;origine <code>regle</code> ;</li>
+<li><strong>souveraineté de l&#39;expertise humaine</strong> (<code>rules.humanSovereignty</code>) : une évaluation validée par un humain n&#39;est pas remplacée par la règle ; l&#39;écart est signalé par une alerte « barrière contestée » pour la discussion.</li>
+</ul>
+<p><strong>Auto-évaluations</strong> (<code>selfEvaluations</code>) : une annotation ou une note Zotero portant des marqueurs conformes à <code>selfEvaluation.tagPattern</code> (<code>discerner+40</code>, <code>agir:-30</code>, <code>Résonner=10</code>…) devient une pulsation de l&#39;actant humain auteur de l&#39;annotation (créé au besoin, <code>humain-&lt;nom&gt;</code>), avec l&#39;origine <code>autoevaluation</code>, validée d&#39;office.</p>
+<h2 id="4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts"><a class="anchor" href="#4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts">#</a>4. Mesure des fluctuations (<code>src/lib/ontoethique/metrics.ts</code>)</h2>
+<p>Sans modèle de langage :</p>
+<table>
+<thead>
+<tr>
+<th>Indicateur</th>
+<th>Calcul</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Statistiques d&#39;un pouvoir</td>
+<td>nombre, moyenne, somme, somme des augmentations et des diminutions, min, max ; <strong>état</strong> de la grille d&#39;après la moyenne (diminution, neutre, augmentation) et son nom (Cécité cognitive, Clarté sémiotique…)</td>
+</tr>
+<tr>
+<td>Valence, intensité, affect</td>
+<td>moyenne des scores, moyenne des écarts à 0 ; joie (&gt; 0,5), tristesse (&lt; -0,5), indifférence</td>
+</tr>
+<tr>
+<td>Valeurs tardiennes</td>
+<td>moyennes de l&#39;utilité, de la vérité, de la beauté</td>
+</tr>
+<tr>
+<td>Complexité ontologique</td>
+<td>entropie normalisée de la répartition des éléments entre les quatre dimensions (1 = dimensions également constituées) × log₂(1 + nombre d&#39;éléments) — proposition d&#39;opérationnalisation</td>
+</tr>
+<tr>
+<td>Par genre</td>
+<td>moyennes des pouvoirs et de la valence des humains, des agents, de l&#39;environnement</td>
+</tr>
+<tr>
+<td>Symbiose</td>
+<td><strong>indice</strong> = valence moyenne des existences ÷ 100 (de -1 à 1) ; <strong>équilibre</strong> = 1 − écart des valences entre genres ÷ 200 ; interprétation : symbiose mutuellement profitable, croissance déséquilibrée, indifférence, diminution des puissances</td>
+</tr>
+<tr>
+<td>Alertes</td>
+<td>misère symbolique (humain dont Raisonner et Résonner ≤ <code>lowThreshold</code> alors qu&#39;un agent agit ≥ <code>highThreshold</code>), cécité cognitive, aliénation logique (agents), indignation (valeur-vérité ≤ <code>indignationThreshold</code>), geste blanc, barrière contestée, déséquilibre entre genres</td>
+</tr>
+</tbody></table>
+<p><strong>Spirale conique de Pappus</strong> : pour chaque existence, les pulsations sont parcourues dans l&#39;ordre de sa trajectoire ; le <strong>rayon</strong> croît des augmentations de Résonner (dilatation rhizomatique), l&#39;<strong>altitude</strong> de celles d&#39;Agir, l&#39;<strong>angle</strong> tourne de Discerner + Raisonner (déplacement topographique, <code>spiral.pointsPerTurn</code> points par tour, sens inverse si la somme est négative). <code>spiral.stepsPerPulsation</code> points sont interpolés entre deux pulsations. Forme : <em>cône évasé</em> (rayon / altitude &gt; <code>flaredRatio</code>), <em>flèche</em> (&lt; <code>slenderRatio</code>), <em>tube</em> (la seconde moitié de la trajectoire gagne de l&#39;altitude sans s&#39;élargir, <code>tubeGrowth</code>), sinon <em>cône équilibré</em> ; <em>disque</em> sans altitude, <em>point</em> sans augmentation.</p>
+<h2 id="5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts"><a class="anchor" href="#5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts">#</a>5. Export Linked Open Data (<code>src/lib/ontoethique/linkedData.ts</code>)</h2>
+<p>Les mêmes triplets sont écrits en <strong>Turtle</strong> (<code>modele_onto_ethique.ttl</code>) et en <strong>JSON-LD</strong> (<code>modele_onto_ethique.jsonld</code>). Vocabulaire <code>oe:</code> (<code>ontology.baseUri</code>), individus sous <code>ontology.dataUri</code> + identifiant d&#39;évaluation.</p>
+<table>
+<thead>
+<tr>
+<th>Terme</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>oe:ActiviteSituee</code> (+ <code>prov:Activity</code>)</td>
+<td>l&#39;activité : <code>dcterms:title</code>, <code>dcterms:description</code>, <code>oe:indiceSymbiose</code>, <code>oe:equilibreSymbiose</code></td>
+</tr>
+<tr>
+<td><code>oe:ActantHumain</code>, <code>oe:AgentNumerique</code>, <code>oe:EnvironnementDocumentaire</code></td>
+<td>existences : <code>rdfs:label</code>, <code>oe:genre</code>, <code>oe:participeA</code>, <code>oe:dimensionMaterielle</code> / <code>Conceptuelle</code> / <code>Sociale</code> / <code>Temporelle</code>, <code>oe:crible</code>, <code>oe:valence</code>, <code>oe:complexiteOntologique</code>, <code>oe:formeSpirale</code></td>
+</tr>
+<tr>
+<td><code>oe:Pulsation</code></td>
+<td><code>oe:existence</code>, <code>oe:ordre</code>, <code>rdfs:label</code> (moment), <code>dcterms:source</code> / <code>dcterms:references</code> (trace Zotero), <code>oe:valeurUtilite</code> / <code>Verite</code> / <code>Beaute</code>, <code>prov:wasGeneratedBy</code></td>
+</tr>
+<tr>
+<td><code>oe:Evaluation</code></td>
+<td><code>oe:pouvoir</code> (<code>oe:Discerner</code>…), <code>oe:score</code>, <code>oe:semiose</code>, <code>rdfs:comment</code>, <code>oa:exact</code> (citation), <code>oe:origine</code>, <code>oe:validee</code></td>
+</tr>
+<tr>
+<td><code>oa:Annotation</code></td>
+<td>révisions humaines : <code>oa:motivatedBy</code> (<code>oa:editing</code>, <code>oa:assessing</code>), <code>oa:hasTarget</code>, <code>dcterms:creator</code>, <code>oa:bodyValue</code></td>
+</tr>
+</tbody></table>
+<h2 id="6-modele-de-donnees-omeka-s"><a class="anchor" href="#6-modele-de-donnees-omeka-s">#</a>6. Modèle de données Omeka S</h2>
+<p>Le workflow écrit dans le modèle commun de l&#39;écosystème : la collection Zotero (<code>bibo:Collection</code>), ses documents et leurs <code>oa:Annotation</code> (étape <code>fetch-literature</code>), et un <strong>item de configuration</strong> par exécution (<code>dcterms:MethodOfInstruction</code>, <code>dcterms:type</code> « Configuration de workflow », <code>dcterms:identifier</code> = identifiant d&#39;exécution, <code>dcterms:description</code> = configuration JSON avec <code>workflowId: onto-ethique</code>, <code>curation:status</code>, <code>curation:data</code> = tokens et coût). Les fichiers de l&#39;évaluation y sont déposés comme médias (<code>dcterms:identifier</code> = <code>&lt;runId&gt;/&lt;fichier&gt;</code>). Une évaluation manuelle reçoit son item de configuration au premier « Enregistrer dans Omeka S » ; un nouvel enregistrement dépose les fichiers corrigés et retire les anciens médias de même nom.</p>
+<h2 id="7-configuration"><a class="anchor" href="#7-configuration">#</a>7. Configuration</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ontoÉthique</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Défauts</td>
+<td><code>src/config/ontoethique.ts</code> (<code>defaultOntoEthiqueConfig</code>) ; socle : <code>src/config/index.ts</code></td>
+</tr>
+<tr>
+<td>Surcharges</td>
+<td><code>ontoethique.config.json</code> (<code>ONTOETHIQUE_CONFIG_FILE</code>) ; socle : <code>workflow.config.json</code></td>
+</tr>
+<tr>
+<td>Configuration effective</td>
+<td><code>ontoEthiqueConfig</code> ; socle : <code>workflowConfig</code></td>
+</tr>
+</tbody></table>
+<p>Les modifications faites dans l&#39;interface sont enregistrées dans le fichier de surcharges (seules les différences). Les tableaux sont remplacés en bloc ; les chemins <code>kappa.codes</code>, <code>annotationPositions</code>, <code>omeka.vocabs</code> et <code>costs.models</code> aussi (<code>REPLACED_PATHS</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Clé</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>workflowId</code></td>
+<td><code>onto-ethique</code> : titre et repérage des items de configuration</td>
+</tr>
+<tr>
+<td><code>input.zoteroCollection</code></td>
+<td>collection des traces de l&#39;activité</td>
+</tr>
+<tr>
+<td><code>activity.title</code>, <code>activity.description</code></td>
+<td>activité située évaluée</td>
+</tr>
+<tr>
+<td><code>models.analytics</code>, <code>models.fast</code></td>
+<td>modèles Albert (rôles analytique et rapide de l&#39;onglet Workflow)</td>
+</tr>
+<tr>
+<td><code>analysis.mergeDuplicates</code></td>
+<td>fusion des documents en double</td>
+</tr>
+<tr>
+<td><code>analysis.maxDocuments</code>, <code>maxCharsPerDocument</code>, <code>existencesCharsPerDocument</code>, <code>maxAnnotationsPerDocument</code>, <code>maxExistences</code>, <code>concurrency</code></td>
+<td>traces évaluées, taille des extraits (évaluateur, ontologue), annotations transmises, existences, appels simultanés</td>
+</tr>
+<tr>
+<td><code>kinds</code></td>
+<td>genres d&#39;existences (<code>id</code>, <code>label</code>, <code>resonance</code>)</td>
+</tr>
+<tr>
+<td><code>dimensions</code></td>
+<td>métamodèle : <code>id</code>, <code>label</code>, <code>spinoza</code>, <code>metric</code>, <code>pretopology</code>, <code>analogy</code>, <code>instruction</code></td>
+</tr>
+<tr>
+<td><code>powers</code></td>
+<td>grille des affects : <code>id</code> (identifiants fixes : <code>discerner</code>, <code>raisonner</code>, <code>resonner</code>, <code>agir</code>), <code>label</code>, <code>semiosis</code>, <code>chain</code>, états <code>negative</code> / <code>neutral</code> / <code>positive</code></td>
+</tr>
+<tr>
+<td><code>values</code></td>
+<td>valeurs tardiennes (<code>utilite</code>, <code>verite</code>, <code>beaute</code>) et force (Désir, Croyance)</td>
+</tr>
+<tr>
+<td><code>rules.noResonanceScore</code>, <code>rules.humanSovereignty</code></td>
+<td>barrière numérique, souveraineté de l&#39;expertise humaine</td>
+</tr>
+<tr>
+<td><code>selfEvaluation.enabled</code>, <code>selfEvaluation.tagPattern</code></td>
+<td>auto-évaluations par marqueurs Zotero</td>
+</tr>
+<tr>
+<td><code>symbiosis.lowThreshold</code>, <code>highThreshold</code>, <code>indignationThreshold</code></td>
+<td>seuils des alertes</td>
+</tr>
+<tr>
+<td><code>spiral.pointsPerTurn</code>, <code>stepsPerPulsation</code>, <code>flaredRatio</code>, <code>slenderRatio</code>, <code>tubeGrowth</code></td>
+<td>géométrie et formes de la spirale</td>
+</tr>
+<tr>
+<td><code>discourse.maxPulsations</code></td>
+<td>pulsations transmises à l&#39;ADA</td>
+</tr>
+<tr>
+<td><code>ontology.baseUri</code>, <code>ontology.dataUri</code></td>
+<td>espaces de noms de l&#39;export LOD</td>
+</tr>
+<tr>
+<td><code>outputDir</code></td>
+<td><code>resultats/ontoethique</code></td>
+</tr>
+</tbody></table>
+<p>Socle (<code>workflow.config.json</code>) : <code>models.provider</code>, <code>zotero.automaticTags</code>, <code>extraction.*</code>, <code>annotationPositions</code>, <code>costs.*</code> (devise, électricité, carbone, matériel, tarifs par modèle), <code>omeka.*</code> (vocabulaires, classes, propriétés).</p>
+<h2 id="8-api-de-l-39-interface"><a class="anchor" href="#8-api-de-l-39-interface">#</a>8. API de l&#39;interface</h2>
+<p>Routes communes :</p>
+<table>
+<thead>
+<tr>
+<th>Méthode et route</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /</code></td>
+<td>page de l&#39;application</td>
+</tr>
+<tr>
+<td><code>GET /parametres</code></td>
+<td>page des connexions (<code>settings.html</code>)</td>
+</tr>
+<tr>
+<td><code>GET</code>, <code>POST /api/settings</code></td>
+<td>connexions (secrets masqués, valeurs héritées signalées) et configuration de l&#39;application</td>
+</tr>
+<tr>
+<td><code>POST /api/check</code></td>
+<td>teste Albert, Zotero et Omeka S</td>
+</tr>
+<tr>
+<td><code>GET</code>, <code>POST /api/zotero/collections</code></td>
+<td>collections de la bibliothèque enregistrée ou en cours de saisie</td>
+</tr>
+<tr>
+<td><code>GET /api/albert/models</code></td>
+<td>modèles disponibles</td>
+</tr>
+<tr>
+<td><code>GET /api/workflow</code>, <code>POST /api/workflow/agent</code></td>
+<td>diagramme, agents, coût estimé ; textes et modèle d&#39;un agent</td>
+</tr>
+<tr>
+<td><code>GET /api/apps</code></td>
+<td>application du serveur et adresses des applications</td>
+</tr>
+<tr>
+<td><code>POST /api/run</code>, <code>POST /api/run/stop</code>, <code>GET /api/run</code>, <code>GET /api/run/events</code></td>
+<td>lancer, arrêter, état, journal (SSE)</td>
+</tr>
+<tr>
+<td><code>GET /docs/…</code></td>
+<td>documentation HTML</td>
+</tr>
+</tbody></table>
+<p>Routes propres à ontoÉthique (<code>src/ui/ontoethiqueRoutes.ts</code>, 404 sur un autre serveur). Les identifiants d&#39;évaluation sont validés (<code>[\w-]{1,80}</code>) et seuls les fichiers de la liste <code>ONTO_FILES</code> sont servis :</p>
+<table>
+<thead>
+<tr>
+<th>Méthode et route</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET</code>, <code>POST /api/ontoethique/settings</code></td>
+<td>configuration de l&#39;application</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/runs</code></td>
+<td>évaluations : archive locale (<code>resultats/ontoethique/analyses/&lt;run&gt;/analyse.json</code>) et items de configuration Omeka S (<code>workflowId = onto-ethique</code>)</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/results?run=</code></td>
+<td>fichiers d&#39;une évaluation (archive locale, sinon médias Omeka S)</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/file?run=&amp;name=&amp;raw=</code></td>
+<td>contenu d&#39;un fichier (<code>raw=1</code> : page HTML telle quelle)</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/model?run=</code></td>
+<td>modèle (<code>modele.json</code>)</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/manual</code></td>
+<td><code>{ title, description }</code> ou <code>{ example: true }</code> : évaluation manuelle (identifiant <code>manuel-&lt;date&gt;-&lt;aléa&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/activity</code></td>
+<td><code>{ run, activity }</code></td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/pulsation</code></td>
+<td><code>{ run, pulsation, author?, note?, motivation? }</code> : ajout (identifiant attribué) ou modification</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/pulsation/delete</code></td>
+<td><code>{ run, id }</code></td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/existence</code></td>
+<td><code>{ run, existence }</code> : ajout ou modification</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/existence/delete</code></td>
+<td><code>{ run, id }</code> : l&#39;existence et ses pulsations</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/synthesis</code></td>
+<td><code>{ run }</code> : nouvelle synthèse de l&#39;ADA à partir du modèle corrigé, avec son coût</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/omeka</code></td>
+<td><code>{ run }</code> : dépôt des fichiers dans l&#39;item de configuration (créé pour une évaluation manuelle)</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/runs/delete</code></td>
+<td><code>{ runId, omeka }</code> : Omeka S d&#39;abord, puis archive locale</td>
+</tr>
+</tbody></table>
+<p>Chaque modification charge le modèle (recopié depuis Omeka S s&#39;il n&#39;existe que là), l&#39;applique, ajoute une <strong>révision</strong>, puis <code>writeModelFiles</code> réapplique les règles, recalcule les indicateurs et réécrit <code>modele.json</code>, <code>matrice_affects.csv</code>, le Turtle, le JSON-LD et les spirales ; la réponse est le modèle à jour.</p>
+<h2 id="9-etendre-le-projet"><a class="anchor" href="#9-etendre-le-projet">#</a>9. Étendre le projet</h2>
+<ul>
+<li><strong>Ajouter une application</strong> : skill <code>nouvelle-application</code> (<code>.claude/skills/</code>) : configuration, étapes, workflow, agents, lanceur, rapport, entrée <code>APPS</code> du serveur, routes, page, <code>package.json</code>, <code>.claude/launch.json</code>, <code>.vscode/launch.json</code>, Docker, documentation.</li>
+<li><strong>Ajouter ou modifier un agent</strong> : skill <code>agent-albert</code>. <strong>Brancher une API</strong> : skill <code>connecteur-api</code>. <strong>Enregistrer dans Omeka S</strong> : skill <code>persistance-omeka</code>.</li>
+<li><strong>Ajouter un pouvoir, une dimension, un genre</strong> : les tableaux <code>powers</code>, <code>dimensions</code>, <code>kinds</code> de la configuration ; les schémas des agents, l&#39;export LOD et la page s&#39;y adaptent. La spirale utilise les identifiants <code>discerner</code>, <code>raisonner</code>, <code>resonner</code>, <code>agir</code>.</li>
+</ul>
+<h2 id="10-documentation-et-conteneur"><a class="anchor" href="#10-documentation-et-conteneur">#</a>10. Documentation et conteneur</h2>
+<ul>
+<li><code>npm run docs</code> convertit <code>docs/*.md</code> en <code>docs/html/*.html</code> (servi sur <code>/docs/</code>).</li>
+<li><code>Dockerfile</code> : image <code>node:22-bookworm-slim</code>, code dans <code>/app</code>, données dans le volume <code>/data</code> ; commandes <code>workflow-ui</code> (serveur de l&#39;application <code>WORKFLOW_APP</code>) et <code>workflow-ontoethique</code> (ligne de commande).</li>
+<li><code>docker-compose.yml</code> : service <code>ontoethique</code> (7280, publié sur <code>127.0.0.1</code>), volume <code>./data:/data</code>, <code>host.docker.internal</code> pour un Omeka S local.</li>
+<li><code>.vscode/launch.json</code> : débogage du workflow, du serveur sur 7290 (avec le processus enfant) et du fichier courant.</li>
+</ul>
+<h2 id="11-limites-connues"><a class="anchor" href="#11-limites-connues">#</a>11. Limites connues</h2>
+<ul>
+<li><code>tsc --noEmit</code> signale des erreurs liées à la configuration TypeScript (CommonJS avec <code>verbatimModuleSyntax</code>) et aux types Mastra (étapes sans schéma) ; l&#39;exécution par tsx n&#39;est pas affectée.</li>
+<li>Les scores proposés par les agents sont des hypothèses de lecture : la matrice est faite pour être corrigée et validée par les participants (onglet Matrice) ; la synthèse distingue les évaluations validées.</li>
+<li>La complexité ontologique, l&#39;indice de symbiose et la géométrie de la spirale sont des opérationnalisations proposées du métamodèle, réglables dans la configuration.</li>
+<li>Seuls les fichiers de l&#39;évaluation sont déposés dans Omeka S : les existences et pulsations n&#39;y sont pas des items (elles sont dans le JSON-LD et le Turtle).</li>
+<li>Les extensions <code>ttl</code>, <code>jsonld</code>, <code>csv</code>, <code>md</code>, <code>html</code> et <code>json</code> doivent être autorisées dans Omeka S (sinon dépôt en <code>.txt</code>).</li>
+</ul>
+<h2 id="12-workflow-ontoethique"><a class="anchor" href="#12-workflow-ontoethique">#</a>12. Workflow ontoÉthique</h2>
+<pre class="mermaid">flowchart TD
+    IN([zoteroCollection,&lt;br/&gt;activité située]) --&gt; F[fetch-literature&lt;br/&gt;fetchZoteroData : documents,&lt;br/&gt;annotations, notes → Omeka S]
+    F --&gt; E[existences&lt;br/&gt;existencesAgent + auto-évaluations&lt;br/&gt;4 dimensions, cribles]
+    E --&gt; P[pulsations&lt;br/&gt;affectsAgent par trace&lt;br/&gt;4 pouvoirs, sémiose, valeurs&lt;br/&gt;applyRules : barrière numérique]
+    P --&gt; M[metrics&lt;br/&gt;pouvoirs, symbiose, alertes,&lt;br/&gt;complexité, spirales, triplets RDF]
+    M --&gt; D[discourse&lt;br/&gt;adaAgent : synthèse]
+    D --&gt; OUT([modele.json, matrice CSV, Turtle, JSON-LD,&lt;br/&gt;spirales, synthèse, rapport → Omeka S])
+    OUT --&gt; H[page : corrections et validations humaines&lt;br/&gt;→ recalcul, révisions, nouvelle synthèse]</pre>
+<table>
+<thead>
+<tr>
+<th>Élément</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fetch-literature</code></td>
+<td>étape commune : collection, annotations (auteur, couleur, date, marqueurs), notes, enregistrement dans Omeka S ; <code>mergeDuplicates</code> selon <code>analysis.mergeDuplicates</code></td>
+</tr>
+<tr>
+<td><code>existences</code> (<code>existencesStep.ts</code>)</td>
+<td>documents retenus (<code>selectDocuments</code> : texte ou annotations, <code>maxDocuments</code>) ; auto-évaluations ; un appel à l&#39;ontologue avec tous les documents (<code>existencesCharsPerDocument</code>) ; genres normalisés ; participants auto-évalués fusionnés par identifiant ou nom ; échec si aucune existence</td>
+</tr>
+<tr>
+<td><code>pulsations</code> (<code>pulsationsStep.ts</code>)</td>
+<td>un appel à l&#39;évaluateur par document (<code>concurrency</code> simultanés) ; existence résolue par identifiant ou nom ; scores <code>null</code> écartés ; auto-évaluations placées avant les pulsations de l&#39;agent pour chaque document ; numérotation <code>p1…</code>, rangs par existence ; <code>applyRules</code></td>
+</tr>
+<tr>
+<td><code>metrics</code> (<code>metricsStep.ts</code>)</td>
+<td><code>computeMetrics</code> et nombre de triplets RDF</td>
+</tr>
+<tr>
+<td><code>discourse</code> (<code>discourseStep.ts</code>)</td>
+<td><code>adaSynthesis</code> ; non bloquante (avertissement si Albert est indisponible)</td>
+</tr>
+<tr>
+<td><code>src/runners/ontoethique.ts</code></td>
+<td>refus sans collection ; item de configuration ; exécution ; <code>writeModelFiles</code> dans <code>resultats/ontoethique/analyses/&lt;runId&gt;/</code> (+ copie à la racine de <code>outputDir</code>) ; <code>synthese_ada.md</code>, <code>rapport_ontoethique.md</code>, <code>analyse.json</code> ; coût ; statut et médias Omeka S</td>
+</tr>
+</tbody></table>
+<p>Fichiers d&#39;une évaluation : <code>modele.json</code>, <code>matrice_affects.csv</code>, <code>modele_onto_ethique.ttl</code>, <code>modele_onto_ethique.jsonld</code>, <code>spirales_pappus.html</code> (page autonome Plotly), <code>synthese_ada.md</code>, <code>rapport_ontoethique.md</code> (exécutions du workflow), <code>analyse.json</code> (description : mode, statut, dates, activité, collection, item de configuration, tokens, coût, totaux, symbiose, configuration).</p>
+<h3 id="un-serveur-par-application"><a class="anchor" href="#un-serveur-par-application">#</a>Un serveur par application</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ontoÉthique (<code>ontoethique</code>)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lancement</td>
+<td><code>npm run ui:ontoethique</code> (ou <code>npm run ui</code>)</td>
+</tr>
+<tr>
+<td>Port / adresse d&#39;écoute</td>
+<td><code>ONTOETHIQUE_PORT</code> (7280) / <code>ONTOETHIQUE_HOST</code> (ou <code>HOST</code>)</td>
+</tr>
+<tr>
+<td>Connexions</td>
+<td><code>.env</code> surchargé par <code>.env.ontoethique</code> (<code>ONTOETHIQUE_ENV_FILE</code>)</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td><code>ontoethique.config.json</code> (+ <code>workflow.config.json</code> pour le socle)</td>
+</tr>
+<tr>
+<td>Workflow lancé</td>
+<td><code>src/runners/ontoethique.ts</code></td>
+</tr>
+<tr>
+<td>Page</td>
+<td><code>ontoethique.html</code></td>
+</tr>
+</tbody></table>
+
+</main>
+<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-architecture">1. Architecture</a><a class="l2" href="#2-organisation-du-code">2. Organisation du code</a><a class="l3" href="#agents-src-agents">Agents (src/agents/)</a><a class="l3" href="#comptage-des-tokens-et-cout">Comptage des tokens et coût</a><a class="l2" href="#3-modele-onto-ethique">3. Modèle onto-éthique</a><a class="l2" href="#4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts">4. Mesure des fluctuations (src/lib/ontoethique/metrics.ts)</a><a class="l2" href="#5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts">5. Export Linked Open Data (src/lib/ontoethique/linkedData.ts)</a><a class="l2" href="#6-modele-de-donnees-omeka-s">6. Modèle de données Omeka S</a><a class="l2" href="#7-configuration">7. Configuration</a><a class="l2" href="#8-api-de-l-39-interface">8. API de l&#39;interface</a><a class="l2" href="#9-etendre-le-projet">9. Étendre le projet</a><a class="l2" href="#10-documentation-et-conteneur">10. Documentation et conteneur</a><a class="l2" href="#11-limites-connues">11. Limites connues</a><a class="l2" href="#12-workflow-ontoethique">12. Workflow ontoÉthique</a><a class="l3" href="#un-serveur-par-application">Un serveur par application</a></nav>
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default", flowchart: { htmlLabels: true } });
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# dépendances et secrets
+node_modules
+.env
+.env.ontoethique
+# données et résultats (volume Docker, lancements locaux)
+data/
+resultats/
+workflow.config.json
+ontoethique.config.json
+agents.config.json
+# système
+.DS_Store
+usage.history.jsonl

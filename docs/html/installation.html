@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation d'installation – Écosystème d'agents</title>
+<style>
+  :root { --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9; --accent: #2f5d8a; --code: #f0eee8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a; --accent: #7fb0e0; --code: #111317; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  header .bar { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  header .brand { font-weight: 650; }
+  header nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  header nav a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; }
+  header nav a[aria-current] { color: var(--ink); background: var(--bg); }
+  .layout { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 32px; }
+  main { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 32px 32px; min-width: 0; }
+  .toc { position: sticky; top: 70px; align-self: start; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 90px); overflow: auto; }
+  .toc strong { margin-bottom: 4px; }
+  .toc a { color: var(--muted); text-decoration: none; }
+  .toc a.l3 { padding-left: 12px; }
+  .toc a:hover { color: var(--accent); }
+  h1 { font-size: 28px; line-height: 1.25; }
+  h2 { font-size: 21px; margin-top: 36px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 17px; margin-top: 26px; }
+  .anchor { color: var(--line); text-decoration: none; margin-right: 6px; font-weight: 400; }
+  h2:hover .anchor, h3:hover .anchor { color: var(--accent); }
+  a { color: var(--accent); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow: auto; font-size: 13.5px; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  pre.mermaid { background: var(--panel); border: 1px solid var(--line); text-align: center; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 12px 0 20px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--bg); }
+  blockquote { margin: 12px 0; padding: 4px 14px; border-left: 3px solid var(--accent); color: var(--muted); background: var(--bg); border-radius: 0 6px 6px 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .toc { display: none; } main { padding: 4px 16px 24px; } }
+</style>
+</head>
+<body>
+<header><div class="bar"><span class="brand">Écosystème d'agents – documentation</span><nav><a href="index.html">Accueil</a><a href="installation.html" aria-current="page">Installation</a><a href="utilisateur.html">Utilisateur</a><a href="technique.html">Technique</a></nav></div></header>
+<div class="layout">
+<main>
+<h1 id="documentation-d-39-installation"><a class="anchor" href="#documentation-d-39-installation">#</a>Documentation d&#39;installation</h1>
+<h2 id="1-prerequis"><a class="anchor" href="#1-prerequis">#</a>1. Prérequis</h2>
+<ul>
+<li><strong>Node.js 22+</strong> et npm (installation locale), ou <strong>Docker</strong> et Docker Compose.</li>
+<li>Une clé de l&#39;<strong>API Albert</strong> (modèles de langage).</li>
+<li>Une clé d&#39;API <strong>Zotero</strong> (lecture de la bibliothèque ou du groupe).</li>
+<li>Une instance <strong>Omeka S</strong> avec une clé d&#39;API (rôle Auteur au moins) — facultative pour une évaluation manuelle, nécessaire à l&#39;archivage.</li>
+</ul>
+<h2 id="2-variables-d-39-environnement"><a class="anchor" href="#2-variables-d-39-environnement">#</a>2. Variables d&#39;environnement</h2>
+<p>Copier <code>.env.example</code> en <code>.env</code>, ou renseigner les connexions depuis la page <strong>⚙ Paramètres</strong> de l&#39;interface (elle écrit <code>.env.ontoethique</code>, qui surcharge <code>.env</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ALBERT_API_KEY</code></td>
+<td>clé de l&#39;API Albert</td>
+</tr>
+<tr>
+<td><code>ZOTERO_API_KEY</code>, <code>ZOTERO_USER_ID</code>, <code>ZOTERO_GROUP_ID</code></td>
+<td>bibliothèque Zotero (groupe facultatif)</td>
+</tr>
+<tr>
+<td><code>OMKS_API_URL</code>, <code>OMKS_KEY_IDENTITY</code>, <code>OMKS_KEY_CREDENTIAL</code></td>
+<td>API Omeka S</td>
+</tr>
+<tr>
+<td><code>ONTOETHIQUE_PORT</code>, <code>ONTOETHIQUE_HOST</code>, <code>ONTOETHIQUE_URL</code></td>
+<td>port (7280), adresse d&#39;écoute (127.0.0.1), adresse publique</td>
+</tr>
+<tr>
+<td><code>ONTOETHIQUE_ENV_FILE</code>, <code>ONTOETHIQUE_CONFIG_FILE</code>, <code>AGENTS_CONFIG_FILE</code>, <code>WORKFLOW_CONFIG_FILE</code>, <code>USAGE_HISTORY_FILE</code></td>
+<td>chemins des fichiers de connexion, de configuration et d&#39;historique</td>
+</tr>
+</tbody></table>
+<p>Ces fichiers contiennent des secrets : ils sont exclus de git et de l&#39;image Docker.</p>
+<h2 id="3-installation-locale"><a class="anchor" href="#3-installation-locale">#</a>3. Installation locale</h2>
+<pre><code class="language-bash">npm ci</code></pre>
+<pre><code class="language-bash">npm run ui:ontoethique</code></pre>
+<p>Ouvrir <a href="http://127.0.0.1:7280" target="_blank" rel="noopener">http://127.0.0.1:7280</a>. Le workflow peut aussi être lancé en ligne de commande avec la configuration enregistrée :</p>
+<pre><code class="language-bash">npm run ontoethique</code></pre>
+<p>La documentation HTML se régénère avec <code>npm run docs</code> (servie sur <code>/docs/</code>).</p>
+<p><strong>Déboguer avec Visual Studio Code</strong> : configurations « Workflow : ontoÉthique » et « Interface : ontoÉthique (7290) » (<code>.vscode/launch.json</code>) ; le workflow lancé depuis l&#39;interface est suivi en processus enfant.</p>
+<h2 id="4-installation-docker"><a class="anchor" href="#4-installation-docker">#</a>4. Installation Docker</h2>
+<pre><code class="language-bash">docker compose up -d --build</code></pre>
+<p>Le service <code>ontoethique</code> écoute sur <a href="http://127.0.0.1:7280" target="_blank" rel="noopener">http://127.0.0.1:7280</a> (publié seulement sur la machine hôte). Les données (<code>.env</code>, <code>.env.ontoethique</code>, fichiers de configuration, <code>resultats/</code>) sont dans <code>./data</code>. Un Omeka S installé sur la machine hôte (<code>http://localhost/...</code>) est joint par <code>host.docker.internal</code>. Commande en ligne : <code>docker compose exec ontoethique workflow-ontoethique</code>.</p>
+<h2 id="5-preparer-omeka-s"><a class="anchor" href="#5-preparer-omeka-s">#</a>5. Préparer Omeka S</h2>
+<table>
+<thead>
+<tr>
+<th>Préfixe</th>
+<th>Usage</th>
+<th>Installation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>dcterms</code></td>
+<td>métadonnées de tous les items</td>
+<td>fourni avec Omeka S</td>
+</tr>
+<tr>
+<td><code>bibo</code></td>
+<td>classes des documents</td>
+<td>fourni avec Omeka S</td>
+</tr>
+<tr>
+<td><code>skos</code></td>
+<td><code>skos:Concept</code> (marqueurs des annotations)</td>
+<td>import (Admin › Vocabulaires)</td>
+</tr>
+<tr>
+<td><code>oa</code></td>
+<td><code>oa:Annotation</code></td>
+<td>module <strong>Annotate</strong> ou import de <code>http://www.w3.org/ns/oa#</code></td>
+</tr>
+<tr>
+<td><code>curation</code></td>
+<td><code>curation:status</code>, <code>curation:data</code>, <code>curation:access</code>…</td>
+<td>module <strong>Curation</strong></td>
+</tr>
+</tbody></table>
+<p>Dans <em>Admin › Paramètres › Sécurité</em>, autoriser si besoin :</p>
+<table>
+<thead>
+<tr>
+<th>Extension</th>
+<th>Type MIME</th>
+<th>Fichiers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>md</code></td>
+<td><code>text/markdown</code>, <code>text/plain</code></td>
+<td>rapport, synthèse</td>
+</tr>
+<tr>
+<td><code>json</code></td>
+<td><code>application/json</code></td>
+<td>modèle onto-éthique</td>
+</tr>
+<tr>
+<td><code>jsonld</code></td>
+<td><code>application/ld+json</code></td>
+<td>modèle (JSON-LD)</td>
+</tr>
+<tr>
+<td><code>ttl</code></td>
+<td><code>text/turtle</code></td>
+<td>modèle (Turtle)</td>
+</tr>
+<tr>
+<td><code>csv</code></td>
+<td><code>text/csv</code></td>
+<td>matrice des affects</td>
+</tr>
+<tr>
+<td><code>html</code></td>
+<td><code>text/html</code></td>
+<td>spirales de Pappus</td>
+</tr>
+</tbody></table>
+<p>Une extension refusée n&#39;interrompt rien : le fichier est déposé en <code>.txt</code> (format d&#39;origine dans <code>dcterms:format</code>), ou reste disponible localement.</p>
+<h2 id="6-verifier-l-39-installation"><a class="anchor" href="#6-verifier-l-39-installation">#</a>6. Vérifier l&#39;installation</h2>
+<ol>
+<li>Ouvrir <a href="http://127.0.0.1:7280" target="_blank" rel="noopener">http://127.0.0.1:7280</a>, <strong>⚙ Paramètres › Enregistrer et tester les connexions</strong> : Albert, Zotero et Omeka S en vert.</li>
+<li>Onglet <strong>Activité › Charger l&#39;exemple de l&#39;article</strong> : l&#39;onglet Diagrammes affiche trois spirales et une alerte de misère symbolique (aucune connexion requise).</li>
+<li>Choisir une petite collection, <strong>Enregistrer et modéliser</strong> : le journal se termine par « ✅ Modélisation onto-éthique terminée. », le rapport indique une consommation non nulle et l&#39;item « Configuration onto-ethique – … » apparaît dans Omeka S avec le statut <code>success</code>.</li>
+</ol>
+<h2 id="7-depannage"><a class="anchor" href="#7-depannage">#</a>7. Dépannage</h2>
+<table>
+<thead>
+<tr>
+<th>Symptôme</th>
+<th>Cause probable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>« Collections indisponibles »</td>
+<td>clé ou identifiant Zotero, groupe sans accès</td>
+</tr>
+<tr>
+<td>« Forbidden » ou « HTTP 401 » à la synthèse</td>
+<td>clé Albert absente ou refusée</td>
+</tr>
+<tr>
+<td>« Aucune existence informationnelle identifiée »</td>
+<td>collection sans texte ni annotation, description de l&#39;activité trop vague, Albert indisponible</td>
+</tr>
+<tr>
+<td>Fichiers absents de l&#39;item Omeka S</td>
+<td>extensions non autorisées (section 5)</td>
+</tr>
+<tr>
+<td>Diagrammes vides</td>
+<td>Plotly (CDN jsDelivr) inaccessible depuis le navigateur</td>
+</tr>
+</tbody></table>
+
+</main>
+<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-prerequis">1. Prérequis</a><a class="l2" href="#2-variables-d-39-environnement">2. Variables d&#39;environnement</a><a class="l2" href="#3-installation-locale">3. Installation locale</a><a class="l2" href="#4-installation-docker">4. Installation Docker</a><a class="l2" href="#5-preparer-omeka-s">5. Préparer Omeka S</a><a class="l2" href="#6-verifier-l-39-installation">6. Vérifier l&#39;installation</a><a class="l2" href="#7-depannage">7. Dépannage</a></nav>
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default", flowchart: { htmlLabels: true } });
+</script>
+</body>
+</html>
