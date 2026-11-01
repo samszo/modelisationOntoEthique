@@ -37,6 +37,6 @@ Documentation : [docs/README.md](docs/README.md) — installation, guide de l'ut
 
 ## TODO
 
-- Enregistrer les existences et les pulsations comme items Omeka S (classes du vocabulaire `oe:`), au-delà des fichiers.
+- Enregistrer les existences et pulsations produites par le workflow comme items Omeka S, avec les resource templates des formulaires.
 - Publier le vocabulaire `oe:` à une URI pérenne (`ontology.baseUri`).
 - Comparer plusieurs évaluations d'une même activité (trajectoires successives, scénarios).

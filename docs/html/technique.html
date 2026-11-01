@@ -116,10 +116,10 @@
 │   ├── analysis/             annotationPositions (grille de couleurs), codebook (codes des marqueurs), cleanGraph (identifiants)
 │   ├── extraction/           pdfExtract, attachmentExtract, zip, chunkText
 │   ├── metrics/              usage (tokens), impact (énergie, carbone, argent), usageHistory (onglet Workflow)
-│   ├── omeka/                omk (client), oaAnnotations, conceptIndex, zoteroCollections
+│   ├── omeka/                omk (client), templateForm (formulaires des resource templates), oaAnnotations, conceptIndex, zoteroCollections
 │   ├── albert/               albert (client de l'API Albert)
 │   └── zotero/               zotero (client), zoteroToOmeka, duplicates
-├── tools/                    fetchZoteroData (outil Mastra)
+├── tools/                    fetchZoteroData, buildResourceTemplateForm (outils Mastra)
 ├── workflow/
 │   ├── ontoethiqueWorkflow.ts
 │   ├── steps/common/         fetchLiteratureStep
@@ -131,7 +131,7 @@
 └── ui/
     ├── server.ts             serveur d'une application (npm run ui:ontoethique)
     ├── ontoethiqueRoutes.ts  routes d'ontoÉthique
-    └── public/               ontoethique.html, settings.html, workflowDiagram.js</code></pre>
+    └── public/               ontoethique.html, settings.html, workflowDiagram.js, templateForm.js</code></pre>
 <p>Hors de <code>src/</code> : <code>docs/</code> (documentation), <code>scripts/build-docs.ts</code>, <code>docker/entrypoint.sh</code>, <code>.vscode/launch.json</code>, <code>.claude/launch.json</code> (configurations <code>ui-ontoethique</code> et <code>ui-ontoethique-test</code>).</p>
 <h3 id="agents-src-agents"><a class="anchor" href="#agents-src-agents">#</a>Agents (<code>src/agents/</code>)</h3>
 <table>
@@ -286,6 +286,66 @@
 </tbody></table>
 <h2 id="6-modele-de-donnees-omeka-s"><a class="anchor" href="#6-modele-de-donnees-omeka-s">#</a>6. Modèle de données Omeka S</h2>
 <p>Le workflow écrit dans le modèle commun de l&#39;écosystème : la collection Zotero (<code>bibo:Collection</code>), ses documents et leurs <code>oa:Annotation</code> (étape <code>fetch-literature</code>), et un <strong>item de configuration</strong> par exécution (<code>dcterms:MethodOfInstruction</code>, <code>dcterms:type</code> « Configuration de workflow », <code>dcterms:identifier</code> = identifiant d&#39;exécution, <code>dcterms:description</code> = configuration JSON avec <code>workflowId: onto-ethique</code>, <code>curation:status</code>, <code>curation:data</code> = tokens et coût). Les fichiers de l&#39;évaluation y sont déposés comme médias (<code>dcterms:identifier</code> = <code>&lt;runId&gt;/&lt;fichier&gt;</code>). Une évaluation manuelle reçoit son item de configuration au premier « Enregistrer dans Omeka S » ; un nouvel enregistrement dépose les fichiers corrigés et retire les anciens médias de même nom.</p>
+<h3 id="formulaires-generes-depuis-les-resource-templates"><a class="anchor" href="#formulaires-generes-depuis-les-resource-templates">#</a>Formulaires générés depuis les resource templates</h3>
+<p>L&#39;outil Mastra <code>buildResourceTemplateForm</code> (<code>src/tools/</code>) et <code>buildTemplateForm</code> (<code>src/lib/omeka/templateForm.ts</code>) décrivent le formulaire d&#39;un resource template ; le module <code>src/ui/public/templateForm.js</code> le dessine dans l&#39;onglet <strong>Formulaires Omeka S</strong>, dans l&#39;ordre : Physiques (3), Cribles (5), Personnes (8), Agents (6), Actants (4), Concepts (2), Pouvoirs (7), Pulsations (12), Raison trajective (10).</p>
+<table>
+<thead>
+<tr>
+<th>Précision du template</th>
+<th>Effet</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>o:data.item_sets</code></td>
+<td>collections d&#39;items de l&#39;item créé (<code>o:item_set</code>)</td>
+</tr>
+<tr>
+<td><code>o:data.suggested_resource_class_ids</code></td>
+<td>classe de l&#39;item (<code>o:resource_class</code>)</td>
+</tr>
+<tr>
+<td><code>o:data_type</code> <code>customvocab:N</code></td>
+<td>liste : items de la collection du vocabulaire, ou termes, ou adresses ; <code>custom_vocab_open</code> autorise une valeur hors liste</td>
+</tr>
+<tr>
+<td><code>o:data_type</code> <code>resource:item</code></td>
+<td>recherche d&#39;un item (<code>resource_query</code> du template)</td>
+</tr>
+<tr>
+<td><code>numeric:integer</code>, <code>wikidata:…</code></td>
+<td>nombre entier, adresse</td>
+</tr>
+<tr>
+<td><code>value_annotations_template</code></td>
+<td>champs d&#39;annotation de la valeur (<code>@annotation</code>), ex. Temporalités : ordre relatif, ordre successif</td>
+</tr>
+</tbody></table>
+<p><code>itemPayload</code> contrôle les valeurs (propriété du template, type autorisé, appartenance à la liste, obligatoires). Pour un pouvoir, <code>checkPower</code> (<code>src/lib/ontoethique/omekaForms.ts</code>) exige une intensité entière de -100 à 100, un type et les maillons de sa séquence :</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Séquence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pouvoir de discerner</td>
+<td>physique → crible → actant → concept</td>
+</tr>
+<tr>
+<td>Pouvoir de raisonner</td>
+<td>concept → actant → concept</td>
+</tr>
+<tr>
+<td>Pouvoir de résonner</td>
+<td>concept → concept</td>
+</tr>
+<tr>
+<td>Pouvoir d&#39;agir</td>
+<td>concept → actant → crible → physique</td>
+</tr>
+</tbody></table>
+<p>L&#39;ordre des deux valeurs de <code>jdc:hasConcept</code> porte la source et la destination.</p>
 <h2 id="7-configuration"><a class="anchor" href="#7-configuration">#</a>7. Configuration</h2>
 <table>
 <thead>
@@ -378,6 +438,18 @@
 <tr>
 <td><code>ontology.baseUri</code>, <code>ontology.dataUri</code></td>
 <td>espaces de noms de l&#39;export LOD</td>
+</tr>
+<tr>
+<td><code>omekaForms.templates</code></td>
+<td>templates du processus de modélisation, dans l&#39;ordre (<code>key</code>, <code>label</code>, <code>templateId</code>)</td>
+</tr>
+<tr>
+<td><code>omekaForms.powerTemplateId</code>, <code>intensity</code>, <code>powerTypeTerm</code>, <code>powerTypes</code></td>
+<td>pouvoirs existentiels : intensité (-100 à 100), propriété du type, types et séquences attendues</td>
+</tr>
+<tr>
+<td><code>omekaForms.searchLimit</code></td>
+<td>résultats de la recherche d&#39;un item lié</td>
 </tr>
 <tr>
 <td><code>outputDir</code></td>
@@ -496,6 +568,26 @@
 <td><code>{ run }</code> : dépôt des fichiers dans l&#39;item de configuration (créé pour une évaluation manuelle)</td>
 </tr>
 <tr>
+<td><code>GET /api/ontoethique/forms</code></td>
+<td>templates du processus (<code>omekaForms.templates</code>)</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/form?template=</code></td>
+<td>formulaire d&#39;un template (avec intensité et types pour les pouvoirs)</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/form/search?template=&amp;term=&amp;q=</code></td>
+<td>recherche d&#39;un item à lier, restreinte par le <code>resource_query</code> du template</td>
+</tr>
+<tr>
+<td><code>GET /api/ontoethique/form/items?template=</code></td>
+<td>items existants du template</td>
+</tr>
+<tr>
+<td><code>POST /api/ontoethique/form/item</code></td>
+<td><code>{ template, values }</code> : création contrôlée ; un item de même titre et de même template n&#39;est pas recréé (<code>created: false</code>)</td>
+</tr>
+<tr>
 <td><code>POST /api/ontoethique/runs/delete</code></td>
 <td><code>{ runId, omeka }</code> : Omeka S d&#39;abord, puis archive locale</td>
 </tr>
@@ -519,7 +611,8 @@
 <li><code>tsc --noEmit</code> signale des erreurs liées à la configuration TypeScript (CommonJS avec <code>verbatimModuleSyntax</code>) et aux types Mastra (étapes sans schéma) ; l&#39;exécution par tsx n&#39;est pas affectée.</li>
 <li>Les scores proposés par les agents sont des hypothèses de lecture : la matrice est faite pour être corrigée et validée par les participants (onglet Matrice) ; la synthèse distingue les évaluations validées.</li>
 <li>La complexité ontologique, l&#39;indice de symbiose et la géométrie de la spirale sont des opérationnalisations proposées du métamodèle, réglables dans la configuration.</li>
-<li>Seuls les fichiers de l&#39;évaluation sont déposés dans Omeka S : les existences et pulsations n&#39;y sont pas des items (elles sont dans le JSON-LD et le Turtle).</li>
+<li>Le workflow dépose seulement les fichiers de l&#39;évaluation : les existences et pulsations qu&#39;il produit ne deviennent pas des items Omeka S (la saisie par formulaire crée, elle, des items).</li>
+<li>Les formulaires créent des items sans les modifier ensuite (modification dans Omeka S). Chargement d&#39;environ 3 s pour les pouvoirs : les listes sont relues à chaque ouverture.</li>
 <li>Les extensions <code>ttl</code>, <code>jsonld</code>, <code>csv</code>, <code>md</code>, <code>html</code> et <code>json</code> doivent être autorisées dans Omeka S (sinon dépôt en <code>.txt</code>).</li>
 </ul>
 <h2 id="12-workflow-ontoethique"><a class="anchor" href="#12-workflow-ontoethique">#</a>12. Workflow ontoÉthique</h2>
@@ -599,7 +692,7 @@
 </tbody></table>
 
 </main>
-<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-architecture">1. Architecture</a><a class="l2" href="#2-organisation-du-code">2. Organisation du code</a><a class="l3" href="#agents-src-agents">Agents (src/agents/)</a><a class="l3" href="#comptage-des-tokens-et-cout">Comptage des tokens et coût</a><a class="l2" href="#3-modele-onto-ethique">3. Modèle onto-éthique</a><a class="l2" href="#4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts">4. Mesure des fluctuations (src/lib/ontoethique/metrics.ts)</a><a class="l2" href="#5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts">5. Export Linked Open Data (src/lib/ontoethique/linkedData.ts)</a><a class="l2" href="#6-modele-de-donnees-omeka-s">6. Modèle de données Omeka S</a><a class="l2" href="#7-configuration">7. Configuration</a><a class="l2" href="#8-api-de-l-39-interface">8. API de l&#39;interface</a><a class="l2" href="#9-etendre-le-projet">9. Étendre le projet</a><a class="l2" href="#10-documentation-et-conteneur">10. Documentation et conteneur</a><a class="l2" href="#11-limites-connues">11. Limites connues</a><a class="l2" href="#12-workflow-ontoethique">12. Workflow ontoÉthique</a><a class="l3" href="#un-serveur-par-application">Un serveur par application</a></nav>
+<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-architecture">1. Architecture</a><a class="l2" href="#2-organisation-du-code">2. Organisation du code</a><a class="l3" href="#agents-src-agents">Agents (src/agents/)</a><a class="l3" href="#comptage-des-tokens-et-cout">Comptage des tokens et coût</a><a class="l2" href="#3-modele-onto-ethique">3. Modèle onto-éthique</a><a class="l2" href="#4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts">4. Mesure des fluctuations (src/lib/ontoethique/metrics.ts)</a><a class="l2" href="#5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts">5. Export Linked Open Data (src/lib/ontoethique/linkedData.ts)</a><a class="l2" href="#6-modele-de-donnees-omeka-s">6. Modèle de données Omeka S</a><a class="l3" href="#formulaires-generes-depuis-les-resource-templates">Formulaires générés depuis les resource templates</a><a class="l2" href="#7-configuration">7. Configuration</a><a class="l2" href="#8-api-de-l-39-interface">8. API de l&#39;interface</a><a class="l2" href="#9-etendre-le-projet">9. Étendre le projet</a><a class="l2" href="#10-documentation-et-conteneur">10. Documentation et conteneur</a><a class="l2" href="#11-limites-connues">11. Limites connues</a><a class="l2" href="#12-workflow-ontoethique">12. Workflow ontoÉthique</a><a class="l3" href="#un-serveur-par-application">Un serveur par application</a></nav>
 </div>
 <script type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";

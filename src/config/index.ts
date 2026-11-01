@@ -83,7 +83,7 @@ export const defaultWorkflowConfig = {
 
   // propriétés Omeka S utilisées
   omeka: {
-    vocabs: ["dcterms", "skos", "oa", "bibo", "curation"],
+    vocabs: ["dcterms", "skos", "oa", "bibo", "curation", "foaf", "jdc"],
     conceptClass: "skos:Concept",
     // classe de l'item décrivant la configuration d'une exécution du workflow
     configClass: "dcterms:MethodOfInstruction",

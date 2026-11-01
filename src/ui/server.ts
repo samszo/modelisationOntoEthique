@@ -353,6 +353,12 @@ const routes: Record<string, (req: http.IncomingMessage, res: http.ServerRespons
     res.end(fs.readFileSync(path.join(PUBLIC_DIR, "workflowDiagram.js")));
   },
 
+  // module des formulaires générés depuis les resource templates
+  "GET /templateForm.js": (_req, res) => {
+    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+    res.end(fs.readFileSync(path.join(PUBLIC_DIR, "templateForm.js")));
+  },
+
   // application de ce serveur et adresses des applications
   "GET /api/apps": (_req, res) => sendJson(res, 200, { current: APP, apps: appUrls(), envFiles: APP_DEF.envFiles }),
 

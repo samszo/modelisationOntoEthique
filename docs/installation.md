@@ -58,6 +58,9 @@ Le service `ontoethique` écoute sur http://127.0.0.1:7280 (publié seulement su
 | `skos` | `skos:Concept` (marqueurs des annotations) | import (Admin › Vocabulaires) |
 | `oa` | `oa:Annotation` | module **Annotate** ou import de `http://www.w3.org/ns/oa#` |
 | `curation` | `curation:status`, `curation:data`, `curation:access`… | module **Curation** |
+| `foaf`, `jdc` | personnes ; classes et propriétés onto-éthiques (`jdc:Pouvoir`, `jdc:intensite`…) | vocabulaires de l'instance |
+
+Les formulaires utilisent aussi les modules **Custom Vocab**, **Numeric Data Types** et les annotations de valeur (Omeka S 4.1+), ainsi que les resource templates listés dans `omekaForms.templates`.
 
 Dans *Admin › Paramètres › Sécurité*, autoriser si besoin :
 

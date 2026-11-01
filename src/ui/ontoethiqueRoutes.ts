@@ -17,6 +17,8 @@ import type { UsageSummary } from "../lib/metrics/usage";
 import { attachDocuments } from "../workflow/runs/importSynthesis";
 import { saveWorkflowConfig, updateWorkflowStatus } from "../workflow/runs/saveWorkflowConfig";
 import { agentModelId } from "../agents/overrides";
+import { buildTemplateForm, itemPayload, type FormField, type FormValue } from "../lib/omeka/templateForm";
+import { checkPower, formTitle } from "../lib/ontoethique/omekaForms";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => Promise<void> | void;
 interface Ctx {
@@ -187,7 +189,82 @@ export function ontoEthiqueRoutes(ctx: Ctx): Record<string, Handler> {
     }
   };
 
+  // ==========================================
+  // Formulaires générés depuis les resource templates
+  // ==========================================
+  // seuls les templates du processus de modélisation sont accessibles
+  function formTemplate(id: unknown) {
+    const t = ctx.config().omekaForms.templates.find(x => x.templateId === Number(id));
+    if (!t) throw new Error("Resource template hors du processus de modélisation");
+    return t;
+  }
+  const findField = (fields: FormField[], term: string): FormField | undefined => {
+    for (const f of fields) { if (f.term === term) return f; const n = f.annotation && findField(f.annotation, term); if (n) return n; }
+    return undefined;
+  };
+
   return {
+    "GET /api/ontoethique/forms": (_req, res) => ctx.sendJson(res, 200, { templates: ctx.config().omekaForms.templates, omekaAdmin: omekaAdmin() }),
+
+    // formulaire d'un template ; pour les pouvoirs : intensité et types (séquences)
+    "GET /api/ontoethique/form": async (_req, res, url) => {
+      try {
+        const t = formTemplate(url.searchParams.get("template"));
+        const f = ctx.config().omekaForms;
+        const form = await buildTemplateForm(await ctx.serverOmk(), t.templateId);
+        ctx.sendJson(res, 200, { ...form, ...(t.templateId === f.powerTemplateId ? { power: { intensity: f.intensity, typeTerm: f.powerTypeTerm, types: f.powerTypes } } : {}) });
+      } catch (e) { ctx.sendJson(res, 502, { error: (e as Error).message }); }
+    },
+
+    // recherche d'un item à lier : restreinte par le resource_query du champ, lu dans le template et non reçu de la page
+    "GET /api/ontoethique/form/search": async (_req, res, url) => {
+      try {
+        const t = formTemplate(url.searchParams.get("template"));
+        const term = url.searchParams.get("term") ?? "";
+        if (!/^[\w-]+:[\w-]+$/.test(term)) throw new Error("Propriété invalide");
+        const omk = await ctx.serverOmk();
+        const field = findField((await buildTemplateForm(omk, t.templateId)).fields, term);
+        const dt = field?.dataTypes.find(d => d.kind === "item" && !d.options);
+        if (!dt) throw new Error("Ce champ n'accepte pas de recherche d'item");
+        const params = new URLSearchParams(dt.query ?? "");
+        params.set("fulltext_search", text(url.searchParams.get("q"), 200));
+        params.set("per_page", String(ctx.config().omekaForms.searchLimit));
+        const items = await omk.request(omk.url("items", params.toString()));
+        ctx.sendJson(res, 200, items.map((i: any) => ({ id: i["o:id"], title: i["o:title"] ?? `Item ${i["o:id"]}` })));
+      } catch (e) { ctx.sendJson(res, 502, { error: (e as Error).message }); }
+    },
+
+    // items déjà créés avec ce template
+    "GET /api/ontoethique/form/items": async (_req, res, url) => {
+      try {
+        const t = formTemplate(url.searchParams.get("template"));
+        const omk = await ctx.serverOmk();
+        const items = await omk.request(omk.url("items", { resource_template_id: t.templateId, per_page: 100, sort_by: "created", sort_order: "desc" }));
+        ctx.sendJson(res, 200, items.map((i: any) => ({ id: i["o:id"], title: i["o:title"] ?? `Item ${i["o:id"]}`, created: i["o:created"]?.["@value"] ?? null })));
+      } catch (e) { ctx.sendJson(res, 502, { error: (e as Error).message }); }
+    },
+
+    // création d'un item ({ template, values }) ; un item de même titre et de même template n'est pas recréé
+    "POST /api/ontoethique/form/item": async (req, res) => {
+      const body = await ctx.readBody(req);
+      try {
+        const t = formTemplate(body.template);
+        const config = ctx.config();
+        const values: Record<string, FormValue[]> = body.values ?? {};
+        const omk = await ctx.serverOmk();
+        const form = await buildTemplateForm(omk, t.templateId);
+        const title = formTitle(form, values);
+        if (!title) throw new Error("Titre obligatoire");
+        if (t.templateId === config.omekaForms.powerTemplateId) checkPower(values, config);
+        const payload = itemPayload(form, values);
+        const existing = (await omk.searchItemsByProp(form.titleTerm, title, `resource_template_id=${t.templateId}`))[0];
+        if (existing) return ctx.sendJson(res, 200, { created: false, id: existing["o:id"], title, adminUrl: omekaAdmin() + existing["o:id"] });
+        const item = await omk.request(omk.url("items"), "POST", payload);
+        console.log(`📤 [OMEKA] ${t.label} : item ${item["o:id"]} créé (${title})`);
+        ctx.sendJson(res, 200, { created: true, id: item["o:id"], title, adminUrl: omekaAdmin() + item["o:id"] });
+      } catch (e) { ctx.sendJson(res, 400, { error: (e as Error).message }); }
+    },
+
     "GET /api/ontoethique/settings": (_req, res) => ctx.sendJson(res, 200, { config: ctx.config(), defaults: ctx.defaults, configFile: path.relative(ctx.root, ctx.configFile) }),
     "POST /api/ontoethique/settings": async (req, res) => {
       const { config } = await ctx.readBody(req);

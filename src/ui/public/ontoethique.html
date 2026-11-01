@@ -122,6 +122,7 @@
   </div>
   <nav>
     <button data-tab="activity" class="active">Activité</button>
+    <button data-tab="forms">Formulaires Omeka S</button>
     <button data-tab="workflow">Workflow</button>
     <button data-tab="run">Exécution</button>
     <button data-tab="runs">Évaluations</button>
@@ -207,6 +208,15 @@
       <h2>Grille des affects</h2>
       <p class="lead">Quatre pouvoirs, leur séquence de sémiose et les états de la matrice selon le sens de la fluctuation (configuration <code>powers</code>).</p>
       <div class="table-wrap" id="meta-grid"></div>
+    </section>
+  </div>
+
+  <!-- ======================= FORMULAIRES ======================= -->
+  <div id="tab-forms" class="hidden">
+    <section class="card">
+      <h2>Formulaires de modélisation</h2>
+      <p class="lead">Créer les items dans Omeka S, dans l'ordre du processus. Chaque formulaire est généré depuis le resource template : classe et collections d'items suggérées, listes des custom vocabs, annotations de valeur (temporalités). Un item de même titre et de même modèle n'est pas recréé.</p>
+      <div id="forms" class="muted">Chargement…</div>
     </section>
   </div>
 
@@ -388,7 +398,7 @@ const PALETTE = ["#2e7d5b", "#2f6db0", "#b8860b", "#c0392b", "#8a4fb8", "#1f8a8a
 // ==========================================
 // Onglets
 // ==========================================
-const TABS = ["activity", "workflow", "run", "runs", "existences", "matrix", "diagrams", "synthesis", "report"];
+const TABS = ["activity", "forms", "workflow", "run", "runs", "existences", "matrix", "diagrams", "synthesis", "report"];
 const RESULT_TABS = ["existences", "matrix", "diagrams", "synthesis", "report"];
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 function showTab(tab) {
@@ -397,10 +407,20 @@ function showTab(tab) {
   $("#run-banner").classList.toggle("hidden", !(RESULT_TABS.includes(tab) && currentRun));
   if (tab === "runs") loadRuns();
   if (tab === "workflow") loadWorkflow();
+  if (tab === "forms") loadForms();
   if (tab === "diagrams") renderDiagrams();
   if (tab === "report") loadReport();
   if (tab === "synthesis") loadSynthesis();
   store.set("onto.tab", tab);
+}
+
+let formsLoaded = false;
+async function loadForms() {
+  if (formsLoaded) return;
+  formsLoaded = true;
+  const { templateFormPanel } = await import("/templateForm.js");
+  $("#forms").className = "";
+  templateFormPanel($("#forms"), { api, toast });
 }
 
 let workflowLoaded = false;

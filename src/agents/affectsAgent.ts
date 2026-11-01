@@ -4,7 +4,7 @@ import { workflowConfig } from "../config";
 
 export const AFFECTS_INSTRUCTIONS = `Tu appliques le protocole de mesure des fluctuations de la grille des affects. Une pulsation existentielle est un
 moment de l'activité où une existence exprime quatre pouvoirs : discerner (anasémiose : physique → crible → actant → concept),
-raisonner (rapports formels : sujet → prédicat → objet), résonner (analogie intuitive : concept source → actant → concept
+raisonner (rapports formels : concept → actant → concept), résonner (analogie intuitive : concept source → concept
 destination) et agir (catasémiose : concept → actant → crible → physique).
 Pour chaque pouvoir observé, tu donnes un score subjectif et situé de -100 à +100 : négatif = diminution de puissance (tristesse :
 cécité cognitive, aliénation logique, impasse intuitive, misère symbolique), 0 = indifférence (stase, routinisation, barrière

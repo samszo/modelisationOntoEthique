@@ -70,11 +70,11 @@ export const defaultOntoEthiqueConfig = {
       negative: { name: "Cécité cognitive", description: "surcharge informationnelle, bruit, perte de repères, désinformation" },
       neutral: { name: "Stase", description: "point de vue neutre, pas de nouvelle perception" },
       positive: { name: "Clarté sémiotique", description: "filtrage réussi par un crible, accès à la structure" } },
-    { id: "raisonner", label: "Raisonner", semiosis: "Formel", chain: ["sujet", "prédicat", "objet"],
+    { id: "raisonner", label: "Raisonner", semiosis: "Formel", chain: ["concept", "actant", "concept"],
       negative: { name: "Aliénation logique", description: "acceptation passive de biais, incohérence conceptuelle, erreurs syntaxiques" },
       neutral: { name: "Routinisation", description: "pures opérations mécaniques sans gain logique" },
       positive: { name: "Puissance critique", description: "rigueur de l'argumentation, structuration de l'esprit critique" } },
-    { id: "resonner", label: "Résonner", semiosis: "Intuitif / Essences", chain: ["concept source", "actant", "concept destination"],
+    { id: "resonner", label: "Résonner", semiosis: "Intuitif / Essences", chain: ["concept source", "concept destination"],
       negative: { name: "Impasse intuitive", description: "déconnexion sémantique, vide émotionnel, répétition de formules mortes" },
       neutral: { name: "Barrière numérique", description: "limite absolue des agents numériques, incapables de résonance" },
       positive: { name: "Scientia Intuitiva", description: "saut conceptuel, résonance harmonique, saisie immédiate des essences" } },
@@ -141,6 +141,41 @@ export const defaultOntoEthiqueConfig = {
     baseUri: "https://github.com/samszo/modelisationOntoEthique/ontologie#",
     // espace de noms des individus d'une exécution (suivi de l'identifiant d'exécution)
     dataUri: "https://github.com/samszo/modelisationOntoEthique/donnees/",
+  },
+
+  // formulaires de saisie générés depuis les resource templates de l'instance Omeka S
+  omekaForms: {
+    // ordre du processus de modélisation ; templateId : o:id du resource template dans l'instance
+    templates: [
+      { key: "physique", label: "Physiques", templateId: 3 },
+      { key: "crible", label: "Cribles", templateId: 5 },
+      { key: "personne", label: "Personnes", templateId: 8 },
+      { key: "agent", label: "Agents", templateId: 6 },
+      { key: "actant", label: "Actants", templateId: 4 },
+      { key: "concept", label: "Concepts", templateId: 2 },
+      { key: "pouvoir", label: "Pouvoirs existentiels", templateId: 7 },
+      { key: "pulsation", label: "Pulsations existentielles", templateId: 12 },
+      { key: "raison", label: "Raison trajective", templateId: 10 },
+    ],
+    // template des pouvoirs existentiels : son intensité et son type sont contrôlés
+    powerTemplateId: 7,
+    // intensité du pouvoir : -100 = diminution extrême, 0 = pas de changement, 100 = augmentation extrême
+    intensity: { term: "jdc:intensite", min: -100, max: 100, step: 1 },
+    // propriété qui porte le type du pouvoir
+    powerTypeTerm: "dcterms:type",
+    // types de pouvoir ; sequence : maillons attendus, dans l'ordre (propriété de chaque maillon)
+    powerTypes: [
+      { id: "discerner", label: "Pouvoir de discerner", sequence: [
+        { name: "physique", term: "jdc:hasPhysique" }, { name: "crible", term: "jdc:hasCrible" }, { name: "actant", term: "jdc:hasActant" }, { name: "concept", term: "jdc:hasConcept" }] },
+      { id: "raisonner", label: "Pouvoir de raisonner", sequence: [
+        { name: "concept source", term: "jdc:hasConcept" }, { name: "actant", term: "jdc:hasActant" }, { name: "concept destination", term: "jdc:hasConcept" }] },
+      { id: "resonner", label: "Pouvoir de résonner", sequence: [
+        { name: "concept source", term: "jdc:hasConcept" }, { name: "concept destination", term: "jdc:hasConcept" }] },
+      { id: "agir", label: "Pouvoir d'agir", sequence: [
+        { name: "concept", term: "jdc:hasConcept" }, { name: "actant", term: "jdc:hasActant" }, { name: "crible", term: "jdc:hasCrible" }, { name: "physique", term: "jdc:hasPhysique" }] },
+    ],
+    // résultats proposés par la recherche d'un item lié
+    searchLimit: 20,
   },
 
   // dossier des fichiers produits (dans le répertoire de données)

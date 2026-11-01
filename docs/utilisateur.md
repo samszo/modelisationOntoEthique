@@ -4,7 +4,7 @@
 
 - chaque **existence informationnelle** est décrite par quatre dimensions : matérielle (parties extensives), conceptuelle (essence), sociale (actant), temporelle (rapport) ;
 - à chaque **pulsation** de l'activité, une existence exprime quatre **pouvoirs** : discerner, raisonner, résonner, agir ;
-- chaque pouvoir reçoit un score **de -100 (diminution, tristesse) à +100 (augmentation, joie)**, 0 marquant l'indifférence, rattaché à sa séquence de sémiose (par exemple *physique → crible → actant → concept* pour discerner).
+- chaque pouvoir reçoit un score **de -100 (diminution, tristesse) à +100 (augmentation, joie)**, 0 marquant l'indifférence, rattaché à sa séquence de sémiose (par exemple *physique → crible → actant → concept* pour discerner, *concept → actant → concept* pour raisonner, *concept → concept* pour résonner, *concept → actant → crible → physique* pour agir).
 
 ## 1. Préparer les traces
 
@@ -22,7 +22,17 @@ Le traitement identifie les existences, évalue les pulsations de chaque trace, 
 
 **Sans collection ni modèle de langage** : **Nouvelle évaluation manuelle** crée une évaluation vide (existences et pulsations à saisir) ; **Charger l'exemple de l'article** reprend les scénarios A (rédaction manuelle) et B (rédaction assistée par une IA connexionniste).
 
-## 3. Lire et corriger l'évaluation
+## 3. Créer les items dans Omeka S
+
+L'onglet **Formulaires Omeka S** suit le processus de modélisation : Physiques, Cribles, Personnes, Agents, Actants, Concepts, Pouvoirs existentiels, Pulsations existentielles, Raison trajective. Chaque formulaire vient du modèle de ressource : les listes sont celles des vocabulaires personnalisés, la classe et la collection d'items sont appliquées d'office.
+
+- **Pouvoir existentiel** : choisir le type (la séquence attendue s'affiche), l'intensité (-100 : diminution extrême, 0 : pas de changement, 100 : augmentation extrême) et les maillons. Pour raisonner et résonner, saisir deux concepts avec **+ Ajouter une valeur** : le premier est la source, le second la destination.
+- **Pulsation existentielle** : y ajouter ses pouvoirs, et la relier aux autres pulsations (flux) avec leur temporalité : avant, pendant, après, ordre successif.
+- **Raison trajective** : y ajouter les pulsations, avec leur ordre.
+
+Un item de même titre et de même modèle n'est pas recréé : le lien vers l'item existant s'affiche.
+
+## 4. Lire et corriger l'évaluation
 
 | Onglet | Contenu |
 |---|---|
@@ -37,7 +47,7 @@ Le traitement identifie les existences, évalue les pulsations de chaque trace, 
 
 **Enregistrer dans Omeka S** (bandeau de l'évaluation) dépose la version corrigée dans l'item de configuration de l'évaluation (créé pour une évaluation manuelle).
 
-## 4. Interpréter
+## 5. Interpréter
 
 - **Grille des affects** : Discerner (cécité cognitive / stase / clarté sémiotique), Raisonner (aliénation logique / routinisation / puissance critique), Résonner (impasse intuitive / barrière numérique / scientia intuitiva), Agir (misère symbolique / geste blanc / création autopoïétique).
 - **Valeurs tardiennes** : utilité et beauté (Désir), vérité (Croyance) de ce qui est discerné ; une valeur-vérité effondrée signale l'**indignation**.

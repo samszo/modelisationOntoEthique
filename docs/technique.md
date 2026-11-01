@@ -63,10 +63,10 @@ src/
 │   ├── analysis/             annotationPositions (grille de couleurs), codebook (codes des marqueurs), cleanGraph (identifiants)
 │   ├── extraction/           pdfExtract, attachmentExtract, zip, chunkText
 │   ├── metrics/              usage (tokens), impact (énergie, carbone, argent), usageHistory (onglet Workflow)
-│   ├── omeka/                omk (client), oaAnnotations, conceptIndex, zoteroCollections
+│   ├── omeka/                omk (client), templateForm (formulaires des resource templates), oaAnnotations, conceptIndex, zoteroCollections
 │   ├── albert/               albert (client de l'API Albert)
 │   └── zotero/               zotero (client), zoteroToOmeka, duplicates
-├── tools/                    fetchZoteroData (outil Mastra)
+├── tools/                    fetchZoteroData, buildResourceTemplateForm (outils Mastra)
 ├── workflow/
 │   ├── ontoethiqueWorkflow.ts
 │   ├── steps/common/         fetchLiteratureStep
@@ -78,7 +78,7 @@ src/
 └── ui/
     ├── server.ts             serveur d'une application (npm run ui:ontoethique)
     ├── ontoethiqueRoutes.ts  routes d'ontoÉthique
-    └── public/               ontoethique.html, settings.html, workflowDiagram.js
+    └── public/               ontoethique.html, settings.html, workflowDiagram.js, templateForm.js
 ```
 
 Hors de `src/` : `docs/` (documentation), `scripts/build-docs.ts`, `docker/entrypoint.sh`, `.vscode/launch.json`, `.claude/launch.json` (configurations `ui-ontoethique` et `ui-ontoethique-test`).
@@ -189,6 +189,30 @@ Les mêmes triplets sont écrits en **Turtle** (`modele_onto_ethique.ttl`) et en
 
 Le workflow écrit dans le modèle commun de l'écosystème : la collection Zotero (`bibo:Collection`), ses documents et leurs `oa:Annotation` (étape `fetch-literature`), et un **item de configuration** par exécution (`dcterms:MethodOfInstruction`, `dcterms:type` « Configuration de workflow », `dcterms:identifier` = identifiant d'exécution, `dcterms:description` = configuration JSON avec `workflowId: onto-ethique`, `curation:status`, `curation:data` = tokens et coût). Les fichiers de l'évaluation y sont déposés comme médias (`dcterms:identifier` = `<runId>/<fichier>`). Une évaluation manuelle reçoit son item de configuration au premier « Enregistrer dans Omeka S » ; un nouvel enregistrement dépose les fichiers corrigés et retire les anciens médias de même nom.
 
+### Formulaires générés depuis les resource templates
+
+L'outil Mastra `buildResourceTemplateForm` (`src/tools/`) et `buildTemplateForm` (`src/lib/omeka/templateForm.ts`) décrivent le formulaire d'un resource template ; le module `src/ui/public/templateForm.js` le dessine dans l'onglet **Formulaires Omeka S**, dans l'ordre : Physiques (3), Cribles (5), Personnes (8), Agents (6), Actants (4), Concepts (2), Pouvoirs (7), Pulsations (12), Raison trajective (10).
+
+| Précision du template | Effet |
+|---|---|
+| `o:data.item_sets` | collections d'items de l'item créé (`o:item_set`) |
+| `o:data.suggested_resource_class_ids` | classe de l'item (`o:resource_class`) |
+| `o:data_type` `customvocab:N` | liste : items de la collection du vocabulaire, ou termes, ou adresses ; `custom_vocab_open` autorise une valeur hors liste |
+| `o:data_type` `resource:item` | recherche d'un item (`resource_query` du template) |
+| `numeric:integer`, `wikidata:…` | nombre entier, adresse |
+| `value_annotations_template` | champs d'annotation de la valeur (`@annotation`), ex. Temporalités : ordre relatif, ordre successif |
+
+`itemPayload` contrôle les valeurs (propriété du template, type autorisé, appartenance à la liste, obligatoires). Pour un pouvoir, `checkPower` (`src/lib/ontoethique/omekaForms.ts`) exige une intensité entière de -100 à 100, un type et les maillons de sa séquence :
+
+| Type | Séquence |
+|---|---|
+| Pouvoir de discerner | physique → crible → actant → concept |
+| Pouvoir de raisonner | concept → actant → concept |
+| Pouvoir de résonner | concept → concept |
+| Pouvoir d'agir | concept → actant → crible → physique |
+
+L'ordre des deux valeurs de `jdc:hasConcept` porte la source et la destination.
+
 ## 7. Configuration
 
 | | ontoÉthique |
@@ -217,6 +241,9 @@ Les modifications faites dans l'interface sont enregistrées dans le fichier de 
 | `spiral.pointsPerTurn`, `stepsPerPulsation`, `flaredRatio`, `slenderRatio`, `tubeGrowth` | géométrie et formes de la spirale |
 | `discourse.maxPulsations` | pulsations transmises à l'ADA |
 | `ontology.baseUri`, `ontology.dataUri` | espaces de noms de l'export LOD |
+| `omekaForms.templates` | templates du processus de modélisation, dans l'ordre (`key`, `label`, `templateId`) |
+| `omekaForms.powerTemplateId`, `intensity`, `powerTypeTerm`, `powerTypes` | pouvoirs existentiels : intensité (-100 à 100), propriété du type, types et séquences attendues |
+| `omekaForms.searchLimit` | résultats de la recherche d'un item lié |
 | `outputDir` | `resultats/ontoethique` |
 
 Socle (`workflow.config.json`) : `models.provider`, `zotero.automaticTags`, `extraction.*`, `annotationPositions`, `costs.*` (devise, électricité, carbone, matériel, tarifs par modèle), `omeka.*` (vocabulaires, classes, propriétés).
@@ -255,6 +282,11 @@ Routes propres à ontoÉthique (`src/ui/ontoethiqueRoutes.ts`, 404 sur un autre 
 | `POST /api/ontoethique/existence/delete` | `{ run, id }` : l'existence et ses pulsations |
 | `POST /api/ontoethique/synthesis` | `{ run }` : nouvelle synthèse de l'ADA à partir du modèle corrigé, avec son coût |
 | `POST /api/ontoethique/omeka` | `{ run }` : dépôt des fichiers dans l'item de configuration (créé pour une évaluation manuelle) |
+| `GET /api/ontoethique/forms` | templates du processus (`omekaForms.templates`) |
+| `GET /api/ontoethique/form?template=` | formulaire d'un template (avec intensité et types pour les pouvoirs) |
+| `GET /api/ontoethique/form/search?template=&term=&q=` | recherche d'un item à lier, restreinte par le `resource_query` du template |
+| `GET /api/ontoethique/form/items?template=` | items existants du template |
+| `POST /api/ontoethique/form/item` | `{ template, values }` : création contrôlée ; un item de même titre et de même template n'est pas recréé (`created: false`) |
 | `POST /api/ontoethique/runs/delete` | `{ runId, omeka }` : Omeka S d'abord, puis archive locale |
 
 Chaque modification charge le modèle (recopié depuis Omeka S s'il n'existe que là), l'applique, ajoute une **révision**, puis `writeModelFiles` réapplique les règles, recalcule les indicateurs et réécrit `modele.json`, `matrice_affects.csv`, le Turtle, le JSON-LD et les spirales ; la réponse est le modèle à jour.
@@ -277,7 +309,8 @@ Chaque modification charge le modèle (recopié depuis Omeka S s'il n'existe que
 - `tsc --noEmit` signale des erreurs liées à la configuration TypeScript (CommonJS avec `verbatimModuleSyntax`) et aux types Mastra (étapes sans schéma) ; l'exécution par tsx n'est pas affectée.
 - Les scores proposés par les agents sont des hypothèses de lecture : la matrice est faite pour être corrigée et validée par les participants (onglet Matrice) ; la synthèse distingue les évaluations validées.
 - La complexité ontologique, l'indice de symbiose et la géométrie de la spirale sont des opérationnalisations proposées du métamodèle, réglables dans la configuration.
-- Seuls les fichiers de l'évaluation sont déposés dans Omeka S : les existences et pulsations n'y sont pas des items (elles sont dans le JSON-LD et le Turtle).
+- Le workflow dépose seulement les fichiers de l'évaluation : les existences et pulsations qu'il produit ne deviennent pas des items Omeka S (la saisie par formulaire crée, elle, des items).
+- Les formulaires créent des items sans les modifier ensuite (modification dans Omeka S). Chargement d'environ 3 s pour les pouvoirs : les listes sont relues à chaque ouverture.
 - Les extensions `ttl`, `jsonld`, `csv`, `md`, `html` et `json` doivent être autorisées dans Omeka S (sinon dépôt en `.txt`).
 
 ## 12. Workflow ontoÉthique

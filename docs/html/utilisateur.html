@@ -50,7 +50,7 @@
 <ul>
 <li>chaque <strong>existence informationnelle</strong> est décrite par quatre dimensions : matérielle (parties extensives), conceptuelle (essence), sociale (actant), temporelle (rapport) ;</li>
 <li>à chaque <strong>pulsation</strong> de l&#39;activité, une existence exprime quatre <strong>pouvoirs</strong> : discerner, raisonner, résonner, agir ;</li>
-<li>chaque pouvoir reçoit un score <strong>de -100 (diminution, tristesse) à +100 (augmentation, joie)</strong>, 0 marquant l&#39;indifférence, rattaché à sa séquence de sémiose (par exemple <em>physique → crible → actant → concept</em> pour discerner).</li>
+<li>chaque pouvoir reçoit un score <strong>de -100 (diminution, tristesse) à +100 (augmentation, joie)</strong>, 0 marquant l&#39;indifférence, rattaché à sa séquence de sémiose (par exemple <em>physique → crible → actant → concept</em> pour discerner, <em>concept → actant → concept</em> pour raisonner, <em>concept → concept</em> pour résonner, <em>concept → actant → crible → physique</em> pour agir).</li>
 </ul>
 <h2 id="1-preparer-les-traces"><a class="anchor" href="#1-preparer-les-traces">#</a>1. Préparer les traces</h2>
 <ol>
@@ -66,7 +66,15 @@
 </ol>
 <p>Le traitement identifie les existences, évalue les pulsations de chaque trace, mesure les fluctuations et rédige une synthèse. Les <strong>agents numériques n&#39;ont pas accès au pouvoir de résonance</strong> : leur score de Résonner est fixé par la règle de la barrière numérique (0 par défaut, réglable dans <em>Règles et seuils</em>).</p>
 <p><strong>Sans collection ni modèle de langage</strong> : <strong>Nouvelle évaluation manuelle</strong> crée une évaluation vide (existences et pulsations à saisir) ; <strong>Charger l&#39;exemple de l&#39;article</strong> reprend les scénarios A (rédaction manuelle) et B (rédaction assistée par une IA connexionniste).</p>
-<h2 id="3-lire-et-corriger-l-39-evaluation"><a class="anchor" href="#3-lire-et-corriger-l-39-evaluation">#</a>3. Lire et corriger l&#39;évaluation</h2>
+<h2 id="3-creer-les-items-dans-omeka-s"><a class="anchor" href="#3-creer-les-items-dans-omeka-s">#</a>3. Créer les items dans Omeka S</h2>
+<p>L&#39;onglet <strong>Formulaires Omeka S</strong> suit le processus de modélisation : Physiques, Cribles, Personnes, Agents, Actants, Concepts, Pouvoirs existentiels, Pulsations existentielles, Raison trajective. Chaque formulaire vient du modèle de ressource : les listes sont celles des vocabulaires personnalisés, la classe et la collection d&#39;items sont appliquées d&#39;office.</p>
+<ul>
+<li><strong>Pouvoir existentiel</strong> : choisir le type (la séquence attendue s&#39;affiche), l&#39;intensité (-100 : diminution extrême, 0 : pas de changement, 100 : augmentation extrême) et les maillons. Pour raisonner et résonner, saisir deux concepts avec <strong>+ Ajouter une valeur</strong> : le premier est la source, le second la destination.</li>
+<li><strong>Pulsation existentielle</strong> : y ajouter ses pouvoirs, et la relier aux autres pulsations (flux) avec leur temporalité : avant, pendant, après, ordre successif.</li>
+<li><strong>Raison trajective</strong> : y ajouter les pulsations, avec leur ordre.</li>
+</ul>
+<p>Un item de même titre et de même modèle n&#39;est pas recréé : le lien vers l&#39;item existant s&#39;affiche.</p>
+<h2 id="4-lire-et-corriger-l-39-evaluation"><a class="anchor" href="#4-lire-et-corriger-l-39-evaluation">#</a>4. Lire et corriger l&#39;évaluation</h2>
 <table>
 <thead>
 <tr>
@@ -101,7 +109,7 @@
 </tbody></table>
 <p><strong>Corriger et valider</strong> : dans l&#39;éditeur, une évaluation modifiée devient <em>humaine</em> ; la case <strong>validé</strong> (ou <strong>Tout valider et enregistrer</strong>) confirme une proposition de l&#39;agent. Indiquer <strong>votre nom</strong> et le <strong>motif</strong> : chaque correction est tracée dans l&#39;historique des <strong>révisions</strong>, exporté avec le modèle. Les indicateurs, les spirales et les fichiers sont recalculés à chaque enregistrement.</p>
 <p><strong>Enregistrer dans Omeka S</strong> (bandeau de l&#39;évaluation) dépose la version corrigée dans l&#39;item de configuration de l&#39;évaluation (créé pour une évaluation manuelle).</p>
-<h2 id="4-interpreter"><a class="anchor" href="#4-interpreter">#</a>4. Interpréter</h2>
+<h2 id="5-interpreter"><a class="anchor" href="#5-interpreter">#</a>5. Interpréter</h2>
 <ul>
 <li><strong>Grille des affects</strong> : Discerner (cécité cognitive / stase / clarté sémiotique), Raisonner (aliénation logique / routinisation / puissance critique), Résonner (impasse intuitive / barrière numérique / scientia intuitiva), Agir (misère symbolique / geste blanc / création autopoïétique).</li>
 <li><strong>Valeurs tardiennes</strong> : utilité et beauté (Désir), vérité (Croyance) de ce qui est discerné ; une valeur-vérité effondrée signale l&#39;<strong>indignation</strong>.</li>
@@ -112,7 +120,7 @@
 <p>Les scores sont des <strong>expressions situées et subjectives</strong>, non des mesures physiques : la matrice est un support pour une <strong>éthique de la discussion</strong> entre participants, que la synthèse prolonge par des questions ouvertes.</p>
 
 </main>
-<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-preparer-les-traces">1. Préparer les traces</a><a class="l2" href="#2-lancer-une-modelisation">2. Lancer une modélisation</a><a class="l2" href="#3-lire-et-corriger-l-39-evaluation">3. Lire et corriger l&#39;évaluation</a><a class="l2" href="#4-interpreter">4. Interpréter</a></nav>
+<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-preparer-les-traces">1. Préparer les traces</a><a class="l2" href="#2-lancer-une-modelisation">2. Lancer une modélisation</a><a class="l2" href="#3-creer-les-items-dans-omeka-s">3. Créer les items dans Omeka S</a><a class="l2" href="#4-lire-et-corriger-l-39-evaluation">4. Lire et corriger l&#39;évaluation</a><a class="l2" href="#5-interpreter">5. Interpréter</a></nav>
 </div>
 <script type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
