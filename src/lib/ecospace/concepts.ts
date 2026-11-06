@@ -86,3 +86,20 @@ export function layoutConcepts(nodes: ConceptNode[], p: LayoutParams): Map<numbe
   }
   return out;
 }
+
+// intériorité d'un actant (pouvoirs de raisonner et de résonner) : concepts déplacés dans sa sphère, bulles sans
+// enfant empilées de haut en bas par ordre alphabétique, centrées sur le centre de la sphère ; la sphère grandit pour
+// les contenir (au moins baseRadius) ; positions relatives au centre de la sphère
+export function interiorLayout(nodes: { item: number; title: string }[], p: LayoutParams, baseRadius: number) {
+  const S = p.S, cw = p.charWidth * S, lh = p.labelHeight * S, pad = p.padding * S;
+  const bs: Bubble[] = [...nodes].sort(byTitle).map(n => {
+    const label = conceptLabel(n.title, p.maxLabel), chars = [...label].length, radius = Math.max(p.leafRadius * S, lh / 2 + pad);
+    return { item: n.item, parent: null, children: [], level: 0, label, chars, labelY: 0, labelZ: 0, x: 0, y: 0, z: 0, radius, length: 2 * radius + chars * cw };
+  });
+  const height = bs.reduce((s, b) => s + 2 * b.radius, 0) + Math.max(0, bs.length - 1) * pad;
+  let y = height / 2;
+  for (const b of bs) { b.y = y - b.radius; y -= 2 * b.radius + pad; }
+  // point le plus éloigné d'une capsule : extrémité de son axe + rayon
+  const need = bs.reduce((m, b) => Math.max(m, Math.hypot(b.length / 2 - b.radius, Math.abs(b.y)) + b.radius), 0);
+  return { radius: Math.max(baseRadius, need + pad), bubbles: bs };
+}

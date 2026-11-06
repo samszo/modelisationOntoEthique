@@ -121,16 +121,21 @@ function powerControls(form, ctx, initial = {}) {
   range.oninput = () => { num.value = range.value; show(); };
   num.oninput = () => { range.value = num.value; show(); };
   show();
-  const type = h("select", {}, types.map(t => h("option", { value: t.label, textContent: t.label })));
-  if (types.some(t => t.label === initial[form.power.typeTerm]?.[0]?.value)) type.value = initial[form.power.typeTerm][0].value;
+  // type : item du vocabulaire des types quand le modèle l'impose (itemId), sinon libellé
+  const key = t => t.itemId ? String(t.itemId) : t.label, cur = initial[form.power.typeTerm]?.[0];
+  const type = h("select", {}, types.map(t => h("option", { value: key(t), textContent: t.label })));
+  const found = types.find(t => (cur?.id && t.itemId === cur.id) || t.label === cur?.value);
+  if (found) type.value = key(found);
+  const typeOf = () => types.find(t => key(t) === type.value);
   const seq = h("div", { className: "tf-seq" });
-  const showSeq = () => { seq.textContent = `Séquence : ${types.find(t => t.label === type.value).sequence.map(s => s.name).join(" → ")}. Saisir les concepts dans cet ordre.`; };
+  const showSeq = () => { seq.textContent = `Séquence : ${typeOf().sequence.map(s => s.name).join(" → ")}. Un maillon peut relier plusieurs éléments.`; };
   type.onchange = showSeq; showSeq();
   return {
     el: h("div", {},
       h("div", { className: "tf-field" }, h("label", { textContent: "Type de pouvoir *" }), type, seq),
       h("div", { className: "tf-field" }, h("label", { textContent: "Intensité * (-100 : diminution extrême, 0 : pas de changement, 100 : augmentation extrême)" }), h("div", { className: "tf-range" }, range, num), meaning)),
-    read: () => ({ [intensity.term]: [{ type: "literal", value: num.value }], [form.power.typeTerm]: [{ type: "literal", value: type.value }] }),
+    read: () => { const t = typeOf(); return { [intensity.term]: [{ type: "literal", value: num.value }],
+      [form.power.typeTerm]: [t.itemId ? { type: t.itemType, id: t.itemId, label: t.itemTitle } : { type: "literal", value: t.label }] }; },
   };
 }
 

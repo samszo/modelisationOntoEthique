@@ -91,6 +91,9 @@
   dialog::backdrop { background: rgb(0 0 0 / .35); }
   dialog h2 { margin: 0 0 8px; font-size: 17px; }
   dialog.wide { width: min(1200px, calc(100vw - 32px)); }
+  #origin-map { height: min(420px, 55vh); border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; }
+  #dlg-origin .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  #dlg-origin .row > div { flex: 1; min-width: 120px; }
   dialog iframe { width: 100%; height: 72vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; display: block; }
   .props { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; margin: 8px 0 0; font-size: 14px; }
   .props dt, .props dd { margin: 0; padding: 7px 8px; border-top: 1px solid var(--line); }
@@ -113,6 +116,30 @@
   .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
   .toast.show { opacity: 1; }
   .hidden { display: none !important; }
+  /* liste des éléments par type, à droite de l'espace */
+  .space-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; }
+  .space-wrap.no-list { grid-template-columns: minmax(0, 1fr); }
+  .space-wrap.no-list #elements { display: none; }
+  #elements { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); height: 70vh; min-height: 440px; display: flex; flex-direction: column; min-width: 0; }
+  #elements .head { display: flex; gap: 6px; align-items: center; padding: 8px 10px 6px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  #elements .head input { flex: 1 1 140px; padding: 4px 8px; font-size: 13px; }
+  #el-list { overflow: auto; flex: 1; padding: 4px 0 8px; font-size: 13px; }
+  #el-list details > summary { display: flex; gap: 6px; align-items: center; padding: 5px 10px; cursor: pointer; font-weight: 650; position: sticky; top: 0; background: var(--panel); z-index: 1; border-top: 1px solid var(--line); }
+  #el-list details:first-child > summary { border-top: 0; }
+  #el-list summary .n { color: var(--muted); font-weight: 400; margin-left: auto; font-variant-numeric: tabular-nums; }
+  #el-list input[type=checkbox] { width: auto; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .el-row { display: flex; gap: 2px; align-items: center; padding: 1px 6px 1px 10px; }
+  .el-row:hover, .el-row.cur { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  .el-row.off .t { color: var(--muted); text-decoration: line-through; }
+  .el-row .fold { flex: none; width: 18px; height: 22px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; line-height: 22px; text-align: center; }
+  .el-row button.fold:hover { color: var(--accent); }
+  .el-row .t { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 3px 4px; font: inherit; color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .el-row .t small { color: var(--muted); margin-left: 4px; }
+  .el-row button.ic { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 5px; color: var(--muted); cursor: pointer; padding: 0; }
+  .el-row button.ic:hover:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .el-row button.ic:disabled { opacity: .3; cursor: default; }
+  .el-row button.ic svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  @media (max-width: 1100px) { .space-wrap { grid-template-columns: minmax(0, 1fr); } #elements { height: 50vh; min-height: 280px; } }
   @media (max-width: 860px) { main { grid-template-columns: 1fr; } nav.steps { position: static; } }
   @media (max-width: 600px) { .props { grid-template-columns: 1fr; } .props dd { border-top: 0; padding-top: 0; } }
 </style>
@@ -162,8 +189,9 @@
       <section class="card">
         <h2>1.2 Espace de l'écosystème</h2>
         <p class="lead">Cliquer sur un hexagone ouvre son menu (libellé au survol) : <strong>lier</strong> crée ou place un élément ontologique sur l'hexagone, avec sa forme (sur un physique : un physique enfant) ; sur un élément placé : <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour tourner, clic droit ou Maj + glisser pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone.</p>
-        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
+        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-pulse" class="btn small" aria-pressed="true" title="Arrêter ou relancer l'animation des pulsations et des flux">Pulsations</button><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
         <div class="toolbar"><label for="time-height">Échelle temporelle</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span></div>
+        <div class="space-wrap" id="space-wrap">
         <div id="space">
           <div id="labels"></div>
           <svg id="overlay"><g class="menu"></g></svg>
@@ -173,7 +201,12 @@
             <button id="space-create" class="btn primary">Créer la grille</button>
           </div>
         </div>
-        <div id="legend" class="legend"></div>
+        <aside id="elements" aria-label="Éléments par type">
+          <div class="head"><strong>Éléments</strong><input id="el-filter" type="search" placeholder="Filtrer par titre" aria-label="Filtrer les éléments par titre"><button id="el-all" class="btn small" title="Réafficher tous les éléments cachés">Tout afficher</button></div>
+          <div id="el-list"></div>
+        </aside>
+        </div>
+        <div id="legend" class="legend hidden"></div>
       </section>
     </div>
   </div>
@@ -200,6 +233,48 @@
     <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
       <button value="cancel" class="btn" formnovalidate>Annuler</button>
       <button value="confirm" id="link-submit" class="btn primary">Créer et placer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- pouvoir : type, maillons dans l'ordre, intensité -->
+<dialog id="dlg-power">
+  <form method="dialog">
+    <h2 id="power-title">Pouvoir</h2>
+    <p class="help" id="power-help"></p>
+    <div id="power-steps"></div>
+    <div class="row" id="power-extra" style="display:flex;gap:12px;margin-top:10px">
+      <div><label for="power-intensity">Intensité (−100 à +100)</label><input id="power-intensity" type="number" min="-100" max="100" step="1" value="0" required></div>
+      <div style="flex:1"><label for="power-name">Titre (facultatif)</label><input id="power-name" placeholder="par défaut : type et maillons"></div>
+    </div>
+    <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+      <button value="cancel" class="btn" formnovalidate>Annuler</button>
+      <button value="confirm" class="btn primary" id="power-submit">Valider</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- origine géographique de la grille : carte, recherche de lieu, géolocalisation -->
+<dialog id="dlg-origin" class="wide">
+  <form method="dialog">
+    <h2>Origine géographique</h2>
+    <p class="help">Le centre de la grille (hexagone 0, 0) est placé sur ce lieu : rechercher une adresse ou un lieu, utiliser sa position, ou cliquer sur la carte et déplacer le repère. Les coordonnées géographiques de tous les hexagones et éléments en découlent ; leur disposition dans l'espace ne change pas.</p>
+    <div class="row">
+      <div style="flex:3"><label for="origin-q">Lieu</label><input id="origin-q" placeholder="adresse, ville, monument…" autocomplete="off"></div>
+      <button type="button" id="origin-search" class="btn">Rechercher</button>
+      <button type="button" id="origin-locate" class="btn" title="Utiliser la position de cet appareil">Ma position</button>
+    </div>
+    <ul id="origin-results" class="ac-list"></ul>
+    <div id="origin-map"></div>
+    <div class="row" style="margin-top:8px">
+      <div><label for="origin-lat">Latitude</label><input id="origin-lat" type="number" step="0.0000001" min="-90" max="90" required></div>
+      <div><label for="origin-lon">Longitude</label><input id="origin-lon" type="number" step="0.0000001" min="-180" max="180" required></div>
+      <div><label for="origin-alt">Altitude (m)</label><input id="origin-alt" type="number" step="0.01"></div>
+    </div>
+    <p class="help" id="origin-status"></p>
+    <div class="toolbar" style="margin-top:10px;justify-content:flex-end">
+      <button value="cancel" class="btn" formnovalidate>Annuler</button>
+      <button value="confirm" class="btn primary">Enregistrer l'origine</button>
     </div>
   </form>
 </dialog>
@@ -320,6 +395,11 @@ const API_STEPS = [
   [/^POST \/api\/ecospace\/place/, "Placement de l'élément et relecture de l'espace"],
   [/^POST \/api\/ecospace\/unplace/, "Retrait de l'espace et relecture de l'espace"],
   [/^POST \/api\/ecospace\/physique/, "Création ou liaison du physique dans Omeka S"],
+  [/^POST \/api\/ecospace\/origin/, "Enregistrement de l'origine et relecture de l'espace"],
+  [/^POST \/api\/ecospace\/power\/link/, "Lien de l'élément au pouvoir dans Omeka S (relation multiple)"],
+  [/^POST \/api\/ecospace\/power/, "Création des maillons manquants et du pouvoir dans Omeka S"],
+  [/^POST \/api\/ecospace\/pulsation\/flux/, "Écriture du flux et de sa temporalité dans Omeka S"],
+  [/^POST \/api\/ecospace\/pulsation/, "Création ou reprise de la pulsation et ajout du pouvoir dans Omeka S"],
   [/^POST \/api\/ecospace\/member/, "Création ou reprise de l'élément et lien depuis l'actant dans Omeka S"],
   [/^POST \/api\/ecospace\/concept\/relate/, "Écriture des relations entre concepts dans Omeka S"],
   [/^POST \/api\/ecospace\/concept\/detach/, "Retrait des relations dans Omeka S, relecture de l'espace et calcul des bulles"],
@@ -465,15 +545,16 @@ function fullerene(color, radius) {
   }
   return protoCache.get(key).clone();
 }
-// open : l'actant a des personnes ou agents, sa sphère est plus transparente pour laisser voir les leurs
-function actantShape(shape, S, open = false) {
-  const key = `${shape.key}|${S}|${open}`;
+// open : l'actant a des personnes, agents ou concepts intérieurs, sa sphère est plus transparente pour les laisser voir ;
+// sphereR : rayon de sa sphère quand elle a grandi pour contenir des concepts (pouvoirs de raisonner, de résonner)
+function actantShape(shape, S, open = false, sphereR = null) {
+  const R = sphereR ?? shape.sphereRadius * S;
+  const key = `${shape.key}|${S}|${open}|${R}`;
   if (!protoCache.has(key)) {
     const color = new THREE.Color(shape.color || "#d0602e");
     const g = new THREE.Group();
     // centroïde du fullerène = origine du groupe = centre de l'hexagone
     g.add(fullerene(shape.color || "#d0602e", shape.fullereneRadius * S));
-    const R = shape.sphereRadius * S;
     const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 24), new THREE.MeshStandardMaterial({ color, roughness: 0.5, transparent: true, opacity: open ? 0.45 : 0.85, depthWrite: !open }));
     sphere.position.y = -R; // pôle nord (y = 0) sur le centroïde
     g.add(sphere);
@@ -482,35 +563,16 @@ function actantShape(shape, S, open = false) {
   return protoCache.get(key).clone();
 }
 const SHAPES = { actant: actantShape };
-// sous-grille de l'hexagone d'un actant : contours des sous-hexagones, juste au-dessus de la tuile
-function subGridLines(sub, color) {
-  const g = new THREE.Group(), mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
-  const a0 = sub.orientation === "pointy" ? Math.PI / 6 : 0;
-  const ring = Array.from({ length: 6 }, (_, i) => new THREE.Vector3(Math.cos(a0 + i * Math.PI / 3) * sub.size, 0, Math.sin(a0 + i * Math.PI / 3) * sub.size));
-  const geo = new THREE.BufferGeometry().setFromPoints(ring);
-  for (const h of sub.slots) { const o = new THREE.LineLoop(geo, mat); o.position.set(h.x, 0.06, h.z); g.add(o); }
-  return g;
-}
-// personne ou agent : petit fullerène centré sur son sous-hexagone (moitié au-dessus, moitié en dessous de la grille) et,
-// comme l'actant, sphère sous la grille dont le pôle nord touche le centroïde du fullerène ; titre au-dessus
-function memberShape(p, shape) {
-  const g = new THREE.Group();
-  g.add(fullerene(shape.color, p.radius));
-  const R = p.sphereRadius ?? p.radius;
-  const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 24, 16), new THREE.MeshStandardMaterial({ color: shape.color, roughness: 0.5, transparent: true, opacity: 0.85 }));
-  sphere.position.y = -R;
-  g.add(sphere);
-  g.position.set(p.x, p.y, p.z);
-  const label = new CSS2DObject(el("div", { className: "label small", textContent: p.title.length > 30 ? p.title.slice(0, 28) + "…" : p.title }));
-  label.position.set(0, p.radius + 0.6, 0);
-  g.add(label);
-  return g;
-}
 
+// ==========================================
+// pouvoirs : nanotubes de carbone entre les maillons de leur séquence (un nanotube par segment droit ; segments
+// suivants et branches = nanotubes enfants, joints par une sphère) ; crible = anneau traversé par le nanotube
+// ==========================================
 // concept (« bulle conceptuelle ») : capsule translucide d'axe horizontal est-ouest (cylindre fermé par deux
 // demi-sphères ; length = longueur totale) ; taille et position calculées par le serveur (titre ou enfants, répartition
-// équilibrée des frères) ; titre écrit dans la scène (sprite tourné vers la caméra) à charWidth par caractère et
-// labelHeight de haut, au centre d'une bulle sans enfant, dans la bande haut-nord d'une bulle parent (labelY, labelZ)
+// équilibrée des frères, intériorité des actants) ; titre écrit dans la scène (sprite tourné vers la caméra) à
+// charWidth par caractère et labelHeight de haut, au centre d'une bulle sans enfant, dans la bande haut-nord d'une bulle
+// parent (labelY, labelZ)
 function capsuleGeometry(radius, length) {
   return new THREE.CapsuleGeometry(radius, Math.max(0, length - 2 * radius), 12, 48).rotateZ(Math.PI / 2);
 }
@@ -545,6 +607,288 @@ function conceptShape(p, shape) {
   return { group: g, mesh };
 }
 
+// sous-grille de l'hexagone d'un actant : contours des sous-hexagones, juste au-dessus de la tuile
+function subGridLines(sub, color) {
+  const g = new THREE.Group(), mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
+  const a0 = sub.orientation === "pointy" ? Math.PI / 6 : 0;
+  const ring = Array.from({ length: 6 }, (_, i) => new THREE.Vector3(Math.cos(a0 + i * Math.PI / 3) * sub.size, 0, Math.sin(a0 + i * Math.PI / 3) * sub.size));
+  const geo = new THREE.BufferGeometry().setFromPoints(ring);
+  for (const h of sub.slots) { const o = new THREE.LineLoop(geo, mat); o.position.set(h.x, 0.06, h.z); g.add(o); }
+  return g;
+}
+// personne ou agent : petit fullerène centré sur son sous-hexagone (moitié au-dessus, moitié en dessous de la grille) et,
+// comme l'actant, sphère sous la grille dont le pôle nord touche le centroïde du fullerène ; titre au-dessus
+function memberShape(p, shape) {
+  const g = new THREE.Group();
+  g.add(fullerene(shape.color, p.radius));
+  const R = p.sphereRadius ?? p.radius;
+  const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 24, 16), new THREE.MeshStandardMaterial({ color: shape.color, roughness: 0.5, transparent: true, opacity: 0.85 }));
+  sphere.position.y = -R;
+  g.add(sphere);
+  g.position.set(p.x, p.y, p.z);
+  const label = new CSS2DObject(el("div", { className: "label small", textContent: p.title.length > 30 ? p.title.slice(0, 28) + "…" : p.title }));
+  label.position.set(0, p.radius + 0.6, 0);
+  g.add(label);
+  return g;
+}
+
+// nanotube « zigzag » (n, 0) fait d'hexagones indépendants : surfaces (faces cliquables, une instance par hexagone,
+// cells[i] = { j, k } : ligne le long de l'axe, rang autour), nœuds (atomes) et liens (liaisons) ; de A à B
+const latticeB = (r, n) => 2 * Math.PI * r / (n * Math.sqrt(3));
+function tubeFrame(A, B) {
+  return { len: A.distanceTo(B), mid: A.clone().add(B).multiplyScalar(0.5), q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()) };
+}
+// centre de l'hexagone (j, k) : hauteur b + 1,5 b × j depuis l'extrémité A, rang k décalé d'un demi-pas une ligne sur deux
+function cellLocal(len, r, n, j, k) {
+  const b = latticeB(r, n), y = -len / 2 + b + 1.5 * b * j, a = 2 * Math.PI * k / n + (j % 2 ? Math.PI / n : 0);
+  return { y, a, p: new THREE.Vector3(r * Math.cos(a), y, r * Math.sin(a)) };
+}
+const cellRows = (len, r, n) => Math.max(0, Math.floor((len - 2 * latticeB(r, n)) / (1.5 * latticeB(r, n))) + 1);
+function cellWorld(A, B, r, n, j, k) {
+  const f = tubeFrame(A, B), rows = cellRows(f.len, r, n), c = cellLocal(f.len, r, n, Math.min(j, Math.max(0, rows - 1)), k);
+  return c.p.applyQuaternion(f.q).add(f.mid);
+}
+const hexFace = new Map(); // géométrie d'une face (hexagone plat, pointe le long de l'axe), par taille
+function nanotube(A, B, r, n, color) {
+  const g = new THREE.Group(), f = tubeFrame(A, B), len = f.len, b = latticeB(r, n), col = new THREE.Color(color);
+  // surfaces : une face par hexagone, légèrement réduite (hexagones indépendants)
+  const rows = cellRows(len, r, n), cells = [];
+  const key = b.toFixed(4);
+  if (!hexFace.has(key)) hexFace.set(key, new THREE.CircleGeometry(b * 0.9, 6).rotateZ(Math.PI / 6));
+  const faces = new THREE.InstancedMesh(hexFace.get(key), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }), Math.max(1, rows * n));
+  const m = new THREE.Matrix4(), X = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3();
+  for (let j = 0; j < rows; j++) for (let k = 0; k < n; k++) {
+    const c = cellLocal(len, r, n, j, k);
+    Z.set(Math.cos(c.a), 0, Math.sin(c.a)); X.set(-Math.sin(c.a), 0, Math.cos(c.a));
+    m.makeBasis(X, Y, Z).setPosition(c.p.x * 0.99, c.y, c.p.z * 0.99);
+    faces.setMatrixAt(cells.length, m); cells.push({ j, k });
+  }
+  faces.count = cells.length;
+  faces.userData.cells = cells;
+  // nœuds et liens : quatre anneaux d'atomes par maille (hauteurs 0, b/2, 3b/2, 2b ; anneaux 1 et 2 décalés d'un demi-pas)
+  const rl = r * 1.02, at = (k, h, off) => { const a = 2 * Math.PI * k / n + (off ? Math.PI / n : 0); return [rl * Math.cos(a), h, rl * Math.sin(a)]; };
+  const pts = [], atoms = [];
+  for (let y0 = -len / 2; y0 < len / 2; y0 += 3 * b) {
+    const z = [0, b / 2, 1.5 * b, 2 * b].map(h => Math.min(len / 2, y0 + h)), next = Math.min(len / 2, y0 + 3 * b);
+    for (let k = 0; k < n; k++) {
+      atoms.push(at(k, z[0], 0), at(k, z[1], 1), at(k, z[2], 1), at(k, z[3], 0));
+      pts.push(...at(k, z[0], 0), ...at(k, z[1], 1), ...at(k, z[0], 0), ...at(k - 1, z[1], 1));
+      pts.push(...at(k, z[1], 1), ...at(k, z[2], 1));
+      pts.push(...at(k, z[2], 1), ...at(k, z[3], 0), ...at(k + 1, z[2], 1), ...at(k, z[3], 0));
+      if (next > z[3]) pts.push(...at(k, z[3], 0), ...at(k, next, 0));
+    }
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  const links = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x1c1c1c }));
+  const nodes = new THREE.InstancedMesh(new THREE.SphereGeometry(b * 0.14, 6, 4), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.4 }), atoms.length);
+  atoms.forEach((p, i) => nodes.setMatrixAt(i, m.makeTranslation(p[0], p[1], p[2])));
+  links.raycast = () => {}; nodes.raycast = () => {}; // seules les surfaces se cliquent
+  g.add(faces, links, nodes);
+  g.position.copy(f.mid); g.quaternion.copy(f.q);
+  return { group: g, faces };
+}
+const nearestHex = p => space.hexes.reduce((best, h) => !best || Math.hypot(h.x - p.x, h.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z) ? h : best, null);
+// segments des pouvoirs (clé → { A, B, … }), pour attacher un élément à un hexagone
+let powerSegs = new Map();
+function buildPowers() {
+  powerSegs = new Map();
+  const sh = shapeByKey("pouvoir");
+  if (!sh || !space.powers?.length) return;
+  const S = space.grid.hexSize, r = sh.tubeRadius * S, n = sh.lattice ?? 8;
+  // points d'ancrage des éléments (centres) : actant = centroïde du fullerène, physique = centre de sa boîte (racine ou
+  // intérieure), concept = centre de sa bulle (sous la grille ou dans une sphère d'actant)
+  const anchors = new Map();
+  itemsGroup.traverse(o => { const t = o.userData?.target; if (t?.anchor && !t.owner && !t.power && !anchors.has(t.item)) anchors.set(t.item, t.anchor); });
+  const segs = powerSegs, joints = new Map(), rings = [];
+  const addSeg = (key, A, B, pw, extra = {}) => {
+    const seg = segs.get(key) ?? { key, A, B, color: pw.color, powers: [], cribles: new Map(), type: pw.type, ...extra };
+    if (!seg.powers.includes(pw)) seg.powers.push(pw);
+    segs.set(key, seg);
+    return seg;
+  };
+  const joint = (at, color, pw) => { const k = `${at.x.toFixed(2)},${at.y.toFixed(2)},${at.z.toFixed(2)}`, j = joints.get(k) ?? { at, color, powers: new Set() }; j.powers.add(pw); joints.set(k, j); };
+  // 1. chaîne principale (premier élément de chaque maillon) ; cribles non attachés : anneaux sur le segment qui les enjambe
+  const nodesOf = new Map();
+  for (const pw of space.powers) {
+    const nodes = [];
+    let prev = null, pending = [];
+    pw.steps.forEach((st, i) => {
+      if (st.key === "crible") { pending.push(...st.members.filter(m => !m.attach)); return; }
+      if (pw.interior && st.key === "actant") return; // l'actant héberge : le nanotube relie directement les concepts
+      const m0 = st.members[0], at = m0 ? anchors.get(m0.item) : null;
+      if (!at) { prev = null; pending = []; return; }
+      const node = { i, item: m0.item, at };
+      nodes.push(node);
+      if (prev) {
+        const seg = addSeg(`${pw.type}|${prev.item}|${m0.item}`, prev.at, at, pw);
+        for (const c of pending) seg.cribles.set(c.item, c);
+        joint(prev.at, pw.color, pw); joint(at, pw.color, pw);
+      }
+      prev = node; pending = [];
+    });
+    nodesOf.set(pw, nodes);
+  }
+  // 2. relations multiples : élément attaché à un hexagone (nanotube enfant depuis cet hexagone ; crible : anneau sur
+  // l'hexagone), sinon nanotube enfant depuis le maillon principal précédent (ou suivant, pour le premier maillon) ;
+  // plusieurs passes, un élément pouvant s'attacher à un nanotube enfant
+  const todo = [];
+  for (const pw of space.powers) pw.steps.forEach((st, i) => st.members.forEach((m, mi) => {
+    if (st.key === "crible" ? m.attach : mi > 0 && !(pw.interior && st.key === "actant")) todo.push({ pw, st, i, m });
+  }));
+  for (let pass = 0; pass < 6 && todo.length; pass++) {
+    for (const x of [...todo]) {
+      const { pw, st, i, m } = x;
+      let from = null, fromKey = null;
+      if (m.attach) {
+        const seg = segs.get(m.attach.seg);
+        if (!seg) continue; // segment pas encore construit (passe suivante)
+        from = cellWorld(seg.A, seg.B, r, n, m.attach.j, m.attach.k); fromKey = `${m.attach.seg}@${m.attach.j},${m.attach.k}`;
+        if (st.key === "crible") { rings.push({ at: from, dir: seg.B.clone().sub(seg.A).normalize(), crible: m, powers: [pw] }); todo.splice(todo.indexOf(x), 1); continue; }
+      } else {
+        const nodes = nodesOf.get(pw), base = [...nodes].reverse().find(nd => nd.i < i) ?? nodes.find(nd => nd.i > i);
+        if (!base) { todo.splice(todo.indexOf(x), 1); continue; }
+        from = base.at; fromKey = String(base.item);
+      }
+      const to = anchors.get(m.item);
+      todo.splice(todo.indexOf(x), 1);
+      if (!to) continue;
+      addSeg(`${pw.type}|${fromKey}|${m.item}`, from, to, pw, { child: true });
+      joint(from, pw.color, pw);
+    }
+  }
+  // nanotubes : une instance de surfaces cliquable par segment (cible = pouvoir, segment)
+  for (const seg of segs.values()) {
+    if (seg.A.distanceTo(seg.B) < 1e-3) continue;
+    const pw = seg.powers[0], mid = seg.A.clone().add(seg.B).multiplyScalar(0.5);
+    const { group, faces } = nanotube(seg.A, seg.B, r, n, seg.color);
+    const target = { item: pw.item, shape: "pouvoir", power: pw, powers: seg.powers, seg, title: pw.title, templateId: sh.templateId, depth: 0, anchor: mid, hex: nearestHex(mid) };
+    group.userData = { hex: target.hex, target };
+    itemsGroup.add(group);
+    const cs = [...seg.cribles.values()], dir = seg.B.clone().sub(seg.A).normalize();
+    cs.forEach((c, i) => rings.push({ at: seg.A.clone().lerp(seg.B, (i + 1) / (cs.length + 1)), dir, crible: c, powers: seg.powers }));
+  }
+  // cribles : anneaux traversés par le nanotube, avec leur titre
+  const cribleTpl = (space.powerTypes ?? []).flatMap(t => t.sequence).find(x => x.key === "crible")?.templateId ?? null;
+  for (const rg of rings) {
+    const R = (sh.cribleRatio ?? 4) * r, c = rg.crible;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R, r * 0.7, 10, 40), new THREE.MeshStandardMaterial({ color: sh.cribleColor ?? "#6b7c8f", roughness: 0.4 }));
+    ring.position.copy(rg.at); ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), rg.dir);
+    const ct = { item: c.item, shape: "crible", title: c.title ?? `Crible ${c.item}`, templateId: cribleTpl, depth: 0, anchor: rg.at, hex: nearestHex(rg.at), powers: rg.powers };
+    ring.userData = { hex: ct.hex, target: ct };
+    ring.add(new CSS2DObject(el("div", { className: "label small", textContent: ct.title.length > 30 ? ct.title.slice(0, 28) + "…" : ct.title })));
+    itemsGroup.add(ring);
+  }
+  // jonctions : sphère au départ des nanotubes enfants (changement de direction, relations multiples, branches)
+  for (const j of joints.values()) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry((sh.jointRatio ?? 1.8) * r, 16, 12), new THREE.MeshStandardMaterial({ color: j.color, roughness: 0.4 }));
+    m.position.copy(j.at); m.raycast = () => {}; m.userData.joint = j; itemsGroup.add(m);
+  }
+}
+// ==========================================
+// pulsations existentielles : enveloppe translucide (ellipsoïde orienté selon l'étendue des nanotubes de ses pouvoirs)
+// qui bat d'autant plus fort que l'intensité moyenne de ses pouvoirs est grande ; flux vers d'autres pulsations : arcs
+// fléchés (Avant : flèche inversée, Pendant : trait double sans flèche) où circulent des particules
+// ==========================================
+let pulses = [], fluxes = [], pulseOn = true;
+// axes principaux d'un nuage de points (itération de puissance sur la matrice de covariance), repère direct
+function principalAxes(pts, c) {
+  const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (const p of pts) { const d = [p.x - c.x, p.y - c.y, p.z - c.z]; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) C[i][j] += d[i] * d[j]; }
+  const mul = v => new THREE.Vector3(C[0][0] * v.x + C[0][1] * v.y + C[0][2] * v.z, C[1][0] * v.x + C[1][1] * v.y + C[1][2] * v.z, C[2][0] * v.x + C[2][1] * v.y + C[2][2] * v.z);
+  const ortho = (v, os) => { for (const o of os) v.sub(o.clone().multiplyScalar(v.dot(o))); return v; };
+  const iterate = (v, os) => {
+    ortho(v, os).normalize();
+    for (let k = 0; k < 50; k++) { const w = ortho(mul(v), os); if (w.lengthSq() < 1e-12) break; v.copy(w.normalize()); }
+    return v;
+  };
+  const u = iterate(new THREE.Vector3(1, 0.31, 0.17), []);
+  let v = iterate(new THREE.Vector3(-0.23, 1, 0.37), [u]);
+  if (!(v.lengthSq() > 0.5)) v = ortho(new THREE.Vector3(0, 0, 1), [u]).normalize();
+  return [u, v, new THREE.Vector3().crossVectors(u, v).normalize()];
+}
+// distance du centre à la surface d'une enveloppe dans la direction d (unitaire)
+const surfaceAt = (p, d) => 1 / Math.sqrt(p.axes.reduce((t, ax, i) => t + (d.dot(ax) / p.radii[i]) ** 2, 0));
+function buildPulsations() {
+  pulses = []; fluxes = [];
+  const sh = shapeByKey("pulsation"), tube = shapeByKey("pouvoir");
+  if (!sh || !space.pulsations?.length) return;
+  const S = space.grid.hexSize, pad = sh.padding * S + (tube?.tubeRadius ?? 0.05) * S;
+  const powerById = new Map((space.powers ?? []).map(pw => [pw.item, pw]));
+  space.pulsations.forEach((pl, idx) => {
+    const ids = new Set(pl.powers.map(x => x.item)), pts = [];
+    for (const seg of powerSegs.values()) if (seg.powers.some(pw => ids.has(pw.item))) for (let k = 0; k <= 4; k++) pts.push(seg.A.clone().lerp(seg.B, k / 4));
+    if (!pts.length) return; // pouvoirs non dessinés : pas d'enveloppe
+    const c = pts.reduce((t, p) => t.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+    const axes = principalAxes(pts, c), radii = axes.map(ax => Math.max(...pts.map(p => Math.abs(p.clone().sub(c).dot(ax)))) + pad * (1 + idx * 0.04));
+    const vals = pl.powers.map(x => powerById.get(x.item)?.intensity).filter(x => Number.isFinite(x));
+    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    const color = mean > 0 ? sh.colors?.up : mean < 0 ? sh.colors?.down : sh.colors?.neutral;
+    const g = new THREE.Group();
+    g.position.copy(c); g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(...axes));
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), new THREE.MeshStandardMaterial({ color: color ?? sh.color, transparent: true, opacity: sh.opacity ?? 0.16, depthWrite: false, side: THREE.DoubleSide, roughness: 0.35 }));
+    mesh.add(new THREE.Mesh(new THREE.SphereGeometry(1, 18, 10), new THREE.MeshBasicMaterial({ color: color ?? sh.color, wireframe: true, transparent: true, opacity: 0.16, depthWrite: false })));
+    mesh.children[0].raycast = () => {};
+    const scale = new THREE.Vector3(...radii);
+    mesh.scale.copy(scale); mesh.renderOrder = 6;
+    g.add(mesh);
+    const label = new CSS2DObject(el("div", { className: "label", textContent: `〜 ${pl.title.length > 36 ? pl.title.slice(0, 34) + "…" : pl.title}` }));
+    label.position.set(0, radii[1] * 1.02, 0); g.add(label);
+    const target = { item: pl.item, shape: "pulsation", pulsation: pl, title: pl.title, templateId: sh.templateId, depth: -1, anchor: c, hex: nearestHex(c), intensity: mean, group: g };
+    mesh.userData = { hex: target.hex, target };
+    itemsGroup.add(g);
+    pulses.push({ item: pl.item, mesh, scale, axes, radii, c, period: sh.period ?? 2.4, phase: idx * 0.9,
+      amp: Math.max(sh.minAmplitude ?? 0.04, (sh.amplitude ?? 0.15) * Math.abs(mean ?? 0) / 100) });
+  });
+  // flux : de la surface d'une enveloppe à l'autre ; sens selon l'ordre relatif de la cible
+  const byItem = new Map(pulses.map(p => [p.item, p])), rad = (sh.fluxRadius ?? 0.025) * S, up = new THREE.Vector3(0, 1, 0);
+  for (const pl of space.pulsations) for (const f of pl.flux) {
+    let a = byItem.get(pl.item), b = byItem.get(f.to);
+    if (!a || !b) continue;
+    const rel = fold(f.relative?.title ?? ""), during = rel.startsWith("pendant");
+    if (rel.startsWith("avant")) [a, b] = [b, a];
+    const d = b.c.clone().sub(a.c), len = d.length();
+    if (len < 1e-3) continue;
+    d.normalize();
+    const ra = surfaceAt(a, d), rb = surfaceAt(b, d), gap = len - ra - rb;
+    // enveloppes séparées : d'une surface à l'autre ; imbriquées ou proches : d'un sommet à l'autre
+    const apart = gap > rad * 20;
+    const P0 = apart ? a.c.clone().addScaledVector(d, ra) : a.c.clone().addScaledVector(up, surfaceAt(a, up)), P1 = apart ? b.c.clone().addScaledVector(d, -rb) : b.c.clone().addScaledVector(up, surfaceAt(b, up));
+    const side = new THREE.Vector3().crossVectors(d, up); if (side.lengthSq() < 1e-6) side.set(1, 0, 0); side.normalize();
+    const L = P0.distanceTo(P1), lift = up.clone().multiplyScalar(Math.max(L * (sh.fluxLift ?? 0.3), S * 1.5)).addScaledVector(side, (pl.item < f.to ? 1 : -1) * rad * 6);
+    const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: sh.fluxColor ?? "#5d6d7e", roughness: 0.4 }), curves = [];
+    for (const off of during ? [-1, 1] : [0]) {
+      const o = side.clone().multiplyScalar(off * rad * 3);
+      const curve = new THREE.QuadraticBezierCurve3(P0.clone().add(o), P0.clone().lerp(P1, 0.5).add(lift).add(o), P1.clone().add(o));
+      curves.push(curve);
+      const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, rad, 8), mat); m.raycast = () => {}; g.add(m);
+    }
+    if (!during) {
+      const c0 = curves[0], tan = c0.getTangentAt(1), head = new THREE.Mesh(new THREE.ConeGeometry(rad * 4, rad * 12, 14), mat);
+      head.quaternion.setFromUnitVectors(up, tan); head.position.copy(c0.getPointAt(1)).addScaledVector(tan, -rad * 6); head.raycast = () => {}; g.add(head);
+    }
+    const txt = `${f.relative?.title || "flux"}${f.order != null ? ` · ${f.order}` : ""}`;
+    const lab = new CSS2DObject(el("div", { className: "label small", textContent: txt })); lab.position.copy(curves[0].getPointAt(0.5)); g.add(lab);
+    const dots = [];
+    for (const curve of curves) for (let i = 0; i < (sh.particles ?? 4); i++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(rad * 2.2, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); m.raycast = () => {};
+      m.position.copy(curve.getPointAt(i / (sh.particles ?? 4))); g.add(m); dots.push({ m, curve, off: i / (sh.particles ?? 4), back: during && curve !== curves[0] });
+    }
+    g.userData.flux = { from: pl.item, to: f.to };
+    itemsGroup.add(g);
+    fluxes.push({ dots, speed: 1 / Math.max(2, L / S) });
+  }
+}
+function animatePulses() {
+  if (!pulseOn) return;
+  const t = performance.now() / 1000;
+  for (const p of pulses) p.mesh.scale.copy(p.scale).multiplyScalar(1 + p.amp * Math.sin(2 * Math.PI * t / p.period + p.phase));
+  for (const f of fluxes) for (const d of f.dots) { const u = (t * f.speed + d.off) % 1; d.m.position.copy(d.curve.getPointAt(d.back ? 1 - u : u)); }
+}
+function setPulse(on) {
+  pulseOn = on; $("#space-pulse").setAttribute("aria-pressed", String(on));
+  if (!on) for (const p of pulses) p.mesh.scale.copy(p.scale);
+  try { localStorage.setItem("ecospace-pulse", on ? "1" : "0"); } catch {}
+}
 // ==========================================
 // 1.2 Scène three.js : grille hexagonale et éléments placés
 // ==========================================
@@ -734,7 +1078,7 @@ function physiqueShape(p, shape, hex, S) {
   add(p.tree, -side / 2, -side / 2, side, side, null, null);
   const label = new CSS2DObject(el("div", { className: "label", textContent: p.title.length > 40 ? p.title.slice(0, 38) + "…" : p.title }));
   label.position.set(0, rootTarget.y[1] + 1.5, 0);
-  g.add(label);
+  g.add(label); rootTarget.label = label;
   return { group: g, target: rootTarget };
 }
 
@@ -792,7 +1136,7 @@ function buildItems() {
     }
     const make = SHAPES[p.shape];
     if (!make) continue;
-    const o = make(shape, S, space.placements.some(x => x.actant === p.item));
+    const o = make(shape, S, space.placements.some(x => x.actant === p.item) || !!p.interior?.length, p.sphereRadius ?? null);
     o.position.set(hex.x, 0, hex.z);
     o.userData = { hex, target: p };
     const label = new CSS2DObject(el("div", { className: "label", textContent: p.title.length > 40 ? p.title.slice(0, 38) + "…" : p.title }));
@@ -803,6 +1147,8 @@ function buildItems() {
     targets.set(p.item, Object.assign(p, { hex, depth: 0, anchor: new THREE.Vector3(hex.x, 0, hex.z) }));
   }
   buildTimeAxis();
+  buildPowers();
+  buildPulsations();
 }
 function view(kind = "fit") {
   const d = extent, H = space?.placements.some(p => p.tree) ? time.H : 0;
@@ -815,13 +1161,87 @@ $("#space-fit").onclick = () => view("fit");
 $("#space-top").onclick = () => view("top");
 $("#space-below").onclick = () => view("below");
 $("#space-refresh").onclick = () => loadSpace();
+$("#space-origin").onclick = () => space ? askOrigin() : toast("Créer d'abord la grille de l'écosystème");
+
+// origine géographique : carte Leaflet (chargée à la première ouverture), recherche de lieux (Nominatim), position de
+// l'appareil, repère déplaçable ; l'emprise de la grille est dessinée autour du repère
+const LEAFLET = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist";
+let leaflet = null, originMap = null, originMarker = null, originArea = null;
+async function loadLeaflet() {
+  if (leaflet) return leaflet;
+  document.head.append(el("link", { rel: "stylesheet", href: `${LEAFLET}/leaflet.css` }));
+  leaflet = await import(`${LEAFLET}/leaflet-src.esm.js`);
+  return leaflet;
+}
+async function askOrigin() {
+  closeMenu();
+  const dlg = $("#dlg-origin"), o = space.grid.origin, cfg = space.map ?? {}, S = space.grid.hexSize;
+  let L;
+  try { L = await loadLeaflet(); } catch (e) { return toast("Carte indisponible : " + e.message); }
+  const lat = $("#origin-lat"), lon = $("#origin-lon"), alt = $("#origin-alt"), status = $("#origin-status");
+  const setPoint = (la, lo, al, zoom = null) => {
+    lat.value = (+la).toFixed(7); lon.value = (+lo).toFixed(7); if (al != null && Number.isFinite(+al)) alt.value = (+al).toFixed(2);
+    originMarker.setLatLng([+la, +lo]); originArea.setLatLng([+la, +lo]);
+    originMap.setView([+la, +lo], zoom ?? originMap.getZoom());
+  };
+  dlg.returnValue = ""; dlg.showModal();
+  if (!originMap) {
+    originMap = L.map("origin-map");
+    L.tileLayer(cfg.tiles ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: cfg.attribution ?? "© OpenStreetMap" }).addTo(originMap);
+    originMarker = L.marker([o.lat, o.lon], { draggable: true }).addTo(originMap);
+    // emprise de la grille : cercle qui contient tous ses hexagones
+    originArea = L.circle([o.lat, o.lon], { radius: (space.grid.radius * Math.sqrt(3) + 1) * S, color: "#1f6f8b", weight: 1, fillOpacity: 0.08 }).addTo(originMap);
+    originMarker.on("drag", e => { const p = e.target.getLatLng(); lat.value = p.lat.toFixed(7); lon.value = p.lng.toFixed(7); originArea.setLatLng(p); });
+    originMap.on("click", e => setPoint(e.latlng.lat, e.latlng.lng, null));
+  }
+  originArea.setRadius((space.grid.radius * Math.sqrt(3) + 1) * S);
+  setTimeout(() => { originMap.invalidateSize(); setPoint(o.lat, o.lon, o.alt ?? 0, cfg.zoom ?? 17); }, 50); // taille connue une fois le dialogue ouvert
+  status.textContent = `Origine actuelle : ${fmtGeo(o)}`;
+  $("#origin-results").replaceChildren(); $("#origin-q").value = "";
+  [lat, lon].forEach(i => i.onchange = () => { if (lat.checkValidity() && lon.checkValidity() && lat.value && lon.value) setPoint(lat.value, lon.value, null); });
+  // recherche de lieux : service de géocodage configuré, résultats cliquables
+  const search = async () => {
+    const q = $("#origin-q").value.trim();
+    if (q.length < 2) return;
+    status.textContent = "Recherche…";
+    try {
+      const url = new URL(cfg.geocoder ?? "https://nominatim.openstreetmap.org/search");
+      Object.entries({ q, format: "jsonv2", limit: cfg.searchLimit ?? 6, "accept-language": "fr" }).forEach(([k, v]) => url.searchParams.set(k, v));
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rs = await res.json();
+      status.textContent = rs.length ? `${rs.length} lieu(x) trouvé(s) : en choisir un` : "Aucun lieu trouvé";
+      $("#origin-results").replaceChildren(...rs.map(r => el("li", { textContent: r.display_name, title: `${(+r.lat).toFixed(5)}, ${(+r.lon).toFixed(5)}`,
+        onclick: () => { setPoint(r.lat, r.lon, null, cfg.zoom ?? 17); $("#origin-results").replaceChildren(); status.textContent = `Lieu choisi : ${r.display_name}`; } })));
+    } catch (e) { status.textContent = "Recherche impossible : " + e.message; }
+  };
+  $("#origin-search").onclick = search;
+  $("#origin-q").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); search(); } };
+  // géolocalisation de l'appareil (autorisation demandée par le navigateur)
+  $("#origin-locate").onclick = () => {
+    if (!navigator.geolocation) return status.textContent = "Géolocalisation non disponible dans ce navigateur";
+    status.textContent = "Localisation…";
+    navigator.geolocation.getCurrentPosition(p => { setPoint(p.coords.latitude, p.coords.longitude, p.coords.altitude, cfg.zoom ?? 17); status.textContent = `Position de l'appareil (précision ${Math.round(p.coords.accuracy)} m)`; },
+      e => { status.textContent = "Localisation impossible : " + e.message; }, { enableHighAccuracy: true, timeout: 15000 });
+  };
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== "confirm") return;
+    try {
+      const body = { eco: state.eco, lat: +lat.value, lon: +lon.value, alt: alt.value === "" ? null : +alt.value };
+      await withBusy("Origine géographique", async () => setSpace(await api("/api/ecospace/origin", { method: "POST", body })));
+      legend(); toast(`Origine enregistrée : ${fmtGeo(space.grid.origin)}`);
+    } catch (e) { toast("Erreur : " + e.message); }
+  };
+}
 
 const SHAPE_TEXT = {
+  pulsation: "enveloppe qui bat autour des nanotubes de ses pouvoirs (verte : augmentation, rouge : diminution) ; flux = arcs fléchés vers les autres pulsations ; ajout depuis un pouvoir",
   actant: "fullerène C60 + sphère (pôle nord au centroïde), sous-grille pour ses personnes et agents",
   physique: "boîte de la date de modification (bas) à la date de création (haut), enfants imbriqués selon leur importance",
   concept: "bulle horizontale sous la grille, dimensionnée par son titre ou ses enfants (skos:narrower), position calculée",
   personne: "petit fullerène + sphère sur la sous-grille de l'hexagone de son actant (ajout depuis l'actant)",
   agent: "petit fullerène + sphère sur la sous-grille de l'hexagone de son actant (ajout depuis l'actant)",
+  pouvoir: "nanotube de carbone entre ses maillons, couleur par type (Discerner bleu, Raisonner violet, Résonner or, Agir rouge) ; crible = anneau ; ajout depuis le premier maillon",
 };
 function legend() {
   $("#legend").replaceChildren(...space.shapes.map(s => el("span", {}, el("i", { className: "sw", style: `background:${s.color}` }), `${s.label} : ${SHAPE_TEXT[s.key] ?? s.key}`)),
@@ -839,6 +1259,7 @@ async function loadSpaceNow() {
   if (!ecoData) loadEcos().then(() => renderSteps());
   if (!data.exists) {
     space = null; clear(gridGroup); clear(itemsGroup); clear(timeGroup);
+    entries = new Map(); $("#el-list").replaceChildren();
     $("#empty-space").classList.remove("hidden");
     $("#empty-text").textContent = `Cet écosystème n'a pas encore d'espace. Grille proposée : ${3 * data.grid.radius * (data.grid.radius + 1) + 1} hexagones de ${data.grid.hexSize} m, origine ${fmtGeo(data.grid.origin)}.`;
     $("#space-info").textContent = "";
@@ -853,7 +1274,7 @@ async function setSpace(data, recenter = false) {
   closeMenu();
   $("#empty-space").classList.add("hidden");
   updateTimeBounds(); initTimeControls();
-  buildGrid(); buildItems(); legend();
+  buildGrid(); buildItems(); legend(); buildList();
   const missing = space.placements.filter(p => p.missing).length;
   // copie des positions dans Omeka S (média de l'écosystème) : dernier état connu du serveur
   const c = space.omekaCopy, copy = !c ? "" : c.pending ? " · copie Omeka S en attente" : c.ok ? ` · positions copiées dans Omeka S${c.media ? ` (média ${c.media})` : ""}` : " · copie Omeka S impossible";
@@ -869,22 +1290,33 @@ $("#space-create").onclick = async () => {
 // survol et clic (un glisser fait tourner la vue sans ouvrir de menu) ; parmi les boîtes traversées, la plus profonde
 // (un parent se sélectionne par sa marge, autour de ses enfants)
 const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
-const family = t => t.owner ? "actant" : t.shape;
+const family = t => t.owner || t.inActant ? "actant" : t.shape;
 function pick(e) {
   const r = renderer.domElement.getBoundingClientRect();
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  let best = null;
-  for (const hit of raycaster.intersectObjects([...itemsGroup.children, ...gridGroup.children], true)) {
-    let o = hit.object;
+  let best = null, pulseHit = null;
+  const hits = raycaster.intersectObjects([...itemsGroup.children, ...gridGroup.children], true);
+  for (const hit of hits) {
+    let o = hit.object, shown = true;
+    for (let x = o; x; x = x.parent) if (!x.visible) { shown = false; break; }
+    if (!shown) continue; // élément caché depuis la liste
     while (o && !o.userData.hex) o = o.parent;
     if (!o) continue;
     // impacts du plus proche au plus lointain : un élément plus profond ne l'emporte que dans la même famille (concepts
     // emboîtés, boîtes imbriquées, actant et ses personnes et agents) ; sinon le plus proche de la caméra est retenu
-    const t = o.userData.target ?? null;
-    if (t && (!best?.target || (family(t) === family(best.target) && t.depth > best.target.depth))) best = { hex: o.userData.hex, target: t };
+    const t = o.userData.target ?? null, cell = hit.object.userData.cells?.[hit.instanceId] ?? null; // hexagone d'un nanotube
+    // enveloppe de pulsation : elle entoure ses nanotubes, qui restent sélectionnables à travers elle
+    if (t?.shape === "pulsation") {
+      // sortie du rayon de l'enveloppe : un élément au-delà (derrière elle, pas dedans) ne l'emporte pas
+      if (!pulseHit) pulseHit = { hex: o.userData.hex, target: t, exit: hits.findLast(h => h.object === hit.object)?.distance ?? hit.distance };
+      continue;
+    }
+    if (pulseHit && t && !best?.target && hit.distance > pulseHit.exit) break;
+    if (t && (!best?.target || (family(t) === family(best.target) && t.depth > best.target.depth))) best = { hex: o.userData.hex, target: t, cell };
     else if (!best) best = { hex: o.userData.hex, target: null };
   }
+  if (pulseHit && !best?.target) return pulseHit;
   if (best && !best.target) { const p = placedAt(best.hex)[0]; if (p) best.target = targets.get(p.item) ?? null; }
   return best;
 }
@@ -895,10 +1327,13 @@ function hud(hit) {
   if (t?.node) {
     const n = t.node, c = parseDate(n.created), m = parseDate(n.modified);
     info = ` · ${n.title} · créé ${c != null ? fmtDate(c) : "?"}${n.createdFromRecord ? " (fiche)" : ""} · modifié ${m != null ? fmtDate(m) : "?"} · importance ${n.importance}${n.children.length ? ` · ${n.children.length} enfant(s)` : ""}`;
-  } else if (t?.owner) info = ` · ${shapeByKey(t.shape)?.label ?? ""} ${t.title} · actant « ${t.owner.title} » · sous-hexagone ${fmtHex(t.sub)}`;
+  } else if (t?.shape === "pouvoir") info = ` · ${t.power.typeLabel} · intensité ${t.power.intensity ?? "—"} · ${t.title}${hit.cell ? ` · hexagone ${hit.cell.j}, ${hit.cell.k} (cliquer pour y connecter un élément)` : ""}`;
+  else if (t?.shape === "crible") info = ` · crible ${t.title}`;
+  else if (t?.shape === "pulsation") info = ` · pulsation ${t.title} · ${t.pulsation.powers.length} pouvoir(s) · intensité moyenne ${t.intensity == null ? "—" : Math.round(t.intensity)} · ${t.pulsation.flux.length} flux`;
+  else if (t?.owner) info = ` · ${shapeByKey(t.shape)?.label ?? ""} ${t.title} · actant « ${t.owner.title} » · sous-hexagone ${fmtHex(t.sub)}`;
   else if (t?.shape === "concept") info = ` · ${t.title} · niveau ${t.level ?? 0}${t.narrower?.length ? ` · ${t.narrower.length} enfant(s)` : ""} · centre à ${(-t.y).toFixed(1)} m sous la grille`;
   else if (t) info = ` · ${t.title}`;
-  $("#hud").textContent = `cube ${fmtHex(h)} · ${fmtGeo(h.geo)}${info}`;
+  $("#hud").textContent = `pavé ${fmtHex(h)} · ${fmtGeo(h.geo)}${info}`;
 }
 let hoveredTarget = null;
 renderer.domElement.addEventListener("pointermove", e => {
@@ -906,7 +1341,7 @@ renderer.domElement.addEventListener("pointermove", e => {
   const hit = pick(e), h = hit?.hex ?? null;
   if ((h && keyOf(h)) !== (hovered && keyOf(hovered)) || hit?.target !== hoveredTarget) {
     hovered = h; hoveredTarget = hit?.target ?? null; paintTiles(); hud(hit); renderer.domElement.style.cursor = h ? "pointer" : "";
-  }
+  } else if (hit?.cell && !menuHex) hud(hit); // hexagone survolé sur un même nanotube
 });
 // point du rayon de la souris sur un plan
 function rayPoint(e, plane) {
@@ -927,7 +1362,7 @@ renderer.domElement.addEventListener("pointerup", e => {
   // menu ouvert après le délai d'un double-clic (qui l'annule) : le second clic ne doit pas actionner un secteur
   const hit = pick(e);
   clearTimeout(clickTimer);
-  clickTimer = setTimeout(() => hit ? openMenu(hit.hex, hit.target) : closeMenu(), 260);
+  clickTimer = setTimeout(() => hit ? openMenu(hit.hex, hit.cell && hit.target ? { ...hit.target, cell: hit.cell } : hit.target) : closeMenu(), 260);
 });
 let clickTimer = null;
 // Échap : ferme le menu
@@ -955,6 +1390,12 @@ function screenOf(p) {
   return [(v.x + 1) / 2 * width, (1 - v.y) / 2 * height, v.z < 1];
 }
 renderer.setAnimationLoop(() => {
+  if (flight) {
+    const k = Math.min(1, (performance.now() - flight.start) / flight.ms), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    camera.position.lerpVectors(flight.p0, flight.pos, e); controls.target.lerpVectors(flight.t0, flight.target, e);
+    if (k >= 1) flight = null;
+  }
+  animatePulses();
   controls.update();
   if (menuAnchor) { const [x, y, visible] = screenOf(menuAnchor); menuLayer.attr("transform", `translate(${x},${y})`).style("display", visible ? null : "none"); }
   renderer.render(scene, camera); labelRenderer.render(scene, camera);
@@ -975,7 +1416,19 @@ const ICONS = {
   modifier: ["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z", "m15 5 4 4"],
 };
 let menuOuter = 0;
-function closeMenu() { menuLayer.selectAll("*").remove(); menuOuter = 0; menuHex = null; menuAnchor = null; paintTiles(); hud(hovered ? { hex: hovered, target: hoveredTarget } : null); }
+// hexagone de nanotube visé par le menu : contour mis en évidence
+let cellMarker = null;
+function markCell(t) {
+  const sh = shapeByKey("pouvoir"), S = space.grid.hexSize, r = sh.tubeRadius * S, n = sh.lattice ?? 8, f = tubeFrame(t.seg.A, t.seg.B);
+  const c = cellLocal(f.len, r, n, t.cell.j, t.cell.k), b = latticeB(r, n);
+  const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 2 + i * Math.PI / 3; return new THREE.Vector3(b * Math.cos(a), b * Math.sin(a), 0); })),
+    new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
+  const Z = new THREE.Vector3(Math.cos(c.a), 0, Math.sin(c.a)), X = new THREE.Vector3(-Math.sin(c.a), 0, Math.cos(c.a));
+  ring.matrixAutoUpdate = false;
+  ring.matrix.makeBasis(X, new THREE.Vector3(0, 1, 0), Z).setPosition(c.p.x * 1.05, c.y, c.p.z * 1.05).premultiply(new THREE.Matrix4().compose(f.mid, f.q, new THREE.Vector3(1, 1, 1)));
+  ring.renderOrder = 20; cellMarker = ring; scene.add(ring);
+}
+function closeMenu() { if (cellMarker) { scene.remove(cellMarker); cellMarker = null; } menuLayer.selectAll("*").remove(); menuOuter = 0; menuHex = null; menuAnchor = null; paintTiles(); hud(hovered ? { hex: hovered, target: hoveredTarget } : null); }
 function caption(text) {
   let c = menuLayer.select("text.caption");
   if (c.empty()) c = menuLayer.append("text").attr("class", "caption").attr("text-anchor", "middle");
@@ -1001,8 +1454,9 @@ function ring(items, inner, outer, cls, span = 2 * Math.PI) {
 function openMenu(h, t) {
   closeMenu();
   menuHex = h; paintTiles();
-  menuAnchor = t?.anchor ?? new THREE.Vector3(h.x, 0, h.z);
-  const r = 22, isChild = !!t?.parent, isMember = !!t?.owner;
+  menuAnchor = t?.cell ? cellWorld(t.seg.A, t.seg.B, shapeByKey("pouvoir").tubeRadius * space.grid.hexSize, shapeByKey("pouvoir").lattice ?? 8, t.cell.j, t.cell.k) : t?.anchor ?? new THREE.Vector3(h.x, 0, h.z);
+  if (t?.cell) markCell(t);
+  const r = 22, isChild = !!t?.parent, isMember = !!t?.owner, isLink = t?.shape === "pouvoir" || t?.shape === "crible" || t?.shape === "pulsation";
   hud({ hex: h, target: t });
   // lier : sur un hexagone libre, les éléments qui peuvent y être placés ; sur un élément, ceux que prévoit son resource
   // template (propriétés et types acceptés) ; inactif si l'on sait déjà qu'il n'y en a aucun
@@ -1015,7 +1469,7 @@ function openMenu(h, t) {
         : sectors ? (sectors.length ? `Lier, selon le modèle de « ${t.title} » : ${sectors.map(x => x.label).join(", ")}` : `Lier : le modèle de « ${t.title} » ne prévoit aucun lien représentable ici`)
         : `Lier : éléments prévus par le modèle de « ${t.title} »`,
       action: () => t ? elementLinkMenu(t, r) : linkMenu(h, r) },
-    { label: "dupliquer", icon: "dupliquer", color: "#2e7d5b", disabled: !t || isMember, title: !t ? "Dupliquer : hexagone libre" : isMember ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : isChild ? "Dupliquer n fois (frères dans le même parent, titres incrémentés)" : "Dupliquer n fois (titres incrémentés, hexagones libres les plus proches)", action: () => duplicate(t) },
+    { label: "dupliquer", icon: "dupliquer", color: "#2e7d5b", disabled: !t || isMember || isLink, title: !t ? "Dupliquer : hexagone libre" : isLink ? (t.shape === "pulsation" ? "Dupliquer : créer plutôt une pulsation depuis un pouvoir" : "Dupliquer : pour un pouvoir, utiliser lier → Branche") : isMember ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : isChild ? "Dupliquer n fois (frères dans le même parent, titres incrémentés)" : "Dupliquer n fois (titres incrémentés, hexagones libres les plus proches)", action: () => duplicate(t) },
     { label: "détails", icon: "détails", color: "#8a4fb8", title: t ? "Détails" : "Détails de l'hexagone", action: () => t ? details(t) : hexDetails(h) },
     { label: "supprimer", icon: "supprimer", color: "#c0392b", disabled: !t, title: t ? "Supprimer (conséquences affichées avant)" : "Supprimer : hexagone libre", action: () => remove(t) },
     { label: "modifier", icon: "modifier", color: "#b8860b", disabled: !t?.templateId, title: t ? "Modifier" : "Modifier : hexagone libre", action: () => edit(t) },
@@ -1024,7 +1478,7 @@ function openMenu(h, t) {
 const arcSpan = n => Math.min(2 * Math.PI, (n + 1) * Math.PI / 5);
 // éléments plaçables sur un hexagone : type de l'écosystème doté d'une forme, ni libre (concept) ni ancré (personne,
 // agent : depuis un actant), dont la couche est libre sur l'hexagone ; le concept (sous la grille) s'ajoute toujours
-const placeableShapes = h => (space?.shapes ?? []).filter(sh => !sh.anchor && (sh.free || !layerTaken(h, sh)));
+const placeableShapes = h => (space?.shapes ?? []).filter(sh => !sh.anchor && !sh.power && !sh.pulse && (sh.free || !layerTaken(h, sh)));
 // hexagone libre : seuls les types d'éléments de l'écosystème qui peuvent y être placés
 async function linkMenu(h, r) {
   let opts;
@@ -1048,9 +1502,178 @@ const allows = (opts, term, templateId) => opts.some(o => o.term === term && o.t
 // secteurs de « lier » sur un élément : seulement les liens que son modèle prévoit et qu'EcoSpace sait représenter
 function elementSectors(t, opts) {
   if (t.shape === "actant") return memberSectors(t, opts);
-  if (t.shape === "physique") return physSectors(t, opts);
-  if (t.shape === "concept") return conceptSectors(t, opts);
+  if (t.shape === "physique") return [...physSectors(t, opts), ...powerSectors(t)];
+  if (t.shape === "concept") return [...conceptSectors(t, opts), ...powerSectors(t)];
+  if (t.shape === "pulsation") return pulseSectors(t);
+  if (t.shape === "pouvoir") return [...(shapeByKey("pulsation") ? [{ label: "Pulsation", color: shapeByKey("pulsation").color, title: `Pulsation : créer une pulsation existentielle pour « ${t.title} » ou l'ajouter à une pulsation existante`, action: () => askPulsation(t.power) }] : []), ...(t.cell ? [{ label: "Connecter ici", color: t.power.color, title: `Connecter un élément à l'hexagone ${t.cell.j}, ${t.cell.k} de ce nanotube (relation multiple de « ${t.title} »)`,
+    action: () => askPowerLink(t) }] : []), { label: "Branche", color: t.power.color, title: `Branche : nouveau pouvoir « ${t.power.typeLabel} » qui reprend la chaîne de « ${t.title} » (à modifier à partir du maillon où il diverge)`,
+    action: () => askPower(t.power.type, null, t.power) }];
   return [];
+}
+// pouvoirs dont l'élément est le premier maillon (physique → discerner ; concept → raisonner, résonner, agir)
+function powerSectors(t) {
+  const sh = shapeByKey("pouvoir");
+  if (!sh) return [];
+  return (space.powerTypes ?? []).filter(pt => pt.sequence[0]?.key === t.shape).map(pt => ({ label: pt.label, color: sh.colors?.[pt.id] ?? sh.color,
+    title: `${pt.longLabel} depuis « ${t.title} » : ${pt.sequence.map(x => x.name).join(" → ")}`, action: () => askPower(pt.id, t) }));
+}
+// listes de choix des maillons : physiques et actants placés, cribles et concepts du vocabulaire du template des pouvoirs
+let powerVocab = null;
+async function powerChoices(key) {
+  if (key === "actant") return space.placements.filter(p => p.shape === "actant").map(p => ({ id: p.item, title: p.title }));
+  if (key === "physique") { const out = new Map(); itemsGroup.traverse(o => { const t = o.userData?.target; if (t?.shape === "physique" && !out.has(t.item)) out.set(t.item, { id: t.item, title: t.title }); }); return [...out.values()]; }
+  powerVocab ??= api(`/api/ontoethique/form?template=${shapeByKey("pouvoir").templateId}`).catch(e => { powerVocab = null; throw e; });
+  const form = await powerVocab, term = space.powerTypes.flatMap(t => t.sequence).find(x => x.key === key)?.term;
+  const opts = form.fields.find(f => f.term === term)?.dataTypes.flatMap(d => d.options ?? []) ?? [];
+  const placed = key === "concept" ? space.placements.filter(p => p.shape === "concept").map(p => ({ id: p.item, title: p.title })) : [];
+  return [...new Map([...placed, ...opts.map(o => ({ id: o.id, title: o.title }))].map(x => [x.id, x])).values()];
+}
+// dialogue d'un pouvoir : first = élément de départ (premier maillon, fixé) ; from = pouvoir dont on fait une branche
+// champ d'un maillon : liste des éléments placés (physique, actant) ou saisie avec suggestions (crible, concept)
+function stepControl(st, list, pre, dlId) {
+  if (st.key === "physique" || st.key === "actant") {
+    const ctl = el("select", { required: true }, el("option", { value: "", textContent: "— choisir —" }), list.map(o => el("option", { value: o.id, textContent: `${o.title} (item ${o.id})` })));
+    if (pre?.item) ctl.value = String(pre.item);
+    return { el: el("div", { style: "margin:3px 0" }, ctl), read: () => { if (!ctl.value) throw new Error(`${st.name} : choisir un élément`); return { existing: +ctl.value }; } };
+  }
+  // suggestions sans tenir compte des accents ni de la casse (la liste native du navigateur y est sensible)
+  const ctl = el("input", { required: true, placeholder: "choisir dans la liste ou saisir un titre", value: pre?.title ?? "", autocomplete: "off" });
+  const sug = el("ul", { className: "ac-list", role: "listbox" });
+  let active = -1, shown = [];
+  const render = () => sug.replaceChildren(...shown.map((o, i) => el("li", { role: "option", className: i === active ? "active" : "", textContent: o.title,
+    onmousedown: e => { e.preventDefault(); ctl.value = o.title; shown = []; render(); } })));
+  ctl.oninput = () => { const q = fold(ctl.value.trim()); shown = q ? list.filter(o => fold(o.title).includes(q)).slice(0, 12) : []; active = -1; render(); };
+  ctl.onkeydown = e => {
+    if (!shown.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : shown.length - 1)) % shown.length; render(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); ctl.value = shown[active].title; shown = []; render(); }
+  };
+  ctl.onblur = () => setTimeout(() => { shown = []; render(); }, 150);
+  return { el: el("div", { style: "margin:3px 0" }, ctl, sug), read: () => {
+    const v = ctl.value.trim(), o = list.find(x => fold(x.title) === fold(v));
+    if (!v) throw new Error(`${st.name} : choisir ou saisir`);
+    return o ? { existing: o.id } : { title: v };
+  } };
+}
+// texte sans accents ni casse, pour comparer une saisie à des titres
+const fold = x => String(x ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+// connexion d'un élément à l'hexagone cliqué d'un nanotube : maillon (rôle) au choix, élément existant ou nouveau
+async function askPowerLink(t) {
+  closeMenu();
+  const pw = t.power, pt = space.powerTypes.find(x => x.id === pw.type), dlg = $("#dlg-power");
+  $("#power-title").textContent = `Connecter à « ${pw.title} »`;
+  $("#power-help").textContent = `L'élément se branche sur l'hexagone ${t.cell.j}, ${t.cell.k} du nanotube : un nanotube enfant part de cet hexagone (un crible y pose son anneau). Il est ajouté au pouvoir comme relation multiple du maillon choisi.`;
+  const role = el("select", {}, pt.sequence.map(st => el("option", { value: st.name, textContent: st.name.replace(/^./, c => c.toUpperCase()) })));
+  // maillon proposé : celui de l'extrémité du segment cliqué
+  const endKey = space.placements.find(p => String(p.item) === String(t.seg.key.split("|").pop()))?.shape;
+  role.value = pt.sequence.find(st => st.key === endKey)?.name ?? pt.sequence.at(-1).name;
+  const slot = el("div");
+  let ctl = null;
+  const refresh = async () => {
+    const st = pt.sequence.find(x => x.name === role.value);
+    try { ctl = stepControl(st, await powerChoices(st.key), null, "power-link-dl"); slot.replaceChildren(ctl.el); } catch (e) { toast(e.message); }
+  };
+  role.onchange = refresh;
+  $("#power-steps").replaceChildren(el("div", { style: "margin:6px 0" }, el("label", { textContent: "Maillon" }), role), el("div", { style: "margin:6px 0" }, el("label", { textContent: "Élément" }), slot));
+  $("#power-extra").classList.add("hidden");
+  await refresh();
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== "confirm" || !ctl) return;
+    let body;
+    try { body = { eco: state.eco, power: pw.item, step: role.value, ...ctl.read(), attach: { seg: t.seg.key, j: t.cell.j, k: t.cell.k } }; } catch (e) { return toast(e.message); }
+    try {
+      const r = await withBusy(`Connecter à « ${pw.title} »`, async () => { const r = await api("/api/ecospace/power/link", { method: "POST", body }); await loadSpace(); return r; });
+      toast(r.added ? `« ${r.title} » connecté à l'hexagone ${t.cell.j}, ${t.cell.k} (${role.value})` : `« ${r.title} » était déjà relié : hexagone mis à jour`);
+    } catch (e) { toast("Erreur : " + e.message); }
+  };
+  dlg.returnValue = ""; dlg.showModal();
+}
+// pulsation : lier → Pouvoir (ajouter un pouvoir de l'espace) et Flux (vers une autre pulsation, avec sa temporalité)
+function pulseSectors(t) {
+  const pl = t.pulsation, col = shapeByKey("pulsation")?.color;
+  const others = (space.pulsations ?? []).filter(x => x.item !== pl.item), free = (space.powers ?? []).filter(pw => !pl.powers.some(x => x.item === pw.item));
+  return [
+    { label: "Pouvoir", color: col, disabled: !free.length, title: free.length ? `Pouvoir : ajouter à « ${pl.title} » un des ${free.length} pouvoir(s) de l'espace` : "Pouvoir : tous les pouvoirs de l'espace sont déjà dans cette pulsation", action: () => askPulsePower(t, free) },
+    { label: "Flux", color: col, disabled: !others.length, title: others.length ? `Flux : relier « ${pl.title} » à une autre pulsation (ordre relatif, ordre successif)` : "Flux : aucune autre pulsation dans l'espace", action: () => askFlux(t, others) },
+  ];
+}
+// boîte du dialogue des pouvoirs reprise pour les pulsations : titre, aide, champs ; envoi à la validation
+function pulseDialog(title, help, fields, submit) {
+  closeMenu();
+  const dlg = $("#dlg-power");
+  $("#power-title").textContent = title; $("#power-help").textContent = help;
+  $("#power-steps").replaceChildren(...fields.map(([label, ctl]) => el("div", { style: "margin:6px 0" }, el("label", { textContent: label }), ctl)));
+  $("#power-extra").classList.add("hidden");
+  dlg.onclose = async () => { if (dlg.returnValue === "confirm") await submit(); };
+  dlg.returnValue = ""; dlg.showModal();
+}
+function askPulsation(pw) {
+  const list = (space.pulsations ?? []).map(x => ({ id: x.item, title: x.title })), ctl = stepControl({ key: "pulsation", name: "Pulsation" }, list, null, "pulse-dl");
+  pulseDialog(`Pulsation de « ${pw.title} »`, `Choisir une pulsation existante de l'écosystème (le pouvoir y est ajouté) ou saisir le titre d'une nouvelle pulsation. Elle apparaît comme une enveloppe qui bat autour des nanotubes de ses pouvoirs.`,
+    [["Pulsation", ctl.el]], async () => {
+      let body;
+      try { body = { eco: state.eco, power: pw.item, ...ctl.read() }; } catch (e) { return toast(e.message); }
+      try {
+        const r = await withBusy(`Pulsation de « ${pw.title} »`, async () => { const r = await api("/api/ecospace/pulsation", { method: "POST", body }); await loadSpace(); return r; });
+        toast(`${r.created ? "Pulsation créée" : "Pulsation reprise"} : « ${r.title} »${r.added ? "" : " (le pouvoir y était déjà)"}`);
+      } catch (e) { toast("Erreur : " + e.message); }
+    });
+}
+function askPulsePower(t, free) {
+  const sel = el("select", { required: true }, el("option", { value: "", textContent: "— choisir —" }), free.map(pw => el("option", { value: pw.item, textContent: `${pw.title} (${pw.typeLabel}, intensité ${pw.intensity ?? "—"})` })));
+  pulseDialog(`Pouvoir de « ${t.title} »`, "Le pouvoir est ajouté à la pulsation (dans l'ordre d'ajout) ; l'enveloppe s'étend à son nanotube.", [["Pouvoir", sel]], async () => {
+    if (!sel.value) return toast("Choisir un pouvoir");
+    try {
+      await withBusy(`Pouvoir de « ${t.title} »`, async () => { await api("/api/ecospace/pulsation", { method: "POST", body: { eco: state.eco, power: +sel.value, existing: t.item } }); await loadSpace(); });
+      toast("Pouvoir ajouté à la pulsation");
+    } catch (e) { toast("Erreur : " + e.message); }
+  });
+}
+function askFlux(t, others) {
+  const pl = t.pulsation;
+  const to = el("select", { required: true }, el("option", { value: "", textContent: "— choisir —" }), others.map(x => el("option", { value: x.item, textContent: `${x.title}${pl.flux.some(f => f.to === x.item) ? " (flux existant : remplacé)" : ""}` })));
+  const rel = el("select", {}, el("option", { value: "", textContent: "— non précisé —" }), (space.pulseRelatives ?? []).map(r => el("option", { value: r.id, textContent: r.title })));
+  const order = el("input", { type: "number", step: 1, value: pl.flux.length + 1 });
+  pulseDialog(`Flux depuis « ${t.title} »`, "Ordre relatif : place de la pulsation cible par rapport à celle-ci (Après : la flèche va vers la cible ; Avant : elle en vient ; Pendant : trait double). Ordre successif : rang du flux.",
+    [["Pulsation cible", to], ["Ordre relatif", rel], ["Ordre successif", order]], async () => {
+      if (!to.value) return toast("Choisir la pulsation cible");
+      try {
+        await withBusy(`Flux depuis « ${t.title} »`, async () => { await api("/api/ecospace/pulsation/flux", { method: "POST", body: { eco: state.eco, pulsation: pl.item, to: +to.value, relative: rel.value || null, order: order.value === "" ? null : +order.value } }); await loadSpace(); });
+        toast("Flux enregistré");
+      } catch (e) { toast("Erreur : " + e.message); }
+    });
+}
+async function askPower(typeId, first = null, from = null) {
+  closeMenu();
+  const pt = space.powerTypes.find(x => x.id === typeId), sh = shapeByKey("pouvoir"), dlg = $("#dlg-power");
+  let lists;
+  try { lists = await Promise.all(pt.sequence.map(st => powerChoices(st.key))); } catch (e) { return toast(e.message); }
+  $("#power-title").textContent = from ? `Branche de « ${from.title} »` : `${pt.longLabel} depuis « ${first.title} »`;
+  $("#power-help").textContent = `Maillons dans l'ordre : ${pt.sequence.map(x => x.name).join(" → ")}. Physiques et actants : parmi les éléments placés. Cribles et concepts : à choisir ou à saisir (créés s'ils n'existent pas).${sh.interior?.includes(pt.id) ? " Les concepts iront dans la sphère de l'actant, qui grandit pour les contenir." : ""}${from ? " Une branche est un nouveau pouvoir : modifier les maillons à partir de celui où elle diverge." : ""}`;
+  // un maillon peut relier plusieurs éléments : « + » ajoute un champ pour ce maillon (relation multiple)
+  const rows = pt.sequence.map((st, i) => {
+    const list = lists[i], pres = from ? from.steps[i].members : i === 0 ? [{ item: first.item, title: first.title }] : [null];
+    const box = el("div"), ctls = [];
+    const add = (pre, locked) => { const c = stepControl(st, list, pre, `power-dl-${i}-${ctls.length}`); if (locked) c.el.querySelector("select,input").disabled = true; ctls.push(c); box.append(c.el); };
+    pres.forEach((pre, k) => add(pre, i === 0 && first && k === 0));
+    const more = el("button", { type: "button", className: "btn small", textContent: "+", title: `Ajouter un autre élément pour « ${st.name} »`, onclick: () => add(null, false) });
+    return { el: el("div", { style: "margin:6px 0" }, el("label", { textContent: st.name.replace(/^./, c => c.toUpperCase()) }), box, more),
+      read: () => { const v = ctls.map(c => c.read()); return v.length > 1 ? v : v[0]; } };
+  });
+  $("#power-steps").replaceChildren(...rows.map(x => x.el));
+  $("#power-extra").classList.remove("hidden");
+  $("#power-intensity").value = from?.intensity ?? 0; $("#power-name").value = "";
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== "confirm") return;
+    let body;
+    try { body = { eco: state.eco, type: pt.id, intensity: +$("#power-intensity").value, title: $("#power-name").value.trim(), steps: rows.map(x => x.read()) }; }
+    catch (e) { return toast(e.message); }
+    try {
+      const r = await withBusy(`${pt.longLabel}`, async () => { const r = await api("/api/ecospace/power", { method: "POST", body }); await loadSpace(); return r; });
+      toast(`Pouvoir ${r.id} créé : ${r.title}`);
+    } catch (e) { toast("Erreur : " + e.message); }
+  };
+  dlg.returnValue = ""; dlg.showModal();
 }
 async function elementLinkMenu(t, r) {
   let opts;
@@ -1305,14 +1928,29 @@ $("#details-tab-sheet").onclick = () => detailsTab("sheet");
 $("#dlg-details").addEventListener("close", () => { $("#details-frame").src = "about:blank"; });
 // position d'un élément pour la fiche : [libellé, valeur]
 function positionRows(t) {
+  if (t.shape === "pulsation") {
+    const pl = t.pulsation, pw = id => space.powers?.find(x => x.item === id), pt = id => space.pulsations?.find(x => x.item === id)?.title ?? `item ${id}`;
+    const when = x => [x.relative?.title, x.order != null ? `ordre ${x.order}` : null].filter(Boolean).join(", ");
+    return [["Hexagone sous le centre", fmtHex(t.hex)], ["Centre de l'enveloppe", `${fmtGeo(t.hex.geo)} · y ${t.anchor.y.toFixed(2)} m`],
+      ["Intensité moyenne", t.intensity == null ? "—" : String(Math.round(t.intensity))],
+      ["Pouvoirs", pl.powers.length ? pl.powers.map(x => `${pw(x.item)?.title ?? `item ${x.item}`}${pw(x.item) ? ` (${pw(x.item).typeLabel}, ${pw(x.item).intensity ?? "—"})` : " (non dessiné)"}${when(x) ? ` [${when(x)}]` : ""}`).join(" · ") : "aucun"],
+      ["Flux", pl.flux.length ? pl.flux.map(f => `→ ${pt(f.to)}${when(f) ? ` [${when(f)}]` : ""}`).join(" · ") : "aucun"]];
+  }
   const rows = [["Hexagone (q, r, s)", fmtHex(t)]];
   if (t.shape === "actant") return [...rows, ["Centroïde du fullerène", fmtGeo(t.geo.centroid)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
-    ["Sous-grille", t.sub ? `${t.sub.slots.length} sous-hexagones de ${t.sub.size.toFixed(2)} m (${t.sub.rings} anneau(x)) · ${space.placements.filter(p => p.actant === t.item).length} occupé(s)` : "—"]];
+    ["Sous-grille", t.sub ? `${t.sub.slots.length} sous-hexagones de ${t.sub.size.toFixed(2)} m (${t.sub.rings} anneau(x)) · ${space.placements.filter(p => p.actant === t.item).length} occupé(s)` : "—"],
+    ["Intériorité", t.interior?.length ? `${t.interior.map(id => space.placements.find(p => p.item === id && p.shape === "concept")?.title ?? id).join(" · ")} · sphère de ${t.sphereRadius.toFixed(2)} m` : "—"]];
+  if (t.shape === "pouvoir") { const pw = t.power; return [["Type", pw.typeLabel], ["Intensité", pw.intensity ?? "—"],
+    ["Chaîne", pw.steps.map(x => `${x.name} : ${x.title ?? "—"}${x.item ? ` (${x.item})` : ""}`).join(" → ")],
+    ["Segment", t.powers.length > 1 ? `partagé par ${t.powers.length} pouvoirs (branches) : ${t.powers.map(x => x.title).join(" · ")}` : "propre à ce pouvoir"],
+    ...(pw.interior ? [["Intériorité", "concepts dans la sphère de l'actant"]] : [])]; }
+  if (t.shape === "crible") return [["Position", `anneau sur le nanotube · ${fmtGeo(t.hex.geo)}`], ["Pouvoirs", t.powers.map(x => x.title).join(" · ")]];
   if (t.owner) return [["Actant", `${t.owner.title} (item ${t.owner.item}, hexagone ${fmtHex(t.owner)})`], ["Lien", t.anchorTerm],
     ["Sous-hexagone (q, r, s)", `${fmtHex(t.sub)} · ${t.subSize.toFixed(2)} m`], ["Centre du fullerène", fmtGeo(t.geo.center)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
     ["Rayons", `fullerène ${t.radius.toFixed(2)} m · sphère ${(t.sphereRadius ?? t.radius).toFixed(2)} m`]];
   const names = ids => ids?.length ? ids.map(id => space.placements.find(p => p.item === id)?.title ?? `item ${id}`).join(" · ") : "aucun";
   if (t.shape === "concept") return [["Hexagone au-dessus (q, r, s)", fmtHex(t)],
+    ...(t.inActant ? [["Intériorité de", `${(t.hosts ?? [t.inActant]).map(a => space.placements.find(p => p.item === a && p.shape === "actant")?.title ?? a).join(" ∩ ")} (concept d'un pouvoir${t.hosts?.length > 1 ? " : intersection des sphères" : ""})`]] : []),
     ["Parent (contenant)", names(space.placements.filter(p => p.narrower?.includes(t.item)).map(p => p.item))], ["Enfants (skos:narrower)", names(t.narrower)], ["Liés (skos:related)", names(t.related)], ["Centre", `${fmtGeo(t.geo.center)} · x ${t.x.toFixed(2)} m, z ${t.z.toFixed(2)} m`],
     ["Bulle (axe est-ouest)", `rayon ${t.radius.toFixed(2)} m · longueur ${t.length.toFixed(2)} m (${t.narrower?.length ? `${t.narrower.length} enfant(s)` : `titre de ${t.chars ?? 0} caractères`}) · niveau ${t.level ?? 0} · sommet à ${(-t.y - t.radius).toFixed(2)} m sous la grille`]];
   const n = t.node, c = parseDate(n.created), m = parseDate(n.modified);
@@ -1385,9 +2023,11 @@ async function remove(t) {
   const users = [...imp.parents.filter(x => x.id !== state.eco && !ecoParents.some(e => e.id === x.id)), ...ecoParents.filter(e => e.id !== state.eco)];
   // owner : actant d'une personne ou d'un agent (détacher = retirer le lien de l'actant)
   const owner = t.owner ?? null, child = !!t.parent || !!owner, physShape = shapeByKey("physique"), up = owner ?? t.parent;
+  // pouvoir, crible : pas de placement à retirer (dessinés d'après Omeka S)
+  const floating = t.shape === "pouvoir" || t.shape === "crible" || t.shape === "pulsation";
   $("#del-title").textContent = `Supprimer « ${imp.item.title} »`;
   $("#del-body").replaceChildren(
-    el("p", { textContent: `${owner ? `${shapeByKey(t.shape)?.label ?? "Élément"} de l'actant « ${owner.title} » (${t.anchorTerm}).` : child ? `Physique enfant de « ${t.parent.title} ».` : `Placé sur l'hexagone ${fmtHex(t)}.`} ${users.length ? `Utilisé par ${users.length} autre(s) nœud(s) : pas de suppression dans Omeka S tant que ces liens existent.` : "Aucun autre nœud ne l'utilise : il peut être supprimé dans Omeka S."}` }),
+    el("p", { textContent: `${floating ? (t.shape === "pouvoir" ? `${t.power.typeLabel} : ${t.power.steps.map(x => x.title ?? "—").join(" → ")}.` : t.shape === "pulsation" ? `Pulsation de ${t.pulsation.powers.length} pouvoir(s), ${t.pulsation.flux.length} flux.` : `Crible traversé par ${t.powers.length} pouvoir(s).`) : owner ? `${shapeByKey(t.shape)?.label ?? "Élément"} de l'actant « ${owner.title} » (${t.anchorTerm}).` : child ? `Physique enfant de « ${t.parent.title} ».` : `Placé sur l'hexagone ${fmtHex(t)}.`} ${users.length ? `Utilisé par ${users.length} autre(s) nœud(s) : pas de suppression dans Omeka S tant que ces liens existent.` : "Aucun autre nœud ne l'utilise : il peut être supprimé dans Omeka S."}` }),
     el("h3", { style: "font-size:14px;margin:10px 0 2px", textContent: "Nœuds qui l'utilisent" }),
     el("ul", {},
       ecoParents.map(e => el("li", {}, el("span", { className: "badge", style: "background:var(--ink);color:var(--bg)", textContent: "écosystème" }), ` ${e.title} (item ${e.id})`,
@@ -1397,7 +2037,7 @@ async function remove(t) {
     el("h3", { style: "font-size:14px;margin:10px 0 2px", textContent: `Nœuds qu'il désigne (${imp.children.length})` }),
     imp.children.length ? el("ul", {}, imp.children.map(c => el("li", { textContent: `${c.title} (item ${c.id}) — ${c.term} : le lien disparaît, l'item est conservé` }))) : el("p", { className: "muted", textContent: "aucun" }),
     el("p", { className: "help", textContent: owner ? "« Détacher » retire le lien de l'actant : l'item reste dans Omeka S et dans l'écosystème, mais n'est plus dessiné." : child ? "« Détacher » retire le lien vers le parent : l'item reste dans Omeka S et dans l'écosystème, mais n'est plus dessiné." : "« Retirer de l'espace » libère l'hexagone (l'item reste élément de l'écosystème) ; « Retirer de l'écosystème » supprime aussi le rattachement ; l'item reste dans Omeka S dans les deux cas." }));
-  $("#del-space").classList.toggle("hidden", child);
+  $("#del-space").classList.toggle("hidden", child || floating);
   $("#del-network").classList.toggle("hidden", child || !ecoParents.some(e => e.id === state.eco));
   $("#del-detach").classList.toggle("hidden", !child);
   if (child) $("#del-detach").textContent = `Détacher de « ${up.title.length > 30 ? up.title.slice(0, 29) + "…" : up.title} »`;
@@ -1408,7 +2048,7 @@ async function remove(t) {
     try { await withBusy(`${what} : « ${t.title} »`, async () => {
       if (mode === "detach") await api("/api/econetwork/unlink", { method: "POST", body: owner ? { source: owner.item, target: t.item, term: t.anchorTerm } : { source: t.item, target: t.parent.item, term: physShape.parentTerm } });
       else if (mode !== "space") await api("/api/econetwork/delete", { method: "POST", body: { item: t.item, eco: state.eco, mode } });
-      if (child) await loadSpace();
+      if (child || floating) await loadSpace();
       else await setSpace(await api("/api/ecospace/unplace", { method: "POST", body: { eco: state.eco, item: t.item } }));
       });
       toast({ space: "Élément retiré de l'espace", network: "Élément retiré de l'écosystème", omeka: "Item supprimé dans Omeka S", detach: owner ? `Détaché(e) de l'actant « ${owner.title} »` : "Physique détaché de son parent" }[mode]);
@@ -1421,6 +2061,185 @@ async function remove(t) {
   $("#del-omeka").onclick = run("omeka");
   $("#dlg-delete").showModal();
 }
+
+// ==========================================
+// Liste des éléments par type (à droite de l'espace) : afficher ou cacher (un élément, ou tout un type ; mémorisé par
+// écosystème dans ce navigateur), zoomer dessus, et les actions du menu circulaire : détails, modifier, dupliquer,
+// supprimer. Cacher un élément cache aussi ce qu'il contient (physiques et concepts enfants, personnes et agents d'un
+// actant, concepts d'une intériorité quand toutes ses sphères sont cachées) et les nanotubes qui y aboutissent
+// ==========================================
+const LIST_TYPES = { crible: { label: "Crible", color: "#6b7c8f" } };
+const LIST_ICONS = {
+  zoom: ["M11 3a8 8 0 1 0 0 16a8 8 0 1 0 0-16z", "m21 21-4.3-4.3", "M11 8v6", "M8 11h6"],
+  ...ICONS,
+};
+let entries = new Map(), hiddenSet = new Set(), hiddenTypes = new Set(), openTypes = null, expanded = new Set(), curEntry = null, flight = null;
+const hideKey = () => `ecospace-hidden-${state.eco}`;
+function loadHidden() {
+  try { const v = JSON.parse(localStorage.getItem(hideKey()) ?? "{}"); hiddenSet = new Set(v.items ?? []); hiddenTypes = new Set(v.types ?? []); }
+  catch { hiddenSet = new Set(); hiddenTypes = new Set(); }
+}
+function saveHidden() { try { localStorage.setItem(hideKey(), JSON.stringify({ items: [...hiddenSet], types: [...hiddenTypes] })); } catch {} }
+const icon = name => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  for (const d of LIST_ICONS[name]) { const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", d); svg.append(path); } return svg; };
+
+// éléments dessinés, d'après les cibles de la scène (une entrée par élément, avec tous ses objets 3D)
+function collectEntries() {
+  entries = new Map();
+  const add = (key, type, t, obj, extra = {}) => {
+    const e = entries.get(key) ?? { key, type, t, objs: new Set(), up: null, hosts: [], level: 0, sub: "", ...extra };
+    if (obj) e.objs.add(obj);
+    entries.set(key, e);
+    return e;
+  };
+  const conceptParent = new Map();
+  for (const p of space.placements) if (p.shape === "concept") for (const c of p.narrower ?? []) conceptParent.set(c, p.item);
+  itemsGroup.traverse(o => {
+    const t = o.userData?.target;
+    if (!t) return;
+    if (t.shape === "pouvoir") {
+      // segment partagé par plusieurs pouvoirs : il appartient à chacun (zoom), visible tant que l'un d'eux l'est
+      for (const pw of t.powers ?? [t.power]) {
+        const e = add(`pw:${pw.item}`, "pouvoir", null, o, { power: pw, sub: pw.typeLabel ?? "" });
+        e.t ??= Object.assign({}, t, { item: pw.item, power: pw, title: pw.title ?? `Pouvoir ${pw.item}` });
+      }
+      return;
+    }
+    if (t.shape === "crible") { add(`cr:${t.item}`, "crible", t, o, { sub: `${t.powers?.length ?? 0} pouvoir(s)` }); return; }
+    if (t.owner) { add(t.key, t.shape, t, o, { up: String(t.owner.item), sub: `actant « ${t.owner.title} »` }); return; }
+    if (t.shape === "physique") {
+      const e = add(String(t.item), "physique", t, o, { up: t.parent ? String(t.parent.item) : null, level: t.depth ?? 0 });
+      if (t.label) e.objs.add(t.label);
+      return;
+    }
+    if (t.shape === "concept") {
+      const hosts = (t.hosts ?? (t.inActant ? [t.inActant] : [])).map(String), up = conceptParent.get(t.item);
+      add(String(t.item), "concept", t, t.group ?? o, { up: up != null ? String(up) : null, hosts, level: t.level ?? 0,
+        sub: hosts.length ? `intériorité de ${hosts.map(h => space.placements.find(p => String(p.item) === h && p.shape === "actant")?.title ?? h).join(" ∩ ")}` : "" });
+      return;
+    }
+    add(String(t.item), t.shape, t, t.group ?? o, t.shape === "pulsation" ? { sub: `${t.pulsation.powers.length} pouvoir(s)` } : {});
+  });
+}
+
+// visibilité effective : cachée elle-même, par son type, par son contenant, ou par toutes ses sphères d'intériorité
+function applyVisibility() {
+  const memo = new Map();
+  const off = (key, path = new Set()) => {
+    const e = entries.get(key);
+    if (!e) return false;
+    if (memo.has(key)) return memo.get(key);
+    if (path.has(key)) return false;
+    path.add(key);
+    const r = hiddenSet.has(key) || hiddenTypes.has(e.type) || (e.up != null && off(e.up, path)) || (e.hosts.length > 0 && e.hosts.every(h => off(h, path)));
+    path.delete(key); memo.set(key, r);
+    return r;
+  };
+  for (const e of entries.values()) if (e.type !== "pouvoir" && e.type !== "crible") for (const o of e.objs) o.visible = !off(e.key);
+  const pwOn = pw => !off(`pw:${pw.item}`);
+  itemsGroup.traverse(o => {
+    const t = o.userData?.target;
+    if (t?.shape === "pouvoir") {
+      // extrémité (élément ou point de départ) cachée : le nanotube l'est aussi
+      const [, from, to] = t.seg.key.split("|");
+      o.visible = (t.powers ?? [t.power]).some(pwOn) && !off(String(to)) && (from.includes("@") || !off(String(from)));
+    } else if (t?.shape === "crible") o.visible = !off(`cr:${t.item}`) && (t.powers ?? []).some(pwOn);
+    else if (o.userData?.joint) o.visible = [...o.userData.joint.powers].some(pwOn);
+    else if (o.userData?.flux) o.visible = !off(String(o.userData.flux.from)) && !off(String(o.userData.flux.to));
+  });
+  for (const e of entries.values()) e.off = off(e.key);
+}
+
+function buildList() {
+  if (!space) return $("#el-list").replaceChildren();
+  if (buildList.eco !== state.eco) { expanded = new Set(); buildList.eco = state.eco; } // dépliage gardé pendant la session, par écosystème
+  loadHidden(); collectEntries(); applyVisibility(); renderList();
+}
+const listTypes = () => [...(space?.shapes ?? []).map(s => ({ key: s.key, label: s.label, color: s.color })),
+  ...Object.entries(LIST_TYPES).filter(([k]) => !space.shapes.some(s => s.key === k)).map(([key, v]) => ({ key, ...v }))];
+function renderList() {
+  const q = fold($("#el-filter").value.trim()), list = $("#el-list");
+  openTypes ??= new Set(listTypes().map(t => t.key));
+  const byTitle = (a, b) => String(a.t.title ?? "").localeCompare(String(b.t.title ?? ""), "fr", { sensitivity: "base", numeric: true });
+  const groups = listTypes().map(ty => {
+    const all = [...entries.values()].filter(e => e.type === ty.key);
+    if (!all.length) return null;
+    // arbre (contenant → contenu) d'un même type ; filtre : liste à plat des titres qui correspondent
+    let rows;
+    if (q) rows = all.filter(e => fold(e.t.title).includes(q)).sort(byTitle).map(e => [e, 0]);
+    else {
+      const kids = new Map(), keys = new Set(all.map(e => e.key)), roots = [];
+      for (const e of all) { if (e.up != null && keys.has(e.up) && e.up !== e.key) (kids.get(e.up) ?? kids.set(e.up, []).get(e.up)).push(e); else roots.push(e); }
+      rows = []; const seen = new Set();
+      // enfants repliés par défaut : seuls ceux des éléments dépliés sont listés
+      const walk = (e, d) => { if (seen.has(e.key)) return; seen.add(e.key); const ks = kids.get(e.key) ?? []; rows.push([e, d, ks.length]); if (expanded.has(e.key)) for (const c of ks.sort(byTitle)) walk(c, d + 1); };
+      roots.sort(byTitle).forEach(e => walk(e, 0));
+    }
+    if (q && !rows.length) return null;
+    const typeOn = !hiddenTypes.has(ty.key);
+    const cb = el("input", { type: "checkbox", checked: typeOn, title: typeOn ? `Cacher tous les éléments « ${ty.label} »` : `Afficher les éléments « ${ty.label} »`,
+      onclick: ev => ev.stopPropagation(), onchange: () => { typeOn ? hiddenTypes.add(ty.key) : hiddenTypes.delete(ty.key); refreshVisibility(); } });
+    const det = el("details", { open: q ? true : openTypes.has(ty.key), ontoggle: () => { if (!q) det.open ? openTypes.add(ty.key) : openTypes.delete(ty.key); } },
+      el("summary", {}, cb, el("i", { className: "sw", style: `background:${ty.color}` }), ty.label, el("span", { className: "n", textContent: q ? `${rows.length} / ${all.length}` : String(all.length) })),
+      ...rows.map(([e, d, n]) => listRow(e, d, n)));
+    return det;
+  }).filter(Boolean);
+  list.replaceChildren(...(groups.length ? groups : [el("p", { className: "muted", style: "padding:8px 10px;margin:0", textContent: q ? "Aucun élément ne correspond." : "Aucun élément placé." })]));
+}
+function listRow(e, depth, nKids = 0) {
+  const t = e.t, sh = shapeByKey(e.type), member = !!t.owner, floating = e.type === "pouvoir" || e.type === "crible";
+  const mine = hiddenSet.has(e.key), why = hiddenTypes.has(e.type) ? "type caché" : e.off && !mine ? "contenant caché" : "";
+  const btn = (name, title, action, disabled = false) => el("button", { className: "ic", title, disabled, ariaLabel: title, onclick: action }, icon(name));
+  const row = el("div", { className: `el-row${e.off ? " off" : ""}${curEntry === e.key ? " cur" : ""}`, style: `padding-left:${10 + depth * 14}px` },
+    nKids ? el("button", { className: "fold", textContent: expanded.has(e.key) ? "▾" : "▸", title: `${expanded.has(e.key) ? "Replier" : "Déplier"} les ${nKids} enfant(s)`, ariaExpanded: String(expanded.has(e.key)),
+      ariaLabel: `${expanded.has(e.key) ? "Replier" : "Déplier"} les enfants de « ${t.title} »`, onclick: () => { expanded.has(e.key) ? expanded.delete(e.key) : expanded.add(e.key); renderList(); } })
+      : el("span", { className: "fold" }),
+    el("input", { type: "checkbox", checked: !mine, title: mine ? "Afficher" : why ? `Cacher (déjà masqué : ${why})` : "Cacher", ariaLabel: `${mine ? "Afficher" : "Cacher"} « ${t.title} »`,
+      onchange: () => { mine ? hiddenSet.delete(e.key) : hiddenSet.add(e.key); refreshVisibility(); } }),
+    el("button", { className: "t", title: `Zoomer sur « ${t.title} »${why ? ` (${why})` : ""}`, onclick: () => zoomTo(e) },
+      e.type === "pouvoir" ? el("i", { className: "sw", style: `background:${e.power.color};margin-right:5px;width:9px;height:9px` }) : "",
+      String(t.title ?? `item ${t.item}`), nKids ? el("small", { textContent: `(${nKids})` }) : "", e.sub ? el("small", { textContent: e.sub }) : ""),
+    btn("zoom", "Zoomer", () => zoomTo(e)),
+    btn("détails", "Détails", () => details(t)),
+    btn("modifier", "Modifier", () => edit(t), !t.templateId),
+    btn("dupliquer", e.type === "pulsation" ? "Dupliquer : créer plutôt une pulsation depuis un pouvoir" : floating ? "Dupliquer : pour un pouvoir, utiliser lier → Branche" : member ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : "Dupliquer", () => duplicate(t), floating || member || e.type === "pulsation"),
+    btn("supprimer", "Supprimer (conséquences affichées avant)", () => remove(t)));
+  return row;
+}
+function refreshVisibility() { saveHidden(); applyVisibility(); renderList(); }
+
+// zoom : cadrer la boîte englobante de l'élément en gardant la direction de vue actuelle (vol animé)
+function zoomTo(e) {
+  const box = new THREE.Box3();
+  for (const o of e.objs) if (!o.isCSS2DObject) box.expandByObject(o);
+  if (box.isEmpty()) return toast("Élément sans forme dans la scène");
+  const c = box.getCenter(new THREE.Vector3()), r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, space.grid.hexSize * 0.4);
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.1;
+  let dir = camera.position.clone().sub(controls.target);
+  if (dir.lengthSq() < 1e-9) dir.set(0.5, 0.7, 1);
+  flight = { p0: camera.position.clone(), t0: controls.target.clone(), pos: c.clone().add(dir.normalize().multiplyScalar(dist)), target: c, start: performance.now(), ms: 700 };
+  curEntry = e.key; renderList();
+  if (e.t.hex) hud({ hex: e.t.hex, target: e.t });
+  if (e.off) toast(`« ${e.t.title} » est caché : cocher sa case pour l'afficher`);
+}
+$("#el-filter").oninput = () => renderList();
+$("#el-all").onclick = () => { hiddenSet.clear(); hiddenTypes.clear(); refreshVisibility(); };
+function showList(on) {
+  $("#space-wrap").classList.toggle("no-list", !on); $("#space-list").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("ecospace-list", on ? "1" : "0"); } catch {}
+  requestAnimationFrame(resize);
+}
+// légende des formes : cachée par défaut pour gagner de la place (la liste des éléments donne déjà les couleurs)
+function showLegend(on) {
+  $("#legend").classList.toggle("hidden", !on); $("#space-legend").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("ecospace-legend", on ? "1" : "0"); } catch {}
+}
+$("#space-legend").onclick = () => showLegend($("#legend").classList.contains("hidden"));
+try { if (localStorage.getItem("ecospace-legend") === "1") showLegend(true); } catch {}
+$("#space-pulse").onclick = () => setPulse(!pulseOn);
+try { if (localStorage.getItem("ecospace-pulse") === "0") setPulse(false); } catch {}
+$("#space-list").onclick = () => showList($("#space-wrap").classList.contains("no-list"));
+try { if (localStorage.getItem("ecospace-list") === "0") showList(false); } catch {}
 
 // ==========================================
 // Démarrage

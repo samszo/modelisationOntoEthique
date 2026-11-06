@@ -234,8 +234,29 @@ export function econetworkRoutes(ctx: Ctx): Record<string, Handler> {
       if (!templateId) throw new Error("Ce nœud n'a pas de resource template : le modifier dans Omeka S");
       const form = await buildTemplateForm(omk, templateId);
       const values: Record<string, FormValue[]> = b.values ?? {};
-      if (templateId === ctx.config().omekaForms.powerTemplateId) checkPower(values, ctx.config());
+      if (templateId === ctx.config().omekaForms.powerTemplateId) {
+        // type du pouvoir donné comme item du vocabulaire des types : son titre sert au contrôle
+        const tv = values[ctx.config().omekaForms.powerTypeTerm]?.[0];
+        if (tv?.id && !tv.label && tv.value == null) tv.label = String((await omk.request(omk.url(`items/${tv.id}`)).catch(() => null))?.["o:title"] ?? "");
+        checkPower(values, ctx.config());
+      }
       const payload: any = itemPayload(form, values);
+      // pouvoir : le maillon de chaque lien (annotation roleTerm, écrite par EcoSpace) est conservé, le modèle ne déclarant
+      // pas d'annotation pour ces propriétés : pris dans la valeur envoyée, sinon dans le lien existant vers le même item ;
+      // un lien ajouté sans annotation est rattaché à son maillon par ordre
+      if (templateId === ctx.config().omekaForms.powerTemplateId) {
+        const roleT = ctx.config().ecospace.shapes.find((x: any) => x.power)?.roleTerm ?? "dcterms:type", rolePid = await propId(omk, roleT);
+        for (const term of new Set(ctx.config().omekaForms.powerTypes.flatMap(t => t.sequence.map(s => s.term)))) {
+          const old = (item[term] ?? []).map((v: any) => ({ id: v.value_resource_id, role: v["@annotation"]?.[roleT]?.[0]?.["@value"] })).filter((x: any) => x.role);
+          const role = (values[term] ?? []).filter(v => v.id).map(v => {
+            const sent = v.annotation?.[roleT]?.[0]?.value;
+            if (sent) return sent;
+            const i = old.findIndex((x: any) => x.id === v.id);
+            return i >= 0 ? old.splice(i, 1)[0].role : undefined;
+          });
+          payload[term] = (payload[term] ?? []).map((pv: any, i: number) => role[i] ? { ...pv, "@annotation": { [roleT]: [{ type: "literal", property_id: rolePid, "@value": String(role[i]) }] } } : pv);
+        }
+      }
       // champs du template remplacés (un champ vidé est vidé dans Omeka S) ; propriétés hors template conservées
       await writeValues(omk, id, Object.fromEntries(form.fields.map(f => [f.term, payload[f.term] ?? []])));
       return { id, title: values[form.titleTerm]?.[0]?.value ?? item["o:title"] };

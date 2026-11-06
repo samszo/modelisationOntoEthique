@@ -11,7 +11,8 @@ import { omekaWebBase } from "../lib/omeka/proxy";
 import { buildTemplateForm, itemPayload, TIMESTAMP, type FormValue } from "../lib/omeka/templateForm";
 import { linkableTypes, toWritable, writeValues } from "../lib/omeka/network";
 import { cubeDistance, gridHexes, hexKey, hexToPlane, inGrid, nearestFree, planeToGeo, planeToHex, ringsFor, subGrid, type GridSpec } from "../lib/ecospace/hex";
-import { layoutConcepts } from "../lib/ecospace/concepts";
+import { interiorLayout, layoutConcepts } from "../lib/ecospace/concepts";
+import { checkPower, powerTypeOf } from "../lib/ontoethique/omekaForms";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => Promise<void> | void;
 interface Ctx {
@@ -26,7 +27,11 @@ interface Ctx {
 // concept (forme libre) : q, r, s = hexagone où il a été ajouté ; sa géométrie est calculée à chaque lecture
 interface Placement { item: number; q: number; r: number; s: number; shape: string; placed: string }
 // members : emplacements des personnes et agents sur la sous-grille de chaque actant (actant → membre → q, r)
-interface Space { eco: number; created: string; grid: GridSpec; placements: Placement[]; members?: Record<string, Record<string, { q: number; r: number }>> }
+// powerLinks : élément connecté sur un hexagone d'un nanotube (pouvoir → « maillon|item » → segment seg, hexagone j, k) ;
+// seg = clé du segment calculée par la page (« type|de|vers », ou nanotube enfant « type|segment@j,k|vers »)
+interface Attach { seg: string; j: number; k: number }
+interface Space { eco: number; created: string; grid: GridSpec; placements: Placement[]; members?: Record<string, Record<string, { q: number; r: number }>>;
+  powerLinks?: Record<string, Record<string, Attach>> }
 
 const itemId = (v: unknown) => { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw new Error("Identifiant d'item invalide"); return n; };
 const text = (v: unknown, max = 500) => String(v ?? "").slice(0, max).trim();
@@ -139,11 +144,100 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     return out;
   };
   // bulles calculées : taille d'après le titre ou les enfants, position équilibrée entre frères
-  const layout = (s: Space, items: Map<number, any>) => {
-    const sh = conceptShape()!, par = parents(s, items);
-    return layoutConcepts(conceptIds(s).map(id => ({ item: id, title: String(items.get(id)?.["o:title"] ?? `Item ${id}`), parent: par.get(id) ?? null })), {
-      S: s.grid.hexSize, charWidth: sh.charWidth, labelHeight: sh.labelHeight, leafRadius: sh.leafRadius, padding: sh.padding,
-      spacing: sh.spacing, topDepth: sh.topDepth, maxLabel: sh.maxLabel ?? 40 });
+  // exclude : concepts hors de la disposition sous la grille (dans l'intériorité d'un actant)
+  const layoutParams = (s: Space) => { const sh = conceptShape()!; return { S: s.grid.hexSize, charWidth: sh.charWidth, labelHeight: sh.labelHeight, leafRadius: sh.leafRadius,
+    padding: sh.padding, spacing: sh.spacing, topDepth: sh.topDepth, maxLabel: sh.maxLabel ?? 40 }; };
+  const layout = (s: Space, items: Map<number, any>, exclude: Set<number> = new Set()) => {
+    const par = parents(s, items);
+    return layoutConcepts(conceptIds(s).filter(id => !exclude.has(id)).map(id => ({ item: id, title: String(items.get(id)?.["o:title"] ?? `Item ${id}`), parent: par.get(id) ?? null })), layoutParams(s));
+  };
+
+  // pouvoirs : items du template powerTemplateId rattachés à l'écosystème ; type reconnu d'après l'item du vocabulaire
+  // des types (son titre) ; maillons dans l'ordre de la séquence du type (un même terme sert plusieurs maillons dans
+  // l'ordre de ses valeurs)
+  const forms = () => ctx.config().omekaForms;
+  const powerShape = () => cfg().shapes.find(x => x.power);
+  const stepKey = (name: string) => name.split(" ")[0]!;
+  const stepTemplate = (key: string) => forms().templates.find(t => t.key === key)?.templateId;
+  const typeTitles = new Map<number, string>();
+  const readPowers = async (omk: Omk, s: Space) => {
+    const f = forms(), sh = powerShape(), out: any[] = [];
+    if (!sh) return out;
+    const list = await omk.request(omk.url("items", { resource_template_id: f.powerTemplateId, "property[0][property]": ecoProp(), "property[0][type]": "res",
+      "property[0][text]": s.eco, per_page: 500 })).catch(() => []);
+    for (const it of list) {
+      const tv = it[f.powerTypeTerm]?.[0];
+      let typeTitle = tv?.["@value"] ?? tv?.display_title ?? "";
+      if (!typeTitle && tv?.value_resource_id) {
+        if (!typeTitles.has(tv.value_resource_id)) typeTitles.set(tv.value_resource_id, String((await omk.request(omk.url(`items/${tv.value_resource_id}`)).catch(() => null))?.["o:title"] ?? ""));
+        typeTitle = typeTitles.get(tv.value_resource_id);
+      }
+      const type = powerTypeOf(String(typeTitle), ctx.config());
+      if (!type) continue;
+      // maillons : chaque lien va au maillon que nomme son annotation (roleTerm), sinon par ordre des valeurs ; un maillon
+      // peut relier plusieurs éléments (members), le premier forme la chaîne principale
+      const roleT = sh.roleTerm ?? "dcterms:type", links = s.powerLinks?.[it["o:id"]] ?? {};
+      const steps: any[] = type.sequence.map(st => ({ name: st.name, key: stepKey(st.name), term: st.term, members: [] as any[] }));
+      for (const term of new Set(type.sequence.map(x => x.term))) {
+        const idx = steps.map((x, i) => x.term === term ? i : -1).filter(i => i >= 0);
+        let k = 0;
+        for (const v of (it[term] ?? []).filter((x: any) => x.value_resource_id)) {
+          const role = v["@annotation"]?.[roleT]?.[0]?.["@value"];
+          let i = idx.find(i => steps[i].name === role);
+          if (i == null) i = idx[Math.min(k++, idx.length - 1)]!;
+          steps[i].members.push({ item: v.value_resource_id, title: v.display_title ?? null, attach: links[`${steps[i].name}|${v.value_resource_id}`] ?? null });
+        }
+      }
+      for (const x of steps) Object.assign(x, { item: x.members[0]?.item ?? null, title: x.members[0]?.title ?? null });
+      const raw = Number(it[f.intensity.term]?.[0]?.["@value"]);
+      out.push({ item: it["o:id"], title: String(it["o:title"] ?? `Pouvoir ${it["o:id"]}`), type: type.id, typeLabel: type.label, intensity: Number.isFinite(raw) ? raw : null,
+        color: sh.colors?.[type.id] ?? sh.color, interior: (sh.interior ?? []).includes(type.id), steps });
+    }
+    return out;
+  };
+  // intériorité : concept placé → actants placés qui l'hébergent (tous les actants des pouvoirs qui le désignent)
+  const hostSets = (s: Space, powers: any[]) => {
+    const concepts = new Set(conceptIds(s)), actants = new Set(s.placements.filter(p => p.shape === "actant").map(p => p.item));
+    const host = new Map<number, Set<number>>();
+    for (const pw of powers) {
+      const as = pw.steps.filter((x: any) => x.key === "actant").flatMap((x: any) => x.members.map((m: any) => m.item)).filter((a: number) => actants.has(a));
+      if (!as.length) continue;
+      for (const st of pw.steps) if (st.key === "concept") for (const m of st.members) if (concepts.has(m.item)) {
+        const h = host.get(m.item) ?? new Set<number>(); as.forEach((a: number) => h.add(a)); host.set(m.item, h);
+      }
+    }
+    return host;
+  };
+  // pulsations : items du template de la forme pulse rattachés à l'écosystème ; pouvoirs (powerTerm) et flux vers
+  // d'autres pulsations (fluxTerm), chacun avec sa temporalité (annotation : ordre relatif, ordre successif)
+  const pulseShape = () => cfg().shapes.find(x => x.pulse);
+  const temporality = (v: any, sh: any) => {
+    const a = v?.["@annotation"] ?? {}, r = a[sh.relativeTerm]?.[0], o = Number(a[sh.successiveTerm]?.[0]?.["@value"]);
+    return { relative: r ? { id: r.value_resource_id ?? null, title: String(r.display_title ?? r["@value"] ?? "") } : null, order: Number.isFinite(o) ? o : null };
+  };
+  const readPulsations = async (omk: Omk, s: Space) => {
+    const sh = pulseShape();
+    if (!sh) return [];
+    const list = await omk.request(omk.url("items", { resource_template_id: sh.templateId, "property[0][property]": ecoProp(), "property[0][type]": "res",
+      "property[0][text]": s.eco, per_page: 500 })).catch(() => []);
+    return (list as any[]).map(it => ({ item: it["o:id"] as number, title: String(it["o:title"] ?? `Pulsation ${it["o:id"]}`),
+      powers: (it[sh.powerTerm] ?? []).filter((v: any) => v.value_resource_id).map((v: any) => ({ item: v.value_resource_id, ...temporality(v, sh) })),
+      flux: (it[sh.fluxTerm] ?? []).filter((v: any) => v.value_resource_id).map((v: any) => ({ to: v.value_resource_id, title: v.display_title ?? null, ...temporality(v, sh) })) }));
+  };
+  // temporalités relatives proposées (vocabulaire de l'annotation du flux)
+  const relatives = async (omk: Omk) => {
+    const sh = pulseShape();
+    if (!sh) return [];
+    const form = await buildTemplateForm(omk, sh.templateId).catch(() => null);
+    const f: any = form?.fields.find(x => x.term === sh.fluxTerm), dt = f?.annotation?.find((x: any) => x.term === sh.relativeTerm)?.dataTypes?.find((d: any) => d.kind === "item");
+    return (dt?.options ?? []).map((o: any) => ({ id: o.id, title: o.title, type: dt.type }));
+  };
+  // valeur de lien annotée par sa temporalité (ordre relatif : item du vocabulaire, ordre successif : entier)
+  const timedValue = async (omk: Omk, term: string, type: string, id: number, rel: any, order: number | null) => {
+    const sh = pulseShape()!, ann: any = {};
+    if (rel) ann[sh.relativeTerm] = [{ type: rel.type, property_id: await propId(omk, sh.relativeTerm), value_resource_id: rel.id }];
+    if (order != null) ann[sh.successiveTerm] = [{ type: "numeric:integer", property_id: await propId(omk, sh.successiveTerm), "@value": order }];
+    return { type, property_id: await propId(omk, term), value_resource_id: id, ...(Object.keys(ann).length ? { "@annotation": ann } : {}) };
   };
   // rattachement d'un concept à un parent (null : détaché) : ses relations gérées avec les concepts de l'espace sont
   // remplacées (broaderTerm sur l'enfant, narrowerTerm sur le parent), les nouvelles annotées par l'écosystème
@@ -276,10 +370,42 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     });
     // concepts : bulles calculées (hiérarchie lue dans Omeka S) ; hexagone = celui au-dessus du centre ; liés
     // (relatedTerm) affichés dans les détails
-    const sh = conceptShape();
+    const sh = conceptShape(), [powers, pulsations, pulseRelatives] = await Promise.all([readPowers(omk, s), readPulsations(omk, s), relatives(omk)]), host = sh ? hostSets(s, powers) : new Map<number, Set<number>>();
     if (sh) {
       const byId = new Map(s.placements.map((p, i) => [p.item, items[i]]));
-      const bubbles = layout(s, byId), ids = new Set(conceptIds(s));
+      const bubbles = layout(s, byId, new Set(host.keys())), ids = new Set(conceptIds(s));
+      // intériorité : concepts regroupés par ensemble d'actants hôtes, chaque groupe empilé sous le centre de ses hôtes
+      // (milieu de plusieurs actants : intersection de leurs sphères, comme un diagramme de Venn) ; chaque sphère grandit
+      // jusqu'à contenir les capsules de ses groupes (pôle nord toujours au centroïde du fullerène)
+      const act = cfg().shapes.find(x => x.key === "actant"), S = s.grid.hexSize, pad = (powerShape()?.interiorPadding ?? 0.08) * S, base = (act?.sphereRadius ?? 1) * S;
+      const groups = new Map<string, { hosts: number[]; items: number[] }>();
+      for (const [id, h] of host) { const hosts = [...h].sort((a, b) => a - b), key = hosts.join(","); const g = groups.get(key) ?? { hosts, items: [] }; g.items.push(id); groups.set(key, g); }
+      const need = new Map<number, number>(), inside = new Map<number, number[]>();
+      const at = (a: number) => hexToPlane(s.grid, placements.find(p => p.item === a && p.shape === "actant")!);
+      for (const g of groups.values()) {
+        const cs = g.hosts.map(a => ({ a, ...at(a) })), cx = cs.reduce((t, c) => t + c.x, 0) / cs.length, cz = cs.reduce((t, c) => t + c.z, 0) / cs.length;
+        const dmax = Math.max(...cs.map(c => Math.hypot(c.x - cx, c.z - cz)));
+        const lay = interiorLayout(g.items.map(id => ({ item: id, title: String(byId.get(id)?.["o:title"] ?? `Item ${id}`) })), layoutParams(s), 0);
+        const top = Math.max(...lay.bubbles.map(b => b.y + b.radius)), bottom = Math.min(...lay.bubbles.map(b => b.y - b.radius));
+        // centre du groupe : sous les hôtes, assez bas pour que la capsule du haut reste sous les pôles
+        const yc = Math.min(-Math.max(base, dmax), -(top + pad * 2)) - (top + bottom) / 2;
+        for (const b of lay.bubbles) {
+          Object.assign(b, { x: cx + b.x, y: yc + b.y, z: cz + b.z });
+          const l = Math.max(0, b.length / 2 - b.radius), rr = b.radius + pad;
+          // rayon minimal d'une sphère de centre (hx, -R, hz) qui contient les deux extrémités de l'axe à rr près
+          for (const c of cs) for (const ex of [b.x - l, b.x + l]) {
+            const dh = Math.hypot(ex - c.x, b.z - c.z), y = b.y;
+            if (-y - rr > 0) need.set(c.a, Math.max(need.get(c.a) ?? base, (dh * dh + y * y - rr * rr) / (-2 * (y + rr))));
+          }
+          for (const c of cs) inside.set(c.a, [...(inside.get(c.a) ?? []), b.item]);
+          bubbles.set(b.item, Object.assign(b, { inActant: g.hosts[0], hosts: g.hosts }));
+        }
+      }
+      for (const [a, R0] of need) {
+        const av = placements.find(p => p.item === a && p.shape === "actant")!, R = Math.max(base, R0) + pad;
+        Object.assign(av, { sphereRadius: R, interior: inside.get(a) ?? [] });
+        av.geo.sphereCenter = planeToGeo(s.grid, at(a), -R);
+      }
       for (const p of placements.filter(x => x.shape === "concept")) {
         const b = bubbles.get(p.item)!, h = planeToHex(s.grid, b);
         Object.assign(p, b, { q: h.q, r: h.r, s: h.s, narrower: b.children, geo: { center: planeToGeo(s.grid, { x: b.x, z: b.z }, b.y) },
@@ -289,8 +415,48 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     placements.push(...await membersView(omk, s, items, placements));
     // physiques : arbre des enfants (la position verticale dépend de l'échelle temporelle, calculée par la page)
     await Promise.all(placements.map(async (p, i) => { if (p.shape === "physique" && items[i]) (p as any).tree = await physNode(omk, items[i], 0, new Set()); }));
-    return { eco: s.eco, created: s.created, grid: s.grid, hexes, placements, omekaCopy: copyState.get(s.eco) ?? null, shapes: cfg().shapes, timeScale: cfg().timeScale, maxDuplicates: cfg().maxDuplicates ?? 20, now: new Date().toISOString(),
+    // types de pouvoir pour la page : libellé court, séquence (maillons et forme de chacun)
+    const powerTypes = forms().powerTypes.map(t => ({ id: t.id, label: ctx.config().powers.find(x => x.id === t.id)?.label ?? t.label, longLabel: t.label,
+      sequence: t.sequence.map(st => ({ name: st.name, key: stepKey(st.name), term: st.term, templateId: stepTemplate(stepKey(st.name)) })) }));
+    return { eco: s.eco, created: s.created, grid: s.grid, hexes, placements, powers, pulsations, pulseRelatives, powerTypes, map: cfg().map, omekaCopy: copyState.get(s.eco) ?? null, shapes: cfg().shapes, timeScale: cfg().timeScale, maxDuplicates: cfg().maxDuplicates ?? 20, now: new Date().toISOString(),
       omekaBase: omekaBase(), omekaFrame: omekaFrame() };
+  };
+  // élément d'un maillon de pouvoir ({ existing } | { title }) : physiques (racines ou boîtes intérieures d'un physique
+  // placé) et actants existants et placés ; cribles et concepts existants ou créés (repris par titre) ; rattaché à
+  // l'écosystème ; un concept est ajouté à l'espace
+  const resolveStep = async (omk: Omk, s: Space, eco: number, name: string, v: any) => {
+    const key = stepKey(name), tid = stepTemplate(key), ecoPid = await propId(omk, ecoProp());
+    if (!tid) throw new Error(`Maillon ${name} : template inconnu (omekaForms.templates)`);
+    let item: any;
+    if (v?.existing != null) {
+      item = await omk.request(omk.url(`items/${itemId(v.existing)}`));
+      if (item["o:resource_template"]?.["o:id"] !== tid) throw new Error(`Maillon ${name} : l'item ${item["o:id"]} n'est pas du bon type`);
+    } else {
+      const title = text(v?.title);
+      if (!title) throw new Error(`Maillon ${name} : élément ou titre attendu`);
+      if (key !== "crible" && key !== "concept") throw new Error(`Maillon ${name} : choisir un élément placé`);
+      item = (await omk.request(omk.url("items", { resource_template_id: tid, "property[0][property]": "dcterms:title", "property[0][type]": "eq", "property[0][text]": title })))[0];
+      if (!item) {
+        const sf = await buildTemplateForm(omk, tid);
+        item = await omk.request(omk.url("items"), "POST", { ...itemPayload(sf, { [sf.titleTerm]: [{ type: "literal", value: title }] }),
+          [ecoProp()]: [{ type: "resource:item", property_id: ecoPid, value_resource_id: eco }] });
+        console.log(`📤 [OMEKA] EcoSpace : ${key} ${item["o:id"]} créé pour un pouvoir`);
+      }
+    }
+    const id = item["o:id"] as number;
+    const placed = s.placements.some(p => p.item === id && p.shape === key)
+      || (key === "physique" && [...await ancestors(omk, id)].some(a => s.placements.some(p => p.item === a && p.shape === "physique")));
+    if ((key === "physique" || key === "actant") && !placed) throw new Error(`Maillon ${name} : « ${item["o:title"]} » doit d'abord être placé dans l'espace`);
+    if (!(item[ecoProp()] ?? []).some((x: any) => x.value_resource_id === eco))
+      await writeValues(omk, id, { [ecoProp()]: [...(item[ecoProp()] ?? []).map(toWritable), { type: "resource:item", property_id: ecoPid, value_resource_id: eco }] });
+    if (key === "concept") addConcept(s, id, s.placements.find(p => p.shape === "actant") ?? { q: 0, r: 0 });
+    return item;
+  };
+  // lien d'un pouvoir vers un élément, annoté par le nom de son maillon (roleTerm)
+  const roleValue = async (omk: Omk, term: string, id: number, name: string) => {
+    const roleT = powerShape()?.roleTerm ?? "dcterms:type";
+    return { type: "resource:item", property_id: await propId(omk, term), value_resource_id: id,
+      "@annotation": { [roleT]: [{ type: "literal", property_id: await propId(omk, roleT), "@value": name }] } };
   };
   const json = (fn: (req: http.IncomingMessage, url: URL) => Promise<unknown>): Handler => async (req, res, url) => {
     try { ctx.sendJson(res, 200, await fn(req, url)); } catch (e) { ctx.sendJson(res, 400, { error: (e as Error).message }); }
@@ -351,6 +517,21 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       return { exists: true, ...(await view(omk, s)) };
     }),
 
+    // origine géographique de la grille ({ eco, lon, lat, alt? }) : centre de l'hexagone (0, 0) ; les coordonnées
+    // géographiques de tous les hexagones et éléments en découlent (planeToGeo), les positions dans la scène ne changent pas
+    "POST /api/ecospace/origin": json(async req => {
+      const b = await ctx.readBody(req);
+      const eco = itemId(b.eco), s = load(eco);
+      if (!s) throw new Error("Espace inexistant : créer d'abord sa grille");
+      const lon = num(b.lon, "longitude"), lat = num(b.lat, "latitude"), alt = b.alt == null || b.alt === "" ? s.grid.origin.alt ?? 0 : num(b.alt, "altitude");
+      if (Math.abs(lon) > 180 || Math.abs(lat) > 90) throw new Error("Longitude (−180 à 180) ou latitude (−90 à 90) hors limites");
+      const old = s.grid.origin;
+      s.grid.origin = { lon: +lon.toFixed(7), lat: +lat.toFixed(7), alt: +alt.toFixed(2) };
+      save(s);
+      console.log(`🧭 EcoSpace : origine de l'écosystème ${eco} : ${old.lon}, ${old.lat} → ${s.grid.origin.lon}, ${s.grid.origin.lat} (alt. ${s.grid.origin.alt} m)`);
+      return { exists: true, ...(await view(await ctx.serverOmk(), s)) };
+    }),
+
     // placement d'un élément ({ eco, item, q, r } ou { eco, item, near: { q, r } } = hexagone libre le plus proche) ;
     // un hexagone porte un élément par couche de forme (actant sous la grille et physique au-dessus peuvent cohabiter) ;
     // un élément déjà placé est déplacé ; la forme dépend du template de l'item
@@ -363,6 +544,8 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const item = await omk.request(omk.url(`items/${id}`));
       const shape = shapeOf(item["o:resource_template"]?.["o:id"] ?? null);
       if (!shape) throw new Error(`Pas de forme définie pour le modèle « ${item["o:resource_template"] ? `template ${item["o:resource_template"]["o:id"]}` : "sans modèle"} »`);
+      if (shape.power) throw new Error(`${shape.label} : à créer depuis le premier élément de sa chaîne (menu lier)`);
+      if (shape.pulse) throw new Error(`${shape.label} : à créer depuis un pouvoir (menu lier du nanotube)`);
       if (shape.anchor) throw new Error(`${shape.label} : à ajouter depuis un ${shape.anchor} (menu lier de l'${shape.anchor})`);
       // concept : ajouté à l'espace ; sa bulle (taille, position) est calculée d'après sa hiérarchie
       if (shape.free) {
@@ -450,6 +633,128 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       s.placements = s.placements.filter(p => p.item !== id);
       save(s);
       return await view(await ctx.serverOmk(), s);
+    }),
+
+    // pouvoir ({ eco, type, intensity, title?, steps }) : steps = un maillon par élément de la séquence du type, chacun
+    // { existing } | { title } ou une liste (relations multiples) ; physiques (racines ou boîtes intérieures) et actants
+    // existants et placés ; cribles et concepts existants ou créés (repris s'ils existent avec ce titre), rattachés à
+    // l'écosystème, concepts ajoutés à l'espace ; item pouvoir créé (type = item du vocabulaire des types, intensité,
+    // liens annotés par leur maillon : roleTerm), contrôlé par checkPower ; une branche est un autre pouvoir de même type
+    "POST /api/ecospace/power": json(async req => {
+      const b = await ctx.readBody(req);
+      const f = forms(), type = f.powerTypes.find(t => t.id === b.type);
+      if (!type) throw new Error(`Type attendu : ${f.powerTypes.map(t => t.id).join(", ")}`);
+      const eco = itemId(b.eco), s = load(eco);
+      if (!s) throw new Error("Espace inexistant");
+      const steps: any[] = Array.isArray(b.steps) ? b.steps : [];
+      if (steps.length !== type.sequence.length) throw new Error(`${type.label} : ${type.sequence.length} maillons attendus (${type.sequence.map(x => x.name).join(" → ")})`);
+      const omk = await ctx.serverOmk();
+      const form = await buildTemplateForm(omk, f.powerTemplateId);
+      const chosen: { name: string; term: string; id: number; title: string }[] = [];
+      for (const [i, st] of type.sequence.entries()) {
+        const vs = (Array.isArray(steps[i]) ? steps[i] : [steps[i]]).filter(Boolean);
+        if (!vs.length) throw new Error(`Maillon ${st.name} : élément attendu`);
+        for (const v of vs) { const it = await resolveStep(omk, s, eco, st.name, v); chosen.push({ name: st.name, term: st.term, id: it["o:id"], title: String(it["o:title"] ?? it["o:id"]) }); }
+      }
+      // type : item du vocabulaire des types dont le titre désigne ce type
+      const tf = form.fields.find(x => x.term === f.powerTypeTerm);
+      const tdt = tf?.dataTypes.find(d => d.kind === "item");
+      const opt = (tdt as any)?.options?.find((o: any) => powerTypeOf(o.title, ctx.config())?.id === type.id);
+      const intensity = Math.round(Number(b.intensity ?? 0));
+      const main = type.sequence.map(st => chosen.find(c => c.name === st.name)!.title);
+      const values: Record<string, FormValue[]> = {
+        [form.titleTerm]: [{ type: "literal", value: text(b.title) || `${ctx.config().powers.find(x => x.id === type.id)?.label ?? type.label} : ${main.join(" → ")}` }],
+        [f.intensity.term]: [{ type: "literal", value: String(intensity) }],
+        [f.powerTypeTerm]: opt ? [{ type: tdt!.type, id: opt.id, label: opt.title }] : [{ type: "literal", value: type.label }],
+      };
+      for (const c of chosen) (values[c.term] ??= []).push({ type: "resource:item", id: c.id });
+      checkPower(values, ctx.config());
+      const payload: any = itemPayload(form, values);
+      // liens annotés par leur maillon (le rôle distingue concept source et destination, et les relations multiples)
+      for (const term of new Set(chosen.map(c => c.term))) payload[term] = await Promise.all(chosen.filter(c => c.term === term).map(c => roleValue(omk, term, c.id, c.name)));
+      payload[ecoProp()] = [{ type: "resource:item", property_id: await propId(omk, ecoProp()), value_resource_id: eco }];
+      const power = await omk.request(omk.url("items"), "POST", payload);
+      save(s);
+      console.log(`📤 [OMEKA] EcoSpace : pouvoir ${power["o:id"]} (${type.label}) créé : ${chosen.map(c => `${c.name} ${c.title}`).join(" ; ")}`);
+      return { id: power["o:id"], title: power["o:title"] };
+    }),
+
+    // élément connecté à un pouvoir ({ eco, power, step, existing | title, attach? }) : step = nom du maillon ; attach =
+    // hexagone du nanotube où il se branche ({ seg, j, k } : clé du segment, ligne et rang de l'hexagone) ; le lien est ajouté
+    // au pouvoir avec son rôle (relation multiple), l'hexagone mémorisé dans l'espace (powerLinks)
+    "POST /api/ecospace/power/link": json(async req => {
+      const b = await ctx.readBody(req);
+      const f = forms(), eco = itemId(b.eco), powerId = itemId(b.power), s = load(eco);
+      if (!s) throw new Error("Espace inexistant");
+      const omk = await ctx.serverOmk();
+      const power = await omk.request(omk.url(`items/${powerId}`));
+      if (power["o:resource_template"]?.["o:id"] !== f.powerTemplateId) throw new Error("L'item n'est pas un pouvoir");
+      const tv = power[f.powerTypeTerm]?.[0];
+      const type = powerTypeOf(String(tv?.["@value"] ?? tv?.display_title ?? (tv?.value_resource_id ? (await omk.request(omk.url(`items/${tv.value_resource_id}`)))["o:title"] : "")), ctx.config());
+      const st = type?.sequence.find(x => x.name === b.step);
+      if (!type || !st) throw new Error(`Maillon attendu : ${type?.sequence.map(x => x.name).join(", ") ?? "type de pouvoir inconnu"}`);
+      const it = await resolveStep(omk, s, eco, st.name, b);
+      const id = it["o:id"] as number, roleT = powerShape()?.roleTerm ?? "dcterms:type", vals: any[] = power[st.term] ?? [];
+      const exists = vals.some(v => v.value_resource_id === id && (v["@annotation"]?.[roleT]?.[0]?.["@value"] ?? st.name) === st.name);
+      if (!exists) await writeValues(omk, powerId, { [st.term]: [...vals.map(toWritable), await roleValue(omk, st.term, id, st.name)] });
+      const a = b.attach;
+      if (a && /^[\w|@,.:-]{1,400}$/.test(String(a.seg ?? "")) && [a.j, a.k].every(x => Number.isInteger(Number(x)) && Number(x) >= 0)) {
+        ((s.powerLinks ??= {})[powerId] ??= {})[`${st.name}|${id}`] = { seg: String(a.seg), j: Number(a.j), k: Number(a.k) };
+      }
+      save(s);
+      console.log(`📤 [OMEKA] EcoSpace : ${st.name} ${id} connecté au pouvoir ${powerId}${a?.seg ? ` (hexagone ${a.j}, ${a.k} du segment ${a.seg})` : ""}`);
+      return { id, title: it["o:title"], added: !exists };
+    }),
+
+    // pulsation d'un pouvoir ({ eco, power, existing | title }) : pulsation créée (rattachée à l'écosystème) ou reprise
+    // parmi celles de l'écosystème ; le pouvoir y est ajouté (powerTerm)
+    "POST /api/ecospace/pulsation": json(async req => {
+      const b = await ctx.readBody(req), sh = pulseShape();
+      if (!sh) throw new Error("Aucune forme de pulsation dans la configuration (ecospace.shapes)");
+      const eco = itemId(b.eco), powerId = itemId(b.power), s = load(eco);
+      if (!s) throw new Error("Espace inexistant");
+      const omk = await ctx.serverOmk();
+      if (!(await readPowers(omk, s)).some(p => p.item === powerId)) throw new Error("Ce pouvoir n'est pas dessiné dans cet espace");
+      const form = await buildTemplateForm(omk, sh.templateId);
+      const itemType = (term: string) => form.fields.find(f => f.term === term)?.dataTypes.find(d => d.kind === "item" && !d.type.startsWith("customvocab"))?.type ?? "resource:item";
+      let item: any, created = false;
+      if (b.existing != null) {
+        item = await omk.request(omk.url(`items/${itemId(b.existing)}`));
+        if (item["o:resource_template"]?.["o:id"] !== sh.templateId || !(item[ecoProp()] ?? []).some((v: any) => v.value_resource_id === eco)) throw new Error("L'item choisi n'est pas une pulsation de cet écosystème");
+      } else {
+        const title = text(b.title);
+        if (!title) throw new Error("Titre obligatoire");
+        item = await omk.request(omk.url("items"), "POST", { ...itemPayload(form, { [form.titleTerm]: [{ type: "literal", value: title }] }),
+          [ecoProp()]: [{ type: itemType(ecoProp()), property_id: await propId(omk, ecoProp()), value_resource_id: eco }] });
+        created = true;
+      }
+      const id = item["o:id"] as number, vals: any[] = item[sh.powerTerm] ?? [];
+      const added = !vals.some(v => v.value_resource_id === powerId);
+      if (added) await writeValues(omk, id, { [sh.powerTerm]: [...vals.map(toWritable), await timedValue(omk, sh.powerTerm, itemType(sh.powerTerm), powerId, null, vals.length + 1)] });
+      console.log(`📤 [OMEKA] EcoSpace : pulsation ${id} ${created ? "créée" : "reprise"}${added ? `, pouvoir ${powerId} ajouté` : ""}`);
+      return { id, title: item["o:title"], created, added };
+    }),
+
+    // flux d'une pulsation vers une autre pulsation de l'écosystème ({ eco, pulsation, to, relative?, order? }) : lien
+    // fluxTerm annoté par sa temporalité (relative : item des temporalités relatives ; order : ordre successif) ; un flux
+    // existant vers la même pulsation est remplacé
+    "POST /api/ecospace/pulsation/flux": json(async req => {
+      const b = await ctx.readBody(req), sh = pulseShape();
+      if (!sh) throw new Error("Aucune forme de pulsation dans la configuration (ecospace.shapes)");
+      const eco = itemId(b.eco), from = itemId(b.pulsation), to = itemId(b.to), s = load(eco);
+      if (!s) throw new Error("Espace inexistant");
+      if (from === to) throw new Error("Un flux relie deux pulsations différentes");
+      const omk = await ctx.serverOmk(), pls = await readPulsations(omk, s);
+      if (![from, to].every(id => pls.some(p => p.item === id))) throw new Error("Les deux pulsations doivent appartenir à cet écosystème");
+      const rel = b.relative == null || b.relative === "" ? null : (await relatives(omk)).find((r: any) => r.id === Number(b.relative));
+      if (b.relative != null && b.relative !== "" && !rel) throw new Error("Ordre relatif inconnu");
+      const order = b.order == null || b.order === "" ? null : int(b.order, "ordre successif");
+      const form = await buildTemplateForm(omk, sh.templateId);
+      const type = form.fields.find(f => f.term === sh.fluxTerm)?.dataTypes.find(d => d.kind === "item" && !d.type.startsWith("customvocab"))?.type ?? "resource:item";
+      const item = await omk.request(omk.url(`items/${from}`)), vals: any[] = item[sh.fluxTerm] ?? [];
+      await writeValues(omk, from, { [sh.fluxTerm]: [...vals.filter(v => v.value_resource_id !== to).map(toWritable), await timedValue(omk, sh.fluxTerm, type, to, rel, order)] });
+      console.log(`📤 [OMEKA] EcoSpace : flux ${from} → ${to}${rel ? ` (${rel.title}${order != null ? `, ${order}` : ""})` : order != null ? ` (${order})` : ""}`);
+      return { from, to };
     }),
 
     // personne ou agent d'un actant placé ({ eco, actant, shape, title } ou { …, existing }) : item créé (rattaché à

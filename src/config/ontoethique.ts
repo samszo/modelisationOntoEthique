@@ -74,7 +74,7 @@ export const defaultOntoEthiqueConfig = {
       negative: { name: "Aliénation logique", description: "acceptation passive de biais, incohérence conceptuelle, erreurs syntaxiques" },
       neutral: { name: "Routinisation", description: "pures opérations mécaniques sans gain logique" },
       positive: { name: "Puissance critique", description: "rigueur de l'argumentation, structuration de l'esprit critique" } },
-    { id: "resonner", label: "Résonner", semiosis: "Intuitif / Essences", chain: ["concept source", "concept destination"],
+    { id: "resonner", label: "Résonner", semiosis: "Intuitif / Essences", chain: ["concept source", "actant", "concept destination"],
       negative: { name: "Impasse intuitive", description: "déconnexion sémantique, vide émotionnel, répétition de formules mortes" },
       neutral: { name: "Barrière numérique", description: "limite absolue des agents numériques, incapables de résonance" },
       positive: { name: "Scientia Intuitiva", description: "saut conceptuel, résonance harmonique, saisie immédiate des essences" } },
@@ -169,8 +169,9 @@ export const defaultOntoEthiqueConfig = {
         { name: "physique", term: "jdc:hasPhysique" }, { name: "crible", term: "jdc:hasCrible" }, { name: "actant", term: "jdc:hasActant" }, { name: "concept", term: "jdc:hasConcept" }] },
       { id: "raisonner", label: "Pouvoir de raisonner", sequence: [
         { name: "concept source", term: "jdc:hasConcept" }, { name: "actant", term: "jdc:hasActant" }, { name: "concept destination", term: "jdc:hasConcept" }] },
+      // résonner : l'actant héberge les concepts dans son intériorité (sa sphère dans EcoSpace)
       { id: "resonner", label: "Pouvoir de résonner", sequence: [
-        { name: "concept source", term: "jdc:hasConcept" }, { name: "concept destination", term: "jdc:hasConcept" }] },
+        { name: "concept source", term: "jdc:hasConcept" }, { name: "actant", term: "jdc:hasActant" }, { name: "concept destination", term: "jdc:hasConcept" }] },
       { id: "agir", label: "Pouvoir d'agir", sequence: [
         { name: "concept", term: "jdc:hasConcept" }, { name: "actant", term: "jdc:hasActant" }, { name: "crible", term: "jdc:hasCrible" }, { name: "physique", term: "jdc:hasPhysique" }] },
     ],
@@ -224,6 +225,29 @@ export const defaultOntoEthiqueConfig = {
       // sous la grille (rayon sphereRatio × rayon du fullerène) dont le pôle nord touche le centroïde du fullerène
       { key: "personne", label: "Personne", templateId: 8, anchor: "actant", anchorTerm: "jdc:hasPerson", color: "#2f6fb0", memberRatio: 0.8, sphereRatio: 1 },
       { key: "agent", label: "Agent", templateId: 6, anchor: "actant", anchorTerm: "jdc:hasAgent", color: "#c08a1e", memberRatio: 0.8, sphereRatio: 1 },
+      // pouvoir : nanotube de carbone fait d'hexagones indépendants (nœuds = atomes, liens = liaisons, surfaces = faces
+      // cliquables ; lattice hexagones par tour, rayon tubeRadius) reliant les maillons de sa séquence
+      // (omekaForms.powerTypes) dans l'ordre ; un nanotube par segment droit, les segments suivants (changement de
+      // direction), les relations multiples (plusieurs éléments pour un maillon) et les branches (pouvoirs de même type qui
+      // partagent un début de chaîne, dessiné une fois) sont des nanotubes enfants, joints par une sphère (jointRatio) ;
+      // un élément connecté sur un hexagone part de cet hexagone ; crible : anneau (cribleRatio, cribleColor) traversé par
+      // le nanotube ; roleTerm : propriété de l'annotation de valeur qui donne le maillon d'un lien (« concept source »…).
+      // Les concepts des pouvoirs sont déplacés dans la sphère de leur(s) actant(s) — à l'intersection des sphères s'ils
+      // relèvent de plusieurs actants — qui grandissent pour les contenir (marge interiorPadding) ; types interior : le
+      // nanotube relie directement les concepts (l'actant les héberge). Couleurs par type ; ajout depuis le premier maillon
+      { key: "pouvoir", label: "Pouvoir", templateId: 7, power: true, color: "#1e88e5", tubeRadius: 0.05, lattice: 8, jointRatio: 1.8, cribleRatio: 4,
+        cribleColor: "#6b7c8f", interior: ["raisonner", "resonner"], interiorPadding: 0.08, roleTerm: "dcterms:type",
+        colors: { discerner: "#1e88e5", raisonner: "#8e24aa", resonner: "#e6a817", agir: "#d64541" } },
+      // pulsation existentielle : enveloppe translucide (ellipsoïde orienté selon l'étendue des nanotubes, marge padding)
+      // autour des pouvoirs qu'elle désigne (powerTerm), qui bat : période period (s), amplitude amplitude × |intensité
+      // moyenne de ses pouvoirs| / 100 (au moins minAmplitude) ; couleur selon le signe de cette intensité (up, down,
+      // neutral). Flux (fluxTerm) vers d'autres pulsations : arcs fléchés (fluxColor, rayon fluxRadius, hauteur fluxLift ×
+      // longueur), sens d'après l'ordre relatif de l'annotation (relativeTerm : « Avant » inverse la flèche, « Pendant » :
+      // trait double sans flèche), ordre successif (successiveTerm) dans l'étiquette, particules qui circulent (particles).
+      // Ajout depuis un pouvoir (menu lier) ; le bouton « Pulsations » arrête ou relance l'animation
+      { key: "pulsation", label: "Pulsation", templateId: 12, pulse: true, color: "#2e9d5b", powerTerm: "jdc:hasPouvoir", fluxTerm: "jdc:flux",
+        relativeTerm: "jdc:ordreRelatif", successiveTerm: "jdc:ordreSuccessif", padding: 0.3, period: 2.4, amplitude: 0.15, minAmplitude: 0.04, opacity: 0.16,
+        colors: { up: "#2e9d5b", down: "#d64541", neutral: "#8a8f98" }, fluxColor: "#5d6d7e", fluxRadius: 0.06, fluxLift: 0.3, particles: 4 },
       // physique : boîte au-dessus de la grille, à base carrée inscrite dans l'hexagone (baseRatio × le plus grand carré
       // inscrit), allant de la date de modification (o:modified) à la date de création (createdTerm, sinon o:created) sur
       // l'échelle temporelle ; ses enfants (items qui le désignent par parentTerm) sont des boîtes intérieures empilées
@@ -251,6 +275,10 @@ export const defaultOntoEthiqueConfig = {
     // dernier enregistrement (les modifications rapprochées n'en font qu'un), seulement si le contenu a changé (sha256) ;
     // identifiée par dcterms:identifier = identifierPrefix + écosystème ; sert à restaurer un espace absent en local
     omekaMedia: { enabled: true, delay: 3000, identifierPrefix: "ecospace-", title: "EcoSpace : positions des éléments" },
+    // carte de l'origine géographique (bouton « Origine géographique ») : fond de carte (tuiles, attribution), service de
+    // recherche de lieux (Nominatim, appelé par le navigateur, résultats en français), zoom sur un lieu, nombre de résultats
+    map: { tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: "© contributeurs OpenStreetMap",
+      geocoder: "https://nominatim.openstreetmap.org/search", zoom: 17, searchLimit: 6 },
   },
 
   // dossier des fichiers produits (dans le répertoire de données)

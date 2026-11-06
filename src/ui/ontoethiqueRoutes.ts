@@ -18,7 +18,7 @@ import { attachDocuments } from "../workflow/runs/importSynthesis";
 import { saveWorkflowConfig, updateWorkflowStatus } from "../workflow/runs/saveWorkflowConfig";
 import { agentModelId } from "../agents/overrides";
 import { buildTemplateForm, itemPayload, type FormField, type FormValue } from "../lib/omeka/templateForm";
-import { checkPower, formTitle } from "../lib/ontoethique/omekaForms";
+import { checkPower, formTitle, powerTypeOf } from "../lib/ontoethique/omekaForms";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => Promise<void> | void;
 interface Ctx {
@@ -216,7 +216,15 @@ export function ontoEthiqueRoutes(ctx: Ctx): Record<string, Handler> {
         const t = formTemplate(url.searchParams.get("template"));
         const f = ctx.config().omekaForms;
         const form = await buildTemplateForm(await ctx.serverOmk(), t.templateId);
-        ctx.sendJson(res, 200, { ...form, ...(t.templateId === f.powerTemplateId ? { power: { intensity: f.intensity, typeTerm: f.powerTypeTerm, types: f.powerTypes } } : {}) });
+        // pouvoir : si le type est un item d'un vocabulaire (custom vocab), chaque type reçoit l'item qui le désigne
+        // (itemId, itemType) pour que le formulaire écrive cet item et non un texte refusé par le modèle
+        let types: any[] = f.powerTypes;
+        if (t.templateId === f.powerTemplateId) {
+          const dt = form.fields.find(x => x.term === f.powerTypeTerm)?.dataTypes.find(d => d.kind === "item") as any;
+          const opts: any[] = dt?.options ?? [];
+          if (opts.length) types = f.powerTypes.map(pt => { const o = opts.find(o => powerTypeOf(o.title, ctx.config())?.id === pt.id); return o ? { ...pt, itemId: o.id, itemTitle: o.title, itemType: dt.type } : pt; });
+        }
+        ctx.sendJson(res, 200, { ...form, ...(t.templateId === f.powerTemplateId ? { power: { intensity: f.intensity, typeTerm: f.powerTypeTerm, types } } : {}) });
       } catch (e) { ctx.sendJson(res, 502, { error: (e as Error).message }); }
     },
 
@@ -230,8 +238,13 @@ export function ontoEthiqueRoutes(ctx: Ctx): Record<string, Handler> {
         const field = findField((await buildTemplateForm(omk, t.templateId)).fields, term);
         const dt = field?.dataTypes.find(d => d.kind === "item" && !d.options);
         if (!dt) throw new Error("Ce champ n'accepte pas de recherche d'item");
+        // recherche dans le titre (partie de mot, accents et casse ignorés par la base) plutôt qu'en plein texte, qui
+        // n'accepte que des mots entiers et renvoie des items sans rapport ; à la suite des filtres du type de données
         const params = new URLSearchParams(dt.query ?? "");
-        params.set("fulltext_search", text(url.searchParams.get("q"), 200));
+        const n = Math.max(-1, ...[...params.keys()].map(k => Number(/^property\[(\d+)\]/.exec(k)?.[1] ?? -1))) + 1;
+        params.set(`property[${n}][property]`, "dcterms:title"); params.set(`property[${n}][type]`, "in");
+        params.set(`property[${n}][text]`, text(url.searchParams.get("q"), 200));
+        params.set("sort_by", "title");
         params.set("per_page", String(ctx.config().omekaForms.searchLimit));
         const items = await omk.request(omk.url("items", params.toString()));
         ctx.sendJson(res, 200, items.map((i: any) => ({ id: i["o:id"], title: i["o:title"] ?? `Item ${i["o:id"]}` })));
