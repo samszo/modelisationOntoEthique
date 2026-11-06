@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EcoSpace</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9;
+    --accent: #2f6db0; --accent-ink: #ffffff; --ok: #2e7d4f; --warn: #b26a00; --err: #b3261e;
+    --tile: #d9d6cc; --tile-hover: #f2c94c; --tile-center: #c9d8e8; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
+      --accent: #7fb0e8; --accent-ink: #0c1a29; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80;
+      --tile: #3a3f48; --tile-hover: #c9a227; --tile-center: #34506b; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
+    --accent: #7fb0e8; --accent-ink: #0c1a29; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80;
+    --tile: #3a3f48; --tile-hover: #c9a227; --tile-center: #34506b; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1400px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  h1 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .spacer { flex: 1; }
+  header a { color: var(--accent); font-size: 14px; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 16px 60px; display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow); min-width: 0; }
+  section.card > h2 { font-size: 15px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 12px; font-size: 13.5px; }
+  label { font-size: 13px; font-weight: 600; }
+  .help { font-size: 12px; color: var(--muted); }
+  input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+  button.btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  button.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.btn.small { padding: 3px 10px; font-size: 13px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .muted { color: var(--muted); } .ko { color: var(--err); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin: 2px 4px 2px 0; }
+  .badge { font-size: 11.5px; border-radius: 999px; padding: 1px 8px; color: #fff; white-space: nowrap; }
+  nav.steps { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; align-self: start; position: sticky; top: 70px; }
+  nav.steps ol { list-style: none; margin: 0; padding: 0; }
+  nav.steps li.step > div { font-weight: 650; font-size: 14px; margin: 6px 0; }
+  nav.steps ol ol { margin-left: 10px; border-left: 2px solid var(--line); }
+  nav.steps button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 6px 10px; font: inherit; font-size: 13.5px; color: var(--muted); cursor: pointer; border-left: 2px solid transparent; margin-left: -2px; }
+  nav.steps button.active { color: var(--ink); border-left-color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  nav.steps button:disabled { opacity: .45; cursor: default; }
+  .ecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .eco { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: var(--bg); text-align: left; font: inherit; color: var(--ink); }
+  .eco:hover, .eco.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .eco h3 { margin: 0 0 4px; font-size: 15px; }
+  .eco p { margin: 0; font-size: 13px; color: var(--muted); }
+  /* espace 3D */
+  #space { position: relative; width: 100%; height: 70vh; min-height: 440px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); touch-action: none; }
+  main > div { min-width: 0; }
+  #space canvas { display: block; position: absolute; inset: 0; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  #labels .label.small { font-size: 10.5px; padding: 0 3px; opacity: 0.9; }
+  #labels .label { font-size: 12px; color: var(--ink); background: color-mix(in srgb, var(--panel) 80%, transparent); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  #labels .compass { font-weight: 700; color: var(--accent); font-size: 14px; }
+  #overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #overlay .menu path { pointer-events: auto; cursor: pointer; stroke: var(--panel); stroke-width: 2px; }
+  #overlay .menu path:hover { filter: brightness(1.12); }
+  #overlay .menu text { fill: #fff; font-weight: 600; font-size: 11px; pointer-events: none; }
+  #overlay .menu .icon { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  #overlay .menu text.caption { fill: var(--ink); stroke: var(--bg); stroke-width: 4px; paint-order: stroke; font-size: 12px; }
+  #overlay .menu .disabled path { cursor: not-allowed; opacity: .45; }
+  #hud { position: absolute; left: 10px; bottom: 8px; font-size: 12.5px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border-radius: 6px; padding: 3px 8px; pointer-events: none; font-variant-numeric: tabular-nums; }
+  #empty-space { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; background: var(--bg); text-align: center; padding: 16px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  #dlg-busy { width: min(460px, calc(100vw - 32px)); }
+  #dlg-busy ol { list-style: none; margin: 10px 0 6px; padding: 0; font-size: 13.5px; }
+  #dlg-busy li { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; color: var(--muted); }
+  #dlg-busy li.cur { color: var(--ink); font-weight: 600; }
+  #dlg-busy li .ic { width: 16px; flex: none; text-align: center; }
+  #dlg-busy li .d { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 400; color: var(--muted); }
+  #dlg-busy li.cur .ic { animation: busy-spin 1s linear infinite; display: inline-block; }
+  #busy-total { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @keyframes busy-spin { to { transform: rotate(360deg); } }
+  dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); padding: 18px 20px; width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
+  dialog::backdrop { background: rgb(0 0 0 / .35); }
+  dialog h2 { margin: 0 0 8px; font-size: 17px; }
+  dialog.wide { width: min(1200px, calc(100vw - 32px)); }
+  dialog iframe { width: 100%; height: 72vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; display: block; }
+  .props { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; margin: 8px 0 0; font-size: 14px; }
+  .props dt, .props dd { margin: 0; padding: 7px 8px; border-top: 1px solid var(--line); }
+  .props dt { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .props dd .ann { display: block; font-size: 12px; color: var(--muted); margin-left: 10px; }
+  .props a { color: var(--accent); }
+  .num { font-variant-numeric: tabular-nums; }
+  .ac-list { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 6px; max-height: 260px; overflow: auto; background: var(--panel); }
+  .ac-list:empty { display: none; }
+  .ac-list li { padding: 7px 10px; cursor: pointer; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); font-size: 14px; }
+  .ac-list li:first-child { border-top: 0; }
+  .ac-list li:hover, .ac-list li.active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .ac-list li.disabled { opacity: .5; cursor: default; }
+  .ac-list .t { flex: 1; min-width: 0; }
+  .media { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; }
+  .media .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .media .row > * { flex: 1 1 200px; }
+  .media .seg button { flex: 0 0 auto; }
+  .impact li { margin: 3px 0; font-size: 14px; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
+  .toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } nav.steps { position: static; } }
+  @media (max-width: 600px) { .props { grid-template-columns: 1fr; } .props dd { border-top: 0; padding-top: 0; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>EcoSpace <small>écosystème de connaissances en trois dimensions</small></h1>
+    <div class="spacer"></div>
+    <span id="eco-label" class="chip hidden"></span>
+    <a href="/">ontoÉthique</a>
+    <a href="/econetwork">EcoNetwork</a>
+    <a href="/parametres" title="Connexions Albert, Zotero, Omeka S">⚙ Paramètres</a>
+    <a href="/docs/" target="_blank">Documentation</a>
+  </div>
+</header>
+
+<main>
+  <nav class="steps" aria-label="Étapes">
+    <ol id="steps"></ol>
+    <div class="toolbar" style="margin:12px 0 0">
+      <button id="prev" class="btn small">← Précédente</button>
+      <button id="next" class="btn small primary">Suivante →</button>
+    </div>
+  </nav>
+
+  <div>
+    <!-- 1.1 écosystème -->
+    <div id="step-1.1" class="hidden">
+      <section class="card">
+        <h2>1.1 Créer ou choisir un écosystème de connaissances</h2>
+        <p class="lead">Un nouvel écosystème reçoit son espace : une grille hexagonale repérée en coordonnées cube (q, r, s) et géographiques (longitude, latitude, altitude).</p>
+        <div class="toolbar"><button id="eco-new" class="btn primary">Nouvel écosystème</button><button id="eco-refresh" class="btn">Actualiser</button><span id="eco-info" class="muted" style="font-size:13px"></span></div>
+        <div id="eco-form" class="hidden" style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px"></div>
+        <div id="ecos" class="ecos"><p class="muted">Chargement…</p></div>
+      </section>
+    </div>
+
+    <!-- 1.2 espace -->
+    <div id="step-1.2" class="hidden">
+      <section class="card">
+        <h2>1.2 Espace de l'écosystème</h2>
+        <p class="lead">Cliquer sur un hexagone ouvre son menu (libellé au survol) : <strong>lier</strong> crée ou place un élément ontologique sur l'hexagone, avec sa forme (sur un physique : un physique enfant) ; sur un élément placé : <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour tourner, clic droit ou Maj + glisser pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone.</p>
+        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
+        <div class="toolbar"><label for="time-height">Échelle temporelle</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span></div>
+        <div id="space">
+          <div id="labels"></div>
+          <svg id="overlay"><g class="menu"></g></svg>
+          <div id="hud"></div>
+          <div id="empty-space" class="hidden">
+            <p id="empty-text" style="margin:0"></p>
+            <button id="space-create" class="btn primary">Créer la grille</button>
+          </div>
+        </div>
+        <div id="legend" class="legend"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- élément à créer ou à placer -->
+<dialog id="dlg-link">
+  <form method="dialog">
+    <h2 id="link-title">Placer un élément</h2>
+    <p class="help" id="link-help"></p>
+    <label for="link-name">Titre</label>
+    <div>
+      <input id="link-name" required autocomplete="off" placeholder="Saisir un titre : les items existants sont proposés">
+      <ul id="link-results" class="ac-list" role="listbox"></ul>
+    </div>
+    <div id="link-phys" class="hidden" style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-top:10px">
+      <div><label for="link-created">Date de création</label><input id="link-created" pattern="-?\d{1,4}(-\d{2}(-\d{2}(T\d{2}(:\d{2}(:\d{2})?)?)?)?)?" placeholder="AAAA, AAAA-MM-JJ ou AAAA-MM-JJTHH:MM:SS"></div>
+      <div><label for="link-importance">Importance</label><input id="link-importance" type="number" min="0" step="1" value="1"></div>
+    </div>
+    <div id="link-media"></div>
+    <p class="help" id="link-choice"></p>
+    <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+      <button value="cancel" class="btn" formnovalidate>Annuler</button>
+      <button value="confirm" id="link-submit" class="btn primary">Créer et placer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- opération en cours : étapes et durée -->
+<dialog id="dlg-busy" aria-live="polite">
+  <h2 id="busy-title" style="margin:0">Opération en cours</h2>
+  <ol id="busy-steps"></ol>
+  <div id="busy-total"></div>
+</dialog>
+
+<!-- dupliquer : nombre de copies -->
+<dialog id="dlg-dup">
+  <form method="dialog">
+    <h2 id="dup-title">Dupliquer</h2>
+    <p class="help" id="dup-help"></p>
+    <label for="dup-count">Nombre de copies</label>
+    <input id="dup-count" type="number" min="1" step="1" value="1" required>
+    <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+      <button value="cancel" class="btn" formnovalidate>Annuler</button>
+      <button value="confirm" class="btn primary">Dupliquer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- hexagone libre -->
+<dialog id="dlg-hex">
+  <div class="toolbar"><h2 id="hex-title" style="margin:0">Hexagone</h2><div class="spacer"></div><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
+  <dl id="hex-body" class="props"></dl>
+</dialog>
+
+<!-- détails -->
+<dialog id="dlg-details" class="wide">
+  <div class="toolbar"><h2 id="details-title" style="margin:0">Détails</h2><div class="spacer"></div>
+    <button id="details-tab-omeka" class="btn small primary">Omeka S</button><button id="details-tab-sheet" class="btn small">Fiche</button>
+    <a id="details-open" target="_blank" rel="noopener" style="color:var(--accent)">Nouvel onglet ↗</a><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
+  <p class="help" id="details-help"></p>
+  <iframe id="details-frame" title="Item dans Omeka S"></iframe>
+  <div id="details-body" class="hidden"></div>
+</dialog>
+
+<!-- modification -->
+<dialog id="dlg-edit">
+  <div class="toolbar"><h2 id="edit-title" style="margin:0">Modifier</h2><div class="spacer"></div><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
+  <div id="edit-form"></div>
+</dialog>
+
+<!-- suppression -->
+<dialog id="dlg-delete">
+  <h2 id="del-title">Supprimer</h2>
+  <div id="del-body" class="impact"></div>
+  <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+    <button class="btn" onclick="this.closest('dialog').close()">Annuler</button>
+    <button id="del-space" class="btn">Retirer de l'espace</button>
+    <button id="del-detach" class="btn hidden">Détacher du parent</button>
+    <button id="del-network" class="btn">Retirer de l'écosystème</button>
+    <button id="del-omeka" class="btn primary" style="background:var(--err);border-color:var(--err)">Supprimer dans Omeka S</button>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { ConvexGeometry } from "three/addons/geometries/ConvexGeometry.js";
+import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { templateForm } from "/templateForm.js";
+
+const $ = s => document.querySelector(s);
+const el = (tag, props = {}, ...children) => {
+  const e = Object.assign(document.createElement(tag), props);
+  for (const c of children.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+};
+// fenêtre de progression des opérations longues (lecture d'Omeka S, écriture des relations, calcul des bulles,
+// construction de la scène) : étapes faites et en cours avec leur durée, durée totale ; elle bloque la page et
+// n'apparaît qu'au-delà de 300 ms ; withBusy est réentrant (une opération peut en appeler une autre, ex. loadSpace)
+const busy = { depth: 0, steps: [], t0: 0, timer: null, shown: false };
+const secs = ms => `${(ms / 1000).toFixed(1)} s`;
+function busyRender() {
+  const now = performance.now();
+  $("#busy-steps").replaceChildren(...busy.steps.map((x, i) => {
+    const cur = i === busy.steps.length - 1 && x.end == null;
+    return el("li", { className: cur ? "cur" : "" }, el("span", { className: "ic", textContent: cur ? "◌" : "✓" }), el("span", { textContent: x.label }),
+      el("span", { className: "d", textContent: secs((x.end ?? now) - x.start) }));
+  }));
+  $("#busy-total").textContent = `Durée : ${secs(now - busy.t0)}`;
+}
+function busyTick() {
+  if (!busy.shown && performance.now() - busy.t0 > 300) { busy.shown = true; $("#dlg-busy").showModal(); }
+  if (busy.shown) busyRender();
+}
+function busyStep(label) {
+  if (!busy.depth) return;
+  const now = performance.now(), last = busy.steps.at(-1);
+  if (last && last.end == null) last.end = now;
+  busy.steps.push({ label, start: now });
+  if (busy.shown) busyRender();
+}
+async function withBusy(title, fn) {
+  if (busy.depth++ === 0) {
+    Object.assign(busy, { steps: [], t0: performance.now(), shown: false });
+    $("#busy-title").textContent = title;
+    busy.timer = setInterval(busyTick, 100);
+  }
+  try { return await fn(); }
+  finally {
+    if (--busy.depth === 0) { clearInterval(busy.timer); if (busy.shown) $("#dlg-busy").close(); busy.shown = false; }
+  }
+}
+$("#dlg-busy").addEventListener("cancel", e => e.preventDefault()); // Échap ne ferme pas la fenêtre pendant l'opération
+// laisse le navigateur afficher la fenêtre avant un calcul synchrone (construction de la scène)
+const paint = () => new Promise(r => setTimeout(r, 30));
+// libellé de l'étape d'un appel au serveur
+const API_STEPS = [
+  [/^GET \/api\/ecospace\/space/, "Lecture de l'espace : items dans Omeka S, arbres des physiques, hiérarchie et calcul des bulles"],
+  [/^POST \/api\/ecospace\/space/, "Création de la grille"],
+  [/^POST \/api\/ecospace\/place/, "Placement de l'élément et relecture de l'espace"],
+  [/^POST \/api\/ecospace\/unplace/, "Retrait de l'espace et relecture de l'espace"],
+  [/^POST \/api\/ecospace\/physique/, "Création ou liaison du physique dans Omeka S"],
+  [/^POST \/api\/ecospace\/member/, "Création ou reprise de l'élément et lien depuis l'actant dans Omeka S"],
+  [/^POST \/api\/ecospace\/concept\/relate/, "Écriture des relations entre concepts dans Omeka S"],
+  [/^POST \/api\/ecospace\/concept\/detach/, "Retrait des relations dans Omeka S, relecture de l'espace et calcul des bulles"],
+  [/^POST \/api\/econetwork\/link/, "Création ou rattachement de l'élément dans Omeka S"],
+  [/^POST \/api\/econetwork\/duplicate/, "Copie de l'item dans Omeka S"],
+  [/^POST \/api\/econetwork\/item/, "Enregistrement dans Omeka S"],
+  [/^POST \/api\/econetwork\/(delete|unlink)/, "Mise à jour dans Omeka S"],
+  [/^POST \/api\/econetwork\/media/, "Dépôt du média dans Omeka S"],
+];
+const api = async (url, opts = {}) => {
+  const key = `${opts.method ?? "GET"} ${url}`, step = API_STEPS.find(([re]) => re.test(key));
+  if (step) busyStep(step[1]);
+  const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opts, body: opts.body && JSON.stringify(opts.body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+};
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 3500); }
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmtHex = h => `(${h.q}, ${h.r}, ${h.s})`;
+const fmtGeo = g => `${g.lon.toFixed(6)}°, ${g.lat.toFixed(6)}°, ${g.alt.toFixed(2)} m`;
+
+// ==========================================
+// Étapes ; état dans l'adresse : #step=1.2&eco=12
+// ==========================================
+const STEPS = [
+  { id: "1", label: "Modéliser l'écosystème de connaissances", sub: [
+    { id: "1.1", label: "Créer ou choisir un écosystème" },
+    { id: "1.2", label: "Espace de l'écosystème", needsEco: true },
+  ] },
+];
+const FLAT = STEPS.flatMap(s => s.sub);
+const state = { step: "1.1", eco: null, ecoTitle: "" };
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (FLAT.some(s => s.id === p.get("step"))) state.step = p.get("step");
+  state.eco = Number(p.get("eco")) || null;
+}
+const writeHash = () => history.replaceState(null, "", `#step=${state.step}${state.eco ? `&eco=${state.eco}` : ""}`);
+function renderSteps() {
+  $("#steps").replaceChildren(...STEPS.map(s => el("li", { className: "step" }, el("div", { textContent: `${s.id}. ${s.label}` }),
+    el("ol", {}, s.sub.map(x => el("li", {}, el("button", { className: x.id === state.step ? "active" : "", disabled: x.needsEco && !state.eco, textContent: `${x.id} ${x.label}`, onclick: () => go(x.id) })))))));
+  const i = FLAT.findIndex(s => s.id === state.step);
+  $("#prev").disabled = i <= 0;
+  $("#next").disabled = i >= FLAT.length - 1 || (FLAT[i + 1].needsEco && !state.eco);
+  $("#eco-label").classList.toggle("hidden", !state.eco);
+  $("#eco-label").textContent = state.eco ? `Écosystème : ${state.ecoTitle || state.eco}` : "";
+}
+function go(step) {
+  const s = FLAT.find(x => x.id === step);
+  if (!s || (s.needsEco && !state.eco)) return toast("Choisir d'abord un écosystème (étape 1.1)");
+  state.step = step; writeHash(); renderSteps();
+  for (const x of FLAT) $(`[id="step-${x.id}"]`).classList.toggle("hidden", x.id !== step);
+  if (step === "1.1") loadEcos();
+  if (step === "1.2") { resize(); loadSpace(); }
+}
+$("#prev").onclick = () => go(FLAT[FLAT.findIndex(s => s.id === state.step) - 1]?.id);
+$("#next").onclick = () => go(FLAT[FLAT.findIndex(s => s.id === state.step) + 1]?.id);
+
+// ==========================================
+// 1.1 Écosystèmes (création : la grille de l'espace est créée avec l'écosystème)
+// ==========================================
+let ecoData = null, ecoProp = "jdc:hasEcoCon";
+async function loadEcos() {
+  try { ecoData = await api("/api/econetwork/ecos"); ecoProp = ecoData.ecoProperty ?? ecoProp; }
+  catch (e) { $("#ecos").replaceChildren(el("p", { className: "ko", textContent: e.message })); return; }
+  $("#eco-info").textContent = `${ecoData.ecos.length} écosystème(s)`;
+  if (state.eco && !state.ecoTitle) state.ecoTitle = ecoData.ecos.find(x => x.id === state.eco)?.title ?? "";
+  renderSteps();
+  $("#ecos").replaceChildren(...(ecoData.ecos.length ? ecoData.ecos.map(x => el("button", { className: `eco${x.id === state.eco ? " selected" : ""}`, onclick: () => chooseEco(x) },
+    el("h3", { textContent: x.title }), el("p", { textContent: x.description || "—" }), el("p", { textContent: `item ${x.id}` })))
+    : [el("p", { className: "muted", textContent: "Aucun écosystème : en créer un." })]));
+}
+function chooseEco(x) { state.eco = x.id; state.ecoTitle = x.title; space = null; go("1.2"); }
+$("#eco-refresh").onclick = loadEcos;
+$("#eco-new").onclick = async () => {
+  const box = $("#eco-form");
+  box.classList.toggle("hidden");
+  if (box.classList.contains("hidden")) return;
+  try {
+    const formBox = el("div"), media = mediaPicker();
+    box.replaceChildren(formBox, media.el);
+    await templateForm(formBox, { api, toast, templateId: ecoData?.ecoTemplateId ?? 14, submitLabel: "Créer l'écosystème et sa grille", onSubmit: async values => {
+      media.check();
+      const r = await api("/api/ontoethique/form/item", { method: "POST", body: { template: ecoData?.ecoTemplateId ?? 14, values } });
+      let m = "";
+      if (media.has()) { try { m = await media.attach(r.id); } catch (e) { m = `média non ajouté : ${e.message}`; } }
+      let g = "";
+      try { const s = await api("/api/ecospace/space", { method: "POST", body: { eco: r.id } }); g = `grille de ${s.hexes.length} hexagones`; } catch (e) { g = `grille non créée : ${e.message}`; }
+      toast(`${r.created ? `Écosystème ${r.id} créé` : `Un écosystème « ${r.title} » existe déjà : il est choisi`} · ${g}${m ? ` · ${m}` : ""}`);
+      box.classList.add("hidden");
+      chooseEco({ id: r.id, title: r.title });
+    } });
+    formBox.querySelector("form > .toolbar:last-child")?.before(media.el);
+  } catch (e) { box.textContent = e.message; }
+};
+
+// ==========================================
+// Formes des éléments ontologiques
+// ==========================================
+// fullerène C60 (icosaèdre tronqué) : permutations paires de (0, ±1, ±3φ), (±1, ±(2+φ), ±2φ), (±φ, ±2, ±(2φ+1)),
+// arête 2, rayon circonscrit √(9φ + 10)
+const PHI = (1 + Math.sqrt(5)) / 2;
+const C60_RADIUS = Math.sqrt(9 * PHI + 10);
+const C60 = (() => {
+  const verts = [], seen = new Set();
+  for (const b of [[0, 1, 3 * PHI], [1, 2 + PHI, 2 * PHI], [PHI, 2, 2 * PHI + 1]])
+    for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) {
+      const v = [b[0] * sx, b[1] * sy, b[2] * sz];
+      for (let k = 0; k < 3; k++) {
+        const p = [v[k % 3], v[(k + 1) % 3], v[(k + 2) % 3]], key = p.map(x => x.toFixed(4)).join();
+        if (!seen.has(key)) { seen.add(key); verts.push(new THREE.Vector3(...p)); }
+      }
+    }
+  const bonds = [];
+  for (let i = 0; i < verts.length; i++) for (let j = i + 1; j < verts.length; j++) if (Math.abs(verts[i].distanceTo(verts[j]) - 2) < 1e-3) bonds.push([i, j]);
+  return { verts, bonds };
+})();
+console.assert(C60.verts.length === 60 && C60.bonds.length === 90, "C60 : 60 atomes et 90 liaisons attendus");
+
+const protoCache = new Map();
+// actant : fullerène dont le centroïde est au centre de l'hexagone + sphère dont le pôle nord touche ce centroïde
+// fullerène C60 de rayon radius, centré sur l'origine (prototype mis en cache, cloné à chaque usage)
+function fullerene(color, radius) {
+  const key = `C60|${color}|${radius}`;
+  if (!protoCache.has(key)) {
+    const ful = new THREE.Group();
+    const col = new THREE.Color(color);
+    ful.add(new THREE.Mesh(new ConvexGeometry(C60.verts), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.35, flatShading: true, depthWrite: false, side: THREE.DoubleSide })));
+    const atoms = new THREE.InstancedMesh(new THREE.SphereGeometry(0.32, 12, 8), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.4 }), C60.verts.length);
+    const m = new THREE.Matrix4();
+    C60.verts.forEach((v, i) => atoms.setMatrixAt(i, m.makeTranslation(v.x, v.y, v.z)));
+    const bonds = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 6), new THREE.MeshStandardMaterial({ color: col.clone().multiplyScalar(0.7) }), C60.bonds.length);
+    const up = new THREE.Vector3(0, 1, 0);
+    C60.bonds.forEach(([a, b], i) => {
+      const A = C60.verts[a], B = C60.verts[b], dir = B.clone().sub(A);
+      const q = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+      bonds.setMatrixAt(i, new THREE.Matrix4().compose(A.clone().add(B).multiplyScalar(0.5), q, new THREE.Vector3(1, dir.length(), 1)));
+    });
+    ful.add(atoms, bonds);
+    ful.scale.setScalar(radius / C60_RADIUS);
+    protoCache.set(key, ful);
+  }
+  return protoCache.get(key).clone();
+}
+// open : l'actant a des personnes ou agents, sa sphère est plus transparente pour laisser voir les leurs
+function actantShape(shape, S, open = false) {
+  const key = `${shape.key}|${S}|${open}`;
+  if (!protoCache.has(key)) {
+    const color = new THREE.Color(shape.color || "#d0602e");
+    const g = new THREE.Group();
+    // centroïde du fullerène = origine du groupe = centre de l'hexagone
+    g.add(fullerene(shape.color || "#d0602e", shape.fullereneRadius * S));
+    const R = shape.sphereRadius * S;
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 24), new THREE.MeshStandardMaterial({ color, roughness: 0.5, transparent: true, opacity: open ? 0.45 : 0.85, depthWrite: !open }));
+    sphere.position.y = -R; // pôle nord (y = 0) sur le centroïde
+    g.add(sphere);
+    protoCache.set(key, g);
+  }
+  return protoCache.get(key).clone();
+}
+const SHAPES = { actant: actantShape };
+// sous-grille de l'hexagone d'un actant : contours des sous-hexagones, juste au-dessus de la tuile
+function subGridLines(sub, color) {
+  const g = new THREE.Group(), mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
+  const a0 = sub.orientation === "pointy" ? Math.PI / 6 : 0;
+  const ring = Array.from({ length: 6 }, (_, i) => new THREE.Vector3(Math.cos(a0 + i * Math.PI / 3) * sub.size, 0, Math.sin(a0 + i * Math.PI / 3) * sub.size));
+  const geo = new THREE.BufferGeometry().setFromPoints(ring);
+  for (const h of sub.slots) { const o = new THREE.LineLoop(geo, mat); o.position.set(h.x, 0.06, h.z); g.add(o); }
+  return g;
+}
+// personne ou agent : petit fullerène centré sur son sous-hexagone (moitié au-dessus, moitié en dessous de la grille) et,
+// comme l'actant, sphère sous la grille dont le pôle nord touche le centroïde du fullerène ; titre au-dessus
+function memberShape(p, shape) {
+  const g = new THREE.Group();
+  g.add(fullerene(shape.color, p.radius));
+  const R = p.sphereRadius ?? p.radius;
+  const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 24, 16), new THREE.MeshStandardMaterial({ color: shape.color, roughness: 0.5, transparent: true, opacity: 0.85 }));
+  sphere.position.y = -R;
+  g.add(sphere);
+  g.position.set(p.x, p.y, p.z);
+  const label = new CSS2DObject(el("div", { className: "label small", textContent: p.title.length > 30 ? p.title.slice(0, 28) + "…" : p.title }));
+  label.position.set(0, p.radius + 0.6, 0);
+  g.add(label);
+  return g;
+}
+
+// concept (« bulle conceptuelle ») : capsule translucide d'axe horizontal est-ouest (cylindre fermé par deux
+// demi-sphères ; length = longueur totale) ; taille et position calculées par le serveur (titre ou enfants, répartition
+// équilibrée des frères) ; titre écrit dans la scène (sprite tourné vers la caméra) à charWidth par caractère et
+// labelHeight de haut, au centre d'une bulle sans enfant, dans la bande haut-nord d'une bulle parent (labelY, labelZ)
+function capsuleGeometry(radius, length) {
+  return new THREE.CapsuleGeometry(radius, Math.max(0, length - 2 * radius), 12, 48).rotateZ(Math.PI / 2);
+}
+function textSprite(text, width, height) {
+  const px = 64, c = document.createElement("canvas"), g2 = c.getContext("2d"), font = `600 ${px}px system-ui, sans-serif`;
+  g2.font = font;
+  c.width = Math.ceil(g2.measureText(text).width) + 12; c.height = Math.ceil(px * 1.35);
+  g2.font = font; g2.textAlign = "center"; g2.textBaseline = "middle"; g2.lineJoin = "round";
+  g2.lineWidth = 10; g2.strokeStyle = css("--panel"); g2.strokeText(text, c.width / 2, c.height / 2);
+  g2.fillStyle = css("--ink"); g2.fillText(text, c.width / 2, c.height / 2);
+  const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthTest: false }));
+  sp.renderOrder = 5; sp.raycast = () => {}; // le titre ne capte pas les clics (la bulle les reçoit)
+  sp.scale.set(width, height, 1);
+  return sp;
+}
+function conceptShape(p, shape) {
+  const g = new THREE.Group(), S = space.grid.hexSize;
+  const color = new THREE.Color(shape.color || "#8a4fb8");
+  const mesh = new THREE.Mesh(capsuleGeometry(p.radius, p.length), new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+  // contour : cercles aux jonctions cylindre / demi-sphères (plan vertical nord-sud)
+  const ringMat = new THREE.LineBasicMaterial({ color: color.clone().multiplyScalar(0.7) });
+  const l = Math.max(0, p.length - 2 * p.radius) / 2;
+  for (const x of [-l, l]) {
+    const o = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 64 }, (_, i) => new THREE.Vector3(0, Math.cos(i / 64 * 2 * Math.PI), Math.sin(i / 64 * 2 * Math.PI)))), ringMat);
+    o.scale.set(1, p.radius, p.radius); o.position.x = x; g.add(o);
+  }
+  const label = textSprite(p.label ?? p.title, Math.max(0.1, (p.chars ?? 1) * shape.charWidth * S), shape.labelHeight * S);
+  label.position.set(0, p.labelY ?? 0, p.labelZ ?? 0);
+  g.add(mesh, label);
+  g.position.set(p.x, p.y, p.z);
+  return { group: g, mesh };
+}
+
+// ==========================================
+// 1.2 Scène three.js : grille hexagonale et éléments placés
+// ==========================================
+const container = $("#space");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+container.prepend(renderer.domElement);
+const labelRenderer = new CSS2DRenderer({ element: $("#labels") });
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(60, 120, 40); scene.add(sun);
+const below = new THREE.DirectionalLight(0xffffff, 0.6); below.position.set(-40, -100, -30); scene.add(below);
+const gridGroup = new THREE.Group(), itemsGroup = new THREE.Group();
+scene.add(gridGroup, itemsGroup);
+
+let space = null, tiles = new Map(), hovered = null, menuHex = null, extent = 100;
+const keyOf = h => `${h.q},${h.r}`;
+// éléments placés sur un hexagone (les personnes et agents, sur la sous-grille de leur actant, n'y comptent pas)
+const placedAt = h => space?.placements.filter(p => !p.actant && p.q === h.q && p.r === h.r) ?? [];
+const shapeByKey = k => space?.shapes.find(s => s.key === k);
+// un hexagone porte un élément par couche (actant sous la grille, physique au-dessus)
+const layerOf = sh => sh?.layer ?? sh?.key;
+const layerTaken = (h, sh) => sh?.free ? null : placedAt(h).find(p => layerOf(shapeByKey(p.shape)) === layerOf(sh)) ?? null;
+const titleOf = p => p.title ?? `item ${p.item}`;
+
+function resize() {
+  const { width, height } = container.getBoundingClientRect();
+  if (!width || !height) return;
+  renderer.setSize(width, height); labelRenderer.setSize(width, height);
+  camera.aspect = width / height; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(container);
+
+function tileColor(h) {
+  if (menuHex && keyOf(menuHex) === keyOf(h)) return css("--accent");
+  if (hovered && keyOf(hovered) === keyOf(h)) return css("--tile-hover");
+  return h.q === 0 && h.r === 0 ? css("--tile-center") : css("--tile");
+}
+const paintTiles = () => { for (const t of tiles.values()) t.material.color.set(tileColor(t.userData.hex)); };
+
+function clear(group) {
+  for (const o of [...group.children]) { o.traverse(x => { if (x.isCSS2DObject) x.element.remove(); if (x.isSprite) { x.material.map?.dispose(); x.material.dispose(); } }); group.remove(o); }
+}
+function buildGrid() {
+  clear(gridGroup); tiles = new Map();
+  const S = space.grid.hexSize, flat = space.grid.orientation === "flat";
+  const geo = new THREE.CylinderGeometry(S * 0.97, S * 0.97, S * 0.02, 6);
+  if (flat) geo.rotateY(Math.PI / 6);
+  const edges = new THREE.EdgesGeometry(geo);
+  const lineMat = new THREE.LineBasicMaterial({ color: css("--muted"), transparent: true, opacity: 0.6 });
+  for (const h of space.hexes) {
+    const t = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: tileColor(h), transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+    t.position.set(h.x, -S * 0.01, h.z); // face supérieure à l'altitude 0
+    t.userData.hex = h;
+    t.add(new THREE.LineSegments(edges, lineMat));
+    gridGroup.add(t); tiles.set(keyOf(h), t);
+  }
+  extent = S * (space.grid.radius + 1) * Math.sqrt(3);
+  // rose des vents : nord vers -z (latitude croissante)
+  for (const [txt, x, z] of [["N", 0, -extent - S], ["S", 0, extent + S], ["E", extent + S, 0], ["O", -extent - S, 0]]) {
+    const o = new CSS2DObject(el("div", { className: "label compass", textContent: txt })); o.position.set(x, 0, z); gridGroup.add(o);
+  }
+  camera.far = extent * 30; camera.updateProjectionMatrix();
+}
+// ==========================================
+// Échelle temporelle des physiques : surface de la grille = maintenant, hauteur H = plus ancienne date de création ;
+// le curseur fait varier H (et donc la position et la hauteur des boîtes), le mode dilate ou non les intervalles récents
+// ==========================================
+const time = { H: 60, mode: "linear", now: Date.now(), oldest: Date.now() - 864e5 };
+// date Omeka S (o:modified, numeric:timestamp : « 2024 », « 2024-05-01T10:00:00 »…) → millisecondes
+function parseDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(-?\d{1,4})(?:-(\d{2}))?(?:-(\d{2}))?(?:T(\d{2})(?::(\d{2}))?(?::(\d{2}))?)?/);
+  if (!m) return null;
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s) && !isNaN(Date.parse(s))) return Date.parse(s);
+  const d = new Date(Date.UTC(2000, (+m[2] || 1) - 1, +m[3] || 1, +m[4] || 0, +m[5] || 0, +m[6] || 0));
+  d.setUTCFullYear(+m[1]);
+  return d.getTime();
+}
+const yOf = ms => {
+  const u = Math.min(1, Math.max(0, (time.now - ms) / Math.max(1, time.now - time.oldest)));
+  return time.H * (time.mode === "log" ? Math.log1p(99 * u) / Math.log(100) : u);
+};
+const msOfY = y => {
+  const v = Math.min(1, Math.max(0, y / time.H));
+  const u = time.mode === "log" ? Math.expm1(v * Math.log(100)) / 99 : v;
+  return time.now - u * (time.now - time.oldest);
+};
+const fmtDate = (ms, span = 0) => {
+  const d = new Date(ms);
+  if (span > 3 * 365 * 864e5) return String(d.getUTCFullYear());
+  if (span > 90 * 864e5) return d.toLocaleDateString("fr-FR", { month: "short", year: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+};
+const walk = (node, fn, parent = null) => { fn(node, parent); for (const c of node.children ?? []) walk(c, fn, node); };
+function updateTimeBounds() {
+  time.now = Date.parse(space.now) || Date.now();
+  let oldest = Infinity;
+  for (const p of space.placements) if (p.tree) walk(p.tree, n => { const c = parseDate(n.created); if (c != null && c < oldest) oldest = c; });
+  time.oldest = Math.min(oldest, time.now - 864e5); // au moins un jour d'amplitude
+}
+// curseur : 0..100 ↦ hauteur entre minHeight et maxHeight (progression géométrique)
+const sliderToH = v => space.timeScale.minHeight * Math.pow(space.timeScale.maxHeight / space.timeScale.minHeight, v / 100);
+const hToSlider = H => 100 * Math.log(H / space.timeScale.minHeight) / Math.log(space.timeScale.maxHeight / space.timeScale.minHeight);
+function initTimeControls() {
+  const ts = space.timeScale ?? { height: 60, minHeight: 5, maxHeight: 1000, mode: "linear" };
+  space.timeScale = ts;
+  if (!initTimeControls.done) { time.H = ts.height; time.mode = ts.mode === "log" ? "log" : "linear"; initTimeControls.done = true; }
+  $("#time-height").value = hToSlider(time.H);
+  $("#time-mode").value = time.mode;
+  timeInfo();
+}
+function timeInfo() {
+  const has = space?.placements.some(p => p.tree);
+  $("#time-info").textContent = has ? `${Math.round(time.H)} m = ${fmtDate(time.oldest)} (plus ancienne création) → surface = maintenant` : "aucun élément physique placé";
+}
+$("#time-height").oninput = () => { if (!space) return; time.H = sliderToH(+$("#time-height").value); timeInfo(); closeMenu(); buildItems(); };
+$("#time-mode").onchange = () => { if (!space) return; time.mode = $("#time-mode").value; timeInfo(); closeMenu(); buildItems(); };
+
+// ==========================================
+// Éléments placés
+// ==========================================
+const timeGroup = new THREE.Group();
+scene.add(timeGroup);
+let targets = new Map(); // item placé → cible du menu (actant : placement ; physique : racine de l'arbre)
+
+// physique : boîtes imbriquées ; base de la racine = carré inscrit dans l'hexagone ; hauteur = de la modification
+// (bas, récent) à la création (haut, ancien) ; enfants : la hauteur du parent (moins sa marge) est partagée en tranches
+// empilées de haut en bas, dans l'ordre alphabétique des titres, proportionnelles à leur importance ; base = celle du
+// parent moins sa marge
+// textures des médias images (relayées par le serveur, même origine), chargées une fois par média
+const textures = new Map(), texLoader = new THREE.TextureLoader();
+function textureOf(media) {
+  if (!textures.has(media)) {
+    const t = texLoader.load(`/api/ecospace/image?media=${media}`, undefined, undefined, () => console.warn(`⚠️ Image du média ${media} indisponible`));
+    t.colorSpace = THREE.SRGBColorSpace;
+    textures.set(media, t);
+  }
+  return textures.get(media);
+}
+function physiqueShape(p, shape, hex, S) {
+  const g = new THREE.Group();
+  const base = new THREE.Color(shape.color || "#2e7d5b"), white = new THREE.Color(0xffffff);
+  const MIN_H = S * 0.02;
+  const side = shape.baseRatio * (3 - Math.sqrt(3)) * S; // plus grand carré inscrit dans l'hexagone : (3 − √3) × rayon
+  let rootTarget = null;
+  // slab : tranche verticale [bas, haut] attribuée par le parent ; la racine suit ses dates
+  const add = (node, x0, z0, w, d, slab, parent) => {
+    let y0, y1;
+    if (slab) [y0, y1] = slab;
+    else {
+      const c = parseDate(node.created) ?? time.now, m = parseDate(node.modified) ?? time.now;
+      y0 = Math.min(yOf(c), yOf(m)); y1 = Math.max(yOf(c), yOf(m));
+      if (y1 - y0 < MIN_H) y1 = y0 + MIN_H;
+    }
+    const color = base.clone().lerp(white, Math.min(0.6, node.depth * 0.18));
+    // média image : plaqué sur chaque face ; plus transparent si la boîte contient des enfants, pour les laisser voir
+    const mat = node.image
+      ? new THREE.MeshStandardMaterial({ map: textureOf(node.image), transparent: true, opacity: node.children?.length ? 0.45 : 0.92, depthWrite: !node.children?.length, side: THREE.DoubleSide })
+      : new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.22 + Math.min(0.3, node.depth * 0.08), depthWrite: false, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, y1 - y0, d), mat);
+    mesh.position.set(x0 + w / 2, (y0 + y1) / 2, z0 + d / 2);
+    mesh.renderOrder = 1 + node.depth;
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.6 + node.depth * 0.1) })));
+    const target = { item: node.id, title: node.title, shape: "physique", q: hex.q, r: hex.r, s: hex.s, hex, node, parent, placement: p, depth: node.depth, y: [y0, y1],
+      anchor: new THREE.Vector3(hex.x + x0 + w / 2, (y0 + y1) / 2, hex.z + z0 + d / 2), templateId: shape.templateId };
+    mesh.userData = { hex, target };
+    g.add(mesh);
+    if (!parent) rootTarget = target;
+    const kids = [...(node.children ?? [])].sort((a, b) => String(a.title).localeCompare(String(b.title), "fr", { sensitivity: "base", numeric: true }));
+    if (!kids.length) return;
+    const total = kids.reduce((a, k) => a + k.importance, 0);
+    const weight = k => total > 0 ? k.importance : 1, sum = total > 0 ? total : kids.length;
+    const pad = shape.childPadding * Math.min(w, d), padY = shape.childPadding * (y1 - y0);
+    const ix = x0 + pad, iz = z0 + pad, iw = Math.max(0, w - 2 * pad), id = Math.max(0, d - 2 * pad);
+    const top = y1 - padY, len = Math.max(0, y1 - y0 - 2 * padY), gap = kids.length > 1 ? len * 0.02 : 0;
+    let off = 0;
+    for (const k of kids) {
+      const share = weight(k) / sum * len;
+      if (share > gap) add(k, ix, iz, iw, id, [top - off - share + gap / 2, top - off - gap / 2], target);
+      off += share;
+    }
+  };
+  add(p.tree, -side / 2, -side / 2, side, side, null, null);
+  const label = new CSS2DObject(el("div", { className: "label", textContent: p.title.length > 40 ? p.title.slice(0, 38) + "…" : p.title }));
+  label.position.set(0, rootTarget.y[1] + 1.5, 0);
+  g.add(label);
+  return { group: g, target: rootTarget };
+}
+
+function buildTimeAxis() {
+  clear(timeGroup);
+  if (!space.placements.some(p => p.tree)) return;
+  const x = -extent * 0.95, z = -extent * 0.55, mat = new THREE.LineBasicMaterial({ color: css("--accent") });
+  timeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, 0, z), new THREE.Vector3(x, time.H, z)]), mat));
+  const n = 6;
+  for (let i = 0; i <= n; i++) {
+    const y = time.H * i / n;
+    timeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x - 1.5, y, z), new THREE.Vector3(x + 1.5, y, z)]), mat));
+    // précision du libellé selon l'écart avec la graduation voisine (dilaté près de maintenant en mode logarithmique)
+    const gap = Math.abs(msOfY(y) - msOfY(y - time.H / n));
+    const o = new CSS2DObject(el("div", { className: "label", textContent: i === 0 ? "maintenant" : fmtDate(msOfY(y), gap * 4) }));
+    o.position.set(x - 3, y, z); o.center.set(1, 0.5);
+    timeGroup.add(o);
+  }
+}
+
+function buildItems() {
+  clear(itemsGroup); targets = new Map();
+  const S = space.grid.hexSize;
+  for (const p of space.placements) {
+    const shape = shapeByKey(p.shape);
+    const hex = space.hexes.find(h => h.q === p.q && h.r === p.r);
+    if (!shape || (!hex && p.shape !== "concept")) continue;
+    if (p.shape === "concept") {
+      // hexagone au-dessus du centre (le concept peut déborder de la grille)
+      const h = hex ?? { q: p.q, r: p.r, s: p.s, x: p.x, z: p.z, geo: p.geo.center };
+      const { group, mesh } = conceptShape(p, shape);
+      // le plus petit concept l'emporte à la sélection (un enfant est dans son parent)
+      const target = Object.assign(p, { hex: h, depth: 10 + 1e4 / (Math.PI * p.radius * p.radius * p.length), anchor: group.position.clone(), templateId: p.templateId });
+      mesh.userData = { hex: h, target };
+      Object.assign(target, { group });
+      itemsGroup.add(group); targets.set(p.item, target);
+      continue;
+    }
+    if (p.shape === "physique") {
+      if (!p.tree) continue;
+      const { group, target } = physiqueShape(p, shape, hex, S);
+      group.position.set(hex.x, 0, hex.z);
+      itemsGroup.add(group); targets.set(p.item, target);
+      continue;
+    }
+    if (p.actant) {
+      // personne ou agent : sur la sous-grille de son actant (une même personne peut appartenir à plusieurs actants)
+      const owner = space.placements.find(x => x.item === p.actant && x.shape === "actant");
+      if (!hex || !owner) continue;
+      const o = memberShape(p, shape), key = `m:${p.actant}:${p.item}`;
+      const target = Object.assign(p, { hex, key, owner, depth: 5, anchor: new THREE.Vector3(p.x, p.y, p.z) });
+      o.userData = { hex, target };
+      itemsGroup.add(o); targets.set(key, target);
+      continue;
+    }
+    const make = SHAPES[p.shape];
+    if (!make) continue;
+    const o = make(shape, S, space.placements.some(x => x.actant === p.item));
+    o.position.set(hex.x, 0, hex.z);
+    o.userData = { hex, target: p };
+    const label = new CSS2DObject(el("div", { className: "label", textContent: p.title.length > 40 ? p.title.slice(0, 38) + "…" : p.title }));
+    label.position.set(0, shape.fullereneRadius * S + 2, 0);
+    o.add(label);
+    if (p.sub) o.add(subGridLines(p.sub, css("--ink")));
+    itemsGroup.add(o);
+    targets.set(p.item, Object.assign(p, { hex, depth: 0, anchor: new THREE.Vector3(hex.x, 0, hex.z) }));
+  }
+  buildTimeAxis();
+}
+function view(kind = "fit") {
+  const d = extent, H = space?.placements.some(p => p.tree) ? time.H : 0;
+  if (kind === "top") camera.position.set(0, d * 2.4 + H, 0.001);
+  else if (kind === "below") camera.position.set(0, -d * 2.4, 0.001);
+  else camera.position.set(d * 0.9, d * 1.2 + H * 0.6, d * 1.5);
+  controls.target.set(0, kind === "fit" ? H * 0.3 : 0, 0); controls.update();
+}
+$("#space-fit").onclick = () => view("fit");
+$("#space-top").onclick = () => view("top");
+$("#space-below").onclick = () => view("below");
+$("#space-refresh").onclick = () => loadSpace();
+
+const SHAPE_TEXT = {
+  actant: "fullerène C60 + sphère (pôle nord au centroïde), sous-grille pour ses personnes et agents",
+  physique: "boîte de la date de modification (bas) à la date de création (haut), enfants imbriqués selon leur importance",
+  concept: "bulle horizontale sous la grille, dimensionnée par son titre ou ses enfants (skos:narrower), position calculée",
+  personne: "petit fullerène + sphère sur la sous-grille de l'hexagone de son actant (ajout depuis l'actant)",
+  agent: "petit fullerène + sphère sur la sous-grille de l'hexagone de son actant (ajout depuis l'actant)",
+};
+function legend() {
+  $("#legend").replaceChildren(...space.shapes.map(s => el("span", {}, el("i", { className: "sw", style: `background:${s.color}` }), `${s.label} : ${SHAPE_TEXT[s.key] ?? s.key}`)),
+    el("span", {}, `· grille : ${space.hexes.length} hexagones de ${space.grid.hexSize} m (${space.grid.orientation === "flat" ? "côté plat" : "pointe"} en haut), origine ${fmtGeo(space.grid.origin)}`));
+}
+
+function loadSpace() { return withBusy("Chargement de l'espace", loadSpaceNow); }
+async function loadSpaceNow() {
+  if (!state.eco) return;
+  closeMenu();
+  $("#space-info").textContent = "Chargement de l'espace…";
+  let data;
+  try { data = await api(`/api/ecospace/space?eco=${state.eco}`); }
+  catch (e) { $("#space-info").textContent = e.message; return; }
+  if (!ecoData) loadEcos().then(() => renderSteps());
+  if (!data.exists) {
+    space = null; clear(gridGroup); clear(itemsGroup); clear(timeGroup);
+    $("#empty-space").classList.remove("hidden");
+    $("#empty-text").textContent = `Cet écosystème n'a pas encore d'espace. Grille proposée : ${3 * data.grid.radius * (data.grid.radius + 1) + 1} hexagones de ${data.grid.hexSize} m, origine ${fmtGeo(data.grid.origin)}.`;
+    $("#space-info").textContent = "";
+    return;
+  }
+  await setSpace(data);
+}
+async function setSpace(data, recenter = false) {
+  if (busy.depth) { busyStep(`Construction de la scène 3D (${data.placements?.length ?? 0} élément(s), ${data.hexes?.length ?? 0} hexagones)`); await paint(); }
+  const first = !space || space.eco !== data.eco;
+  space = data;
+  closeMenu();
+  $("#empty-space").classList.add("hidden");
+  updateTimeBounds(); initTimeControls();
+  buildGrid(); buildItems(); legend();
+  const missing = space.placements.filter(p => p.missing).length;
+  // copie des positions dans Omeka S (média de l'écosystème) : dernier état connu du serveur
+  const c = space.omekaCopy, copy = !c ? "" : c.pending ? " · copie Omeka S en attente" : c.ok ? ` · positions copiées dans Omeka S${c.media ? ` (média ${c.media})` : ""}` : " · copie Omeka S impossible";
+  $("#space-info").textContent = `${space.placements.length} élément(s) placé(s)${missing ? ` · ${missing} introuvable(s) dans Omeka S` : ""}${copy}`;
+  $("#space-info").title = c?.error ?? "";
+  if (first || recenter) view("fit");
+}
+$("#space-create").onclick = async () => {
+  try { await withBusy("Création de la grille", async () => setSpace(await api("/api/ecospace/space", { method: "POST", body: { eco: state.eco } }), true)); toast("Grille créée"); }
+  catch (e) { toast("Erreur : " + e.message); }
+};
+
+// survol et clic (un glisser fait tourner la vue sans ouvrir de menu) ; parmi les boîtes traversées, la plus profonde
+// (un parent se sélectionne par sa marge, autour de ses enfants)
+const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+const family = t => t.owner ? "actant" : t.shape;
+function pick(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  let best = null;
+  for (const hit of raycaster.intersectObjects([...itemsGroup.children, ...gridGroup.children], true)) {
+    let o = hit.object;
+    while (o && !o.userData.hex) o = o.parent;
+    if (!o) continue;
+    // impacts du plus proche au plus lointain : un élément plus profond ne l'emporte que dans la même famille (concepts
+    // emboîtés, boîtes imbriquées, actant et ses personnes et agents) ; sinon le plus proche de la caméra est retenu
+    const t = o.userData.target ?? null;
+    if (t && (!best?.target || (family(t) === family(best.target) && t.depth > best.target.depth))) best = { hex: o.userData.hex, target: t };
+    else if (!best) best = { hex: o.userData.hex, target: null };
+  }
+  if (best && !best.target) { const p = placedAt(best.hex)[0]; if (p) best.target = targets.get(p.item) ?? null; }
+  return best;
+}
+function hud(hit) {
+  if (!hit) return $("#hud").textContent = menuHex ? "" : "Survoler un hexagone : coordonnées cube et géographiques";
+  const { hex: h, target: t } = hit;
+  let info = "";
+  if (t?.node) {
+    const n = t.node, c = parseDate(n.created), m = parseDate(n.modified);
+    info = ` · ${n.title} · créé ${c != null ? fmtDate(c) : "?"}${n.createdFromRecord ? " (fiche)" : ""} · modifié ${m != null ? fmtDate(m) : "?"} · importance ${n.importance}${n.children.length ? ` · ${n.children.length} enfant(s)` : ""}`;
+  } else if (t?.owner) info = ` · ${shapeByKey(t.shape)?.label ?? ""} ${t.title} · actant « ${t.owner.title} » · sous-hexagone ${fmtHex(t.sub)}`;
+  else if (t?.shape === "concept") info = ` · ${t.title} · niveau ${t.level ?? 0}${t.narrower?.length ? ` · ${t.narrower.length} enfant(s)` : ""} · centre à ${(-t.y).toFixed(1)} m sous la grille`;
+  else if (t) info = ` · ${t.title}`;
+  $("#hud").textContent = `cube ${fmtHex(h)} · ${fmtGeo(h.geo)}${info}`;
+}
+let hoveredTarget = null;
+renderer.domElement.addEventListener("pointermove", e => {
+  if (!space || e.buttons) return;
+  const hit = pick(e), h = hit?.hex ?? null;
+  if ((h && keyOf(h)) !== (hovered && keyOf(hovered)) || hit?.target !== hoveredTarget) {
+    hovered = h; hoveredTarget = hit?.target ?? null; paintTiles(); hud(hit); renderer.domElement.style.cursor = h ? "pointer" : "";
+  }
+});
+// point du rayon de la souris sur un plan
+function rayPoint(e, plane) {
+  const r = renderer.domElement.getBoundingClientRect();
+  pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+}
+// « + 12 skos:narrower 15 » → « + A ⊃ B (skos:narrower) »
+function fmtChanges(changes) {
+  const title = id => space.placements.find(p => p.item === +id)?.title ?? `item ${id}`;
+  return changes.map(c => { const [sign, a, term, b] = c.split(" "); return `${sign === "+" ? "+" : "−"} ${title(a)} ${term} ${title(b)}`; }).join(" · ");
+}
+let down = null;
+renderer.domElement.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY }; });
+renderer.domElement.addEventListener("pointerup", e => {
+  if (!space || !down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || e.button !== 0) return;
+  // menu ouvert après le délai d'un double-clic (qui l'annule) : le second clic ne doit pas actionner un secteur
+  const hit = pick(e);
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => hit ? openMenu(hit.hex, hit.target) : closeMenu(), 260);
+});
+let clickTimer = null;
+// Échap : ferme le menu
+document.addEventListener("keydown", e => { if (e.key === "Escape" && menuAnchor) closeMenu(); });
+// double-clic : vue rapprochée de l'élément ou de l'hexagone (rotation autour de son centre)
+renderer.domElement.addEventListener("dblclick", e => {
+  clearTimeout(clickTimer);
+  const hit = space && pick(e);
+  if (!hit) return;
+  closeMenu();
+  const S = space.grid.hexSize, dir = camera.position.clone().sub(controls.target).normalize();
+  controls.target.copy(hit.target?.anchor ?? new THREE.Vector3(hit.hex.x, 0, hit.hex.z));
+  const size = Array.isArray(hit.target?.y) ? Math.max(S, hit.target.y[1] - hit.target.y[0]) : hit.target?.shape === "concept" ? Math.max(S, hit.target.length) : S;
+  camera.position.copy(controls.target).addScaledVector(dir, size * 1.4 + S * 2.5);
+  controls.update();
+});
+
+// rendu ; le menu suit l'élément (ou l'hexagone) à l'écran
+const menuLayer = d3.select("#overlay g.menu");
+const v = new THREE.Vector3();
+let menuAnchor = null;
+function screenOf(p) {
+  v.copy(p).project(camera);
+  const { width, height } = container.getBoundingClientRect();
+  return [(v.x + 1) / 2 * width, (1 - v.y) / 2 * height, v.z < 1];
+}
+renderer.setAnimationLoop(() => {
+  controls.update();
+  if (menuAnchor) { const [x, y, visible] = screenOf(menuAnchor); menuLayer.attr("transform", `translate(${x},${y})`).style("display", visible ? null : "none"); }
+  renderer.render(scene, camera); labelRenderer.render(scene, camera);
+});
+
+// ==========================================
+// Menu circulaire (celui d'EcoNetwork) : sur un hexagone libre, « lier » place un nouvel élément ; sur un élément placé,
+// dupliquer, détails, supprimer, modifier ; sur un physique, « lier » ajoute un physique enfant
+// ==========================================
+const PALETTE = ["#2f6db0", "#2e7d5b", "#b8860b", "#c0392b", "#8a4fb8", "#d0602e", "#c2477d", "#1f8a8a", "#5d6d7e", "#7a8b1f", "#1f6f8b", "#8c564b"];
+const typeColors = new Map();
+const typeColor = label => { const k = label || "sans modèle"; if (!typeColors.has(k)) typeColors.set(k, PALETTE[typeColors.size % PALETTE.length]); return typeColors.get(k); };
+const ICONS = {
+  lier: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
+  dupliquer: ["M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"],
+  "détails": ["M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z", "M12 16v-4", "M12 8h.01"],
+  supprimer: ["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M10 11v6", "M14 11v6"],
+  modifier: ["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z", "m15 5 4 4"],
+};
+let menuOuter = 0;
+function closeMenu() { menuLayer.selectAll("*").remove(); menuOuter = 0; menuHex = null; menuAnchor = null; paintTiles(); hud(hovered ? { hex: hovered, target: hoveredTarget } : null); }
+function caption(text) {
+  let c = menuLayer.select("text.caption");
+  if (c.empty()) c = menuLayer.append("text").attr("class", "caption").attr("text-anchor", "middle");
+  c.attr("y", menuOuter + 18).text(text ?? "").raise();
+}
+// span : angle couvert (tour complet par défaut ; un sous-menu court reste face au secteur « lier »)
+function ring(items, inner, outer, cls, span = 2 * Math.PI) {
+  const arc = d3.arc().innerRadius(inner).outerRadius(outer).padAngle(0.03).cornerRadius(4);
+  const pie = d3.pie().value(1).sort(null).startAngle(-Math.PI / 2).endAngle(-Math.PI / 2 + span)(items);
+  menuLayer.selectAll(`g.${cls}`).remove();
+  menuOuter = Math.max(menuOuter, outer);
+  const g = menuLayer.selectAll(`g.${cls}`).data(pie).join("g").attr("class", d => `${cls}${d.data.disabled ? " disabled" : ""}`);
+  g.append("path").attr("d", arc).attr("fill", d => d.data.color).on("click", (e, d) => { e.stopPropagation(); if (!d.data.disabled) d.data.action(); })
+    .on("mouseenter", (e, d) => caption(d.data.title ?? d.data.label)).on("mouseleave", () => caption(""));
+  g.append("title").text(d => d.data.title ?? d.data.label);
+  const icon = g.filter(d => d.data.icon).append("g").attr("class", "icon").attr("transform", d => { const [x, y] = arc.centroid(d); return `translate(${x - 9},${y - 9}) scale(0.75)`; });
+  icon.selectAll("path").data(d => ICONS[d.data.icon]).join("path").attr("d", p => p);
+  g.filter(d => !d.data.icon).append("text").attr("transform", d => `translate(${arc.centroid(d)})`).attr("text-anchor", "middle").attr("dy", "0.32em")
+    .text(d => d.data.label.length > 14 ? d.data.label.slice(0, 13) + "…" : d.data.label);
+  caption(""); // libellé replacé sous le nouvel anneau
+}
+// t : élément visé (actant placé, physique racine ou enfant), null sur un hexagone libre
+function openMenu(h, t) {
+  closeMenu();
+  menuHex = h; paintTiles();
+  menuAnchor = t?.anchor ?? new THREE.Vector3(h.x, 0, h.z);
+  const r = 22, isChild = !!t?.parent, isMember = !!t?.owner;
+  hud({ hex: h, target: t });
+  // lier : sur un hexagone libre, les éléments qui peuvent y être placés ; sur un élément, ceux que prévoit son resource
+  // template (propriétés et types acceptés) ; inactif si l'on sait déjà qu'il n'y en a aucun
+  const known = t ? linkKnown.get(t.templateId) : null, sectors = t && known ? elementSectors(t, known) : null;
+  const free = t ? [] : placeableShapes(h);
+  if (t?.templateId && !linkCache.has(t.templateId)) linkOptions(t).catch(() => {}); // modèle lu d'avance pour les menus suivants
+  ring([
+    { label: "lier", icon: "lier", color: "#1f6f8b", disabled: t ? sectors?.length === 0 : !free.length,
+      title: !t ? (free.length ? `Lier : placer sur cet hexagone (${free.map(sh => sh.label).join(", ")})` : "Lier : aucun élément ne peut être placé sur cet hexagone")
+        : sectors ? (sectors.length ? `Lier, selon le modèle de « ${t.title} » : ${sectors.map(x => x.label).join(", ")}` : `Lier : le modèle de « ${t.title} » ne prévoit aucun lien représentable ici`)
+        : `Lier : éléments prévus par le modèle de « ${t.title} »`,
+      action: () => t ? elementLinkMenu(t, r) : linkMenu(h, r) },
+    { label: "dupliquer", icon: "dupliquer", color: "#2e7d5b", disabled: !t || isMember, title: !t ? "Dupliquer : hexagone libre" : isMember ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : isChild ? "Dupliquer n fois (frères dans le même parent, titres incrémentés)" : "Dupliquer n fois (titres incrémentés, hexagones libres les plus proches)", action: () => duplicate(t) },
+    { label: "détails", icon: "détails", color: "#8a4fb8", title: t ? "Détails" : "Détails de l'hexagone", action: () => t ? details(t) : hexDetails(h) },
+    { label: "supprimer", icon: "supprimer", color: "#c0392b", disabled: !t, title: t ? "Supprimer (conséquences affichées avant)" : "Supprimer : hexagone libre", action: () => remove(t) },
+    { label: "modifier", icon: "modifier", color: "#b8860b", disabled: !t?.templateId, title: t ? "Modifier" : "Modifier : hexagone libre", action: () => edit(t) },
+  ], r, r + 40, "m1");
+}
+const arcSpan = n => Math.min(2 * Math.PI, (n + 1) * Math.PI / 5);
+// éléments plaçables sur un hexagone : type de l'écosystème doté d'une forme, ni libre (concept) ni ancré (personne,
+// agent : depuis un actant), dont la couche est libre sur l'hexagone ; le concept (sous la grille) s'ajoute toujours
+const placeableShapes = h => (space?.shapes ?? []).filter(sh => !sh.anchor && (sh.free || !layerTaken(h, sh)));
+// hexagone libre : seuls les types d'éléments de l'écosystème qui peuvent y être placés
+async function linkMenu(h, r) {
+  let opts;
+  try { opts = await api(`/api/econetwork/linkable?item=${state.eco}`); }
+  catch (e) { return toast(e.message); }
+  const o = opts.find(x => x.reverse) ?? opts[0], ok = placeableShapes(h);
+  const types = (o?.types ?? []).map(t => ({ t, s: ok.find(sh => sh.templateId === t.templateId) })).filter(x => x.s);
+  if (!types.length) return toast("Aucun élément ne peut être placé sur cet hexagone");
+  ring(types.map(({ t, s }) => ({ label: t.label, color: s.color, title: `${t.label} sur l'hexagone : ${SHAPE_TEXT[s.key] ?? s.label}`,
+    action: () => askLink({ h, o, t, shape: s }) })), r + 44, r + 98, "m2", arcSpan(types.length));
+}
+// liens prévus par le resource template d'un élément ([{ term, types: [{ templateId, label }] }]), mis en cache par
+// template (linkKnown : déjà lus, pour l'état du secteur « lier »)
+const linkCache = new Map(), linkKnown = new Map();
+function linkOptions(t) {
+  if (!linkCache.has(t.templateId)) linkCache.set(t.templateId, api(`/api/econetwork/linkable?item=${t.item}`)
+    .then(o => { linkKnown.set(t.templateId, o); return o; }).catch(e => { linkCache.delete(t.templateId); throw e; }));
+  return linkCache.get(t.templateId);
+}
+const allows = (opts, term, templateId) => opts.some(o => o.term === term && o.types.some(x => x.templateId === templateId));
+// secteurs de « lier » sur un élément : seulement les liens que son modèle prévoit et qu'EcoSpace sait représenter
+function elementSectors(t, opts) {
+  if (t.shape === "actant") return memberSectors(t, opts);
+  if (t.shape === "physique") return physSectors(t, opts);
+  if (t.shape === "concept") return conceptSectors(t, opts);
+  return [];
+}
+async function elementLinkMenu(t, r) {
+  let opts;
+  try { opts = await linkOptions(t); } catch (e) { return toast(e.message); }
+  const sectors = elementSectors(t, opts);
+  if (!sectors.length) return toast(`Le modèle de « ${t.title} » ne prévoit aucun lien représentable dans l'espace`);
+  ring(sectors, r + 44, r + 98, "m2", arcSpan(sectors.length));
+}
+// actant : personne et agent (anchorTerm prévu par son modèle), ajoutés sur la sous-grille de son hexagone
+function memberSectors(actant, opts) {
+  return (space.shapes ?? []).filter(sh => sh.anchor === "actant" && allows(opts, sh.anchorTerm, sh.templateId)).map(shape => ({ label: shape.label, color: shape.color,
+    title: `${shape.label} de l'actant « ${actant.title} » (${shape.anchorTerm}), centré(e) sur la sous-grille de son hexagone`,
+    action: () => askLink({ h: actant.hex, o: { term: ecoProp }, t: { templateId: shape.templateId, label: shape.label }, shape, member: actant }) }));
+}
+// physique : physique enfant, si le modèle prévoit parentTerm vers un physique
+function physSectors(target, opts) {
+  const shape = shapeByKey("physique");
+  if (!allows(opts, shape.parentTerm, shape.templateId)) return [];
+  return [{ label: "Physique enfant", color: shape.color, title: `Physique enfant de « ${target.title} » (${shape.parentTerm})`,
+    action: () => askLink({ h: target.hex, o: { term: ecoProp }, t: { templateId: shape.templateId, label: "Physique" }, shape, parent: target }) }];
+}
+// concept : parent (broaderTerm prévu), enfant (narrowerTerm prévu), détacher de son parent (il redevient une racine)
+function conceptSectors(target, opts) {
+  const shape = shapeByKey("concept"), t = { templateId: shape.templateId, label: "Concept" }, o = { term: ecoProp };
+  const parent = space.placements.find(p => p.narrower?.includes(target.item)), up = allows(opts, shape.broaderTerm, shape.templateId);
+  return [
+    up && { label: "Concept parent", color: shape.color, title: `Concept parent qui englobe « ${target.title} » (${shape.broaderTerm})`,
+      action: () => askLink({ h: target.hex, o, t, shape, rel: { as: "parent", target } }) },
+    allows(opts, shape.narrowerTerm, shape.templateId) && { label: "Concept enfant", color: shape.color, title: `Concept enfant englobé par « ${target.title} » (${shape.narrowerTerm})`,
+      action: () => askLink({ h: target.hex, o, t, shape, rel: { as: "child", target } }) },
+    up && parent && { label: "Détacher", color: "#7a7a7a", title: `Détacher « ${target.title} » de « ${parent.title} » (il redevient une racine)`,
+      action: () => detachConcept(target, parent) },
+  ].filter(Boolean);
+}
+async function detachConcept(target, parent) {
+  closeMenu();
+  try {
+    const r = await withBusy(`Détacher « ${target.title} »`, async () => {
+      const r = await api("/api/ecospace/concept/detach", { method: "POST", body: { eco: state.eco, item: target.item } });
+      await setSpace(r);
+      return r;
+    });
+    toast(r.changes?.length ? `« ${target.title} » détaché de « ${parent.title} » : ${fmtChanges(r.changes)}` : "Aucune relation à retirer");
+  } catch (e) { toast("Erreur : " + e.message); }
+}
+// descendants et ancêtres d'un concept (contrôle des cycles dans l'autocomplétion)
+function conceptKin(t) {
+  const byId = new Map(space.placements.map(p => [p.item, p])), down = new Set(), up = new Set();
+  const walk = id => { for (const c of byId.get(id)?.narrower ?? []) if (!down.has(c)) { down.add(c); walk(c); } };
+  walk(t.item);
+  for (let q = t.parent; q != null && !up.has(q); q = byId.get(q)?.parent) up.add(q);
+  return { down, up };
+}
+
+// média joint à la création d'un élément : aucun, fichier déposé ou adresse importée par Omeka S
+function mediaPicker() {
+  let mode = "none";
+  const file = el("input", { type: "file" }), url = el("input", { type: "url", placeholder: "https://… (image, PDF, page…)" }), title = el("input", { placeholder: "titre du média (facultatif)" });
+  const fileRow = el("div", { className: "row hidden" }, file), urlRow = el("div", { className: "row hidden" }, url), titleRow = el("div", { className: "row hidden" }, title);
+  const buttons = ["none", "file", "url"].map(m => el("button", { type: "button", className: `btn small${m === mode ? " primary" : ""}`, textContent: { none: "Aucun", file: "Fichier", url: "Adresse" }[m], onclick: () => set(m) }));
+  function set(m) {
+    mode = m;
+    buttons.forEach((b, i) => b.classList.toggle("primary", ["none", "file", "url"][i] === m));
+    fileRow.classList.toggle("hidden", m !== "file"); urlRow.classList.toggle("hidden", m !== "url"); titleRow.classList.toggle("hidden", m === "none");
+  }
+  return {
+    el: el("div", { className: "media" }, el("label", { textContent: "Média (facultatif)" }), el("div", { className: "row seg" }, buttons), fileRow, urlRow, titleRow),
+    reset: () => { file.value = ""; url.value = ""; title.value = ""; set("none"); },
+    check: () => { if (mode === "file" && !file.files[0]) throw new Error("Choisir le fichier du média"); if (mode === "url" && !/^https?:\/\//.test(url.value.trim())) throw new Error("Adresse du média invalide"); },
+    has: () => mode !== "none",
+    async attach(itemId) {
+      if (mode === "file" && file.files[0]) {
+        const f = file.files[0];
+        const res = await fetch(`/api/econetwork/media/file?item=${itemId}&name=${encodeURIComponent(f.name)}&title=${encodeURIComponent(title.value)}`, { method: "POST", headers: { "Content-Type": f.type || "application/octet-stream" }, body: f });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data.created ? `média ${data.id} ajouté` : `média déjà présent (${data.id})`;
+      }
+      if (mode === "url") {
+        const data = await api("/api/econetwork/media/url", { method: "POST", body: { item: itemId, url: url.value.trim(), title: title.value } });
+        return data.created ? `média ${data.id} importé` : `média déjà présent (${data.id})`;
+      }
+      return "";
+    },
+  };
+}
+const linkMedia = mediaPicker();
+$("#link-media").append(linkMedia.el);
+
+// élément à créer : sur un hexagone libre (placé ensuite), ou physique enfant d'un physique (parent) ; item existant
+// proposé par l'autocomplétion (même type) ; un physique reçoit sa date de création et son importance
+function askLink({ h, o, t, shape, parent = null, rel = null, member = null }) {
+  const dlg = $("#dlg-link"), input = $("#link-name"), list = $("#link-results"), submit = $("#link-submit");
+  let picked = null, timer = null, request = 0, active = -1, results = [];
+  const isPhys = shape.key === "physique";
+  // concept parent : ni le concept ni ses descendants ; concept enfant : ni le concept ni ses ancêtres (cycle)
+  const kin = rel && conceptKin(rel.target);
+  const placed = id => parent || rel || member ? null : space.placements.find(p => p.item === id);
+  const blocked = id => (parent && (id === parent.item || ancestorIds(parent).has(id))) || (rel && (id === rel.target.item || (rel.as === "parent" ? kin.down : kin.up).has(id)))
+    || (member && space.placements.some(p => p.actant === member.item && p.item === id));
+  $("#link-title").textContent = member ? `${shape.label} de l'actant « ${member.title} »` : parent ? `Physique enfant de « ${parent.title} »` : rel ? `Concept ${rel.as === "parent" ? "parent" : "enfant"} de « ${rel.target.title} »` : `${t.label} sur l'hexagone ${fmtHex(h)}`;
+  $("#link-help").textContent = member ? `Petit fullerène centré sur la sous-grille (moitié au-dessus, moitié en dessous de la grille) de l'hexagone de l'actant (premier sous-hexagone libre depuis le centre). L'actant le désigne par ${shape.anchorTerm} ; l'élément est rattaché à l'écosystème.`
+    : rel?.as === "parent" ? `Le concept englobera « ${rel.target.title} » (${shape.narrowerTerm} sur le parent, ${shape.broaderTerm} sur l'enfant, annotés par l'écosystème). Si « ${rel.target.title} » avait déjà un parent, le nouveau concept s'intercale entre les deux. Taille et position des bulles sont recalculées.`
+    : rel ? `Le concept sera englobé par « ${rel.target.title} » ; un concept existant quitte son parent actuel. Taille et position des bulles sont recalculées.`
+    : shape.key === "concept" ? `Bulle horizontale sous la grille : sa taille dépend de son titre (ou de ses enfants) et sa position est calculée (répartition équilibrée des concepts de même niveau). L'élément est rattaché à l'écosystème.`
+    : parent ? `Boîte intérieure à « ${parent.title} » (${shape.parentTerm}), dans une tranche horizontale du parent : les enfants sont empilés de haut en bas par ordre alphabétique du titre, chacun avec une hauteur proportionnelle à son importance.`
+    : isPhys ? `Boîte au-dessus de l'hexagone (${fmtGeo(h.geo)}) : de la date de modification (bas) à la date de création (haut). L'élément est rattaché à l'écosystème.`
+    : `Forme : fullerène C60 centré sur l'hexagone (${fmtGeo(h.geo)}) et sphère dont le pôle nord touche son centroïde. L'élément est rattaché à l'écosystème (${o.term}).`;
+  $("#link-phys").classList.toggle("hidden", !isPhys);
+  $("#link-created").value = new Date().toISOString().slice(0, 10);
+  $("#link-importance").value = 1;
+  const defaultChoice = "Choisir un item existant dans la liste, ou saisir le titre d'un nouvel élément. Un item de même titre et de même type est repris au lieu d'être recréé.";
+  const choose = r => {
+    picked = r; input.value = r.title; list.replaceChildren();
+    $("#link-choice").replaceChildren("Item existant : ", el("strong", { textContent: `${r.title} (item ${r.id})` }),
+      member ? ` — lié(e) à l'actant « ${member.title} »` : parent ? " — devient enfant de ce physique" : rel ? (rel.as === "parent" ? " — englobera le concept" : " — sera englobé par le concept") : r.linked ? " — déjà élément de l'écosystème : il est seulement placé" : " — rattaché à l'écosystème puis placé");
+    submit.textContent = parent || rel || member ? "Lier l'item existant" : "Placer l'item existant";
+    linkMedia.el.classList.add("hidden"); $("#link-phys").classList.add("hidden");
+  };
+  const reset = () => { picked = null; linkMedia.el.classList.remove("hidden"); $("#link-phys").classList.toggle("hidden", !isPhys); submit.textContent = member ? `Créer (${t.label}) et lier` : parent || rel?.as === "child" ? "Créer l'enfant" : rel ? "Créer le parent" : `Créer (${t.label}) et placer`; $("#link-choice").textContent = defaultChoice; };
+  const show = () => list.replaceChildren(...results.map((r, i) => {
+    const p = placed(r.id), no = p || blocked(r.id);
+    return el("li", { role: "option", className: `${no ? "disabled" : ""}${i === active ? " active" : ""}`, title: p ? `Déjà placé en ${fmtHex(p)}` : no ? (member ? "Déjà lié à cet actant" : rel ? "Relation impossible (même concept ou cycle)" : "Ce physique contient le parent") : `Choisir l'item ${r.id}`,
+      onmousedown: e => { e.preventDefault(); if (!no) choose(r); } },
+      el("span", { className: "t", textContent: `${r.title} ` }, el("span", { className: "muted", textContent: `item ${r.id}${p ? ` · déjà placé ${fmtHex(p)}` : no ? (member ? " · déjà lié à cet actant" : rel ? " · cycle" : " · contient le parent") : r.linked && !parent ? " · élément de l'écosystème, non placé" : ""}` })),
+      el("span", { className: "badge", style: `background:${shape.color}`, textContent: r.template || t.label }));
+  }));
+  input.value = ""; list.replaceChildren(); linkMedia.reset(); reset();
+  submit.onclick = e => {
+    if (picked) return;
+    try {
+      linkMedia.check();
+      if (isPhys && $("#link-created").value && !$("#link-created").checkValidity()) throw new Error("Date de création : AAAA, AAAA-MM-JJ ou AAAA-MM-JJTHH:MM:SS");
+    } catch (err) { e.preventDefault(); toast(err.message); }
+  };
+  input.oninput = () => {
+    reset(); clearTimeout(timer);
+    const q = input.value.trim(), n = ++request;
+    if (q.length < 2) { results = []; return list.replaceChildren(); }
+    timer = setTimeout(async () => {
+      try {
+        const rs = await api(`/api/econetwork/search?parent=${state.eco}&term=${encodeURIComponent(ecoProp)}&q=${encodeURIComponent(q)}`);
+        if (n !== request) return;
+        results = rs.filter(r => r.templateId === t.templateId); active = -1; show();
+      } catch (e) { toast("Recherche : " + e.message); }
+    }, 250);
+  };
+  input.onkeydown = e => {
+    if (!results.length || !list.children.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : results.length - 1)) % results.length; show(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); const r = results[active]; if (!placed(r.id) && !blocked(r.id)) choose(r); }
+  };
+  dlg.onclose = async () => {
+    clearTimeout(timer); request++;
+    if (dlg.returnValue !== "confirm") return;
+    const what = member ? `${shape.label} de l'actant « ${member.title} »` : rel ? `Concept ${rel.as === "parent" ? "parent" : "enfant"} de « ${rel.target.title} »` : parent ? `Physique enfant de « ${parent.title} »` : `${t.label} sur l'hexagone ${fmtHex(h)}`;
+    await withBusy(what, async () => { try {
+      let id = picked?.id, msg;
+      const phys = { eco: state.eco, title: input.value, created: $("#link-created").value.trim(), importance: $("#link-importance").value };
+      if (member) {
+        const base = { eco: state.eco, actant: member.item, shape: shape.key };
+        const res = await api("/api/ecospace/member", { method: "POST", body: picked ? { ...base, existing: picked.id } : { ...base, title: input.value } });
+        id = res.id; msg = `${shape.label} ${res.id} ${res.created ? "créé(e)" : "repris(e)"} pour l'actant « ${member.title} »`;
+      } else if (rel) {
+        const base = { eco: state.eco, item: rel.target.item, as: rel.as };
+        const res = await api("/api/ecospace/concept/relate", { method: "POST", body: picked ? { ...base, existing: picked.id } : { ...base, title: input.value } });
+        id = res.id; msg = `Concept ${res.id} ${res.created ? "créé" : "repris"} comme ${rel.as === "parent" ? "parent" : "enfant"} de « ${rel.target.title} »${res.changes?.length ? ` (${fmtChanges(res.changes)})` : ""}`;
+      } else if (parent) {
+        const res = await api("/api/ecospace/physique", { method: "POST", body: picked ? { eco: state.eco, parent: parent.item, existing: picked.id } : { ...phys, parent: parent.item } });
+        id = res.id; msg = res.created ? `Physique ${res.id} créé dans « ${parent.title} »` : `Physique ${res.id} ajouté à « ${parent.title} »`;
+      } else {
+        if (!picked && isPhys) { const res = await api("/api/ecospace/physique", { method: "POST", body: phys }); id = res.id; msg = res.created ? `Physique ${res.id} créé` : `Physique ${res.id} repris`; }
+        else if (!picked?.linked) {
+          const body = picked ? { eco: state.eco, parent: state.eco, term: o.term, existing: picked.id } : { eco: state.eco, parent: state.eco, term: o.term, templateId: t.templateId, title: input.value };
+          const res = await api("/api/econetwork/link", { method: "POST", body });
+          id = res.id; msg = res.created ? `${t.label} ${res.id} créé` : `Item ${res.id} rattaché`;
+        } else msg = `Item ${id}`;
+        await api("/api/ecospace/place", { method: "POST", body: { eco: state.eco, item: id, q: h.q, r: h.r } });
+        msg += ` et placé en ${fmtHex(h)}`;
+      }
+      let media = "";
+      if (!picked && linkMedia.has()) {
+        busyStep("Dépôt du média dans Omeka S");
+        try { media = await linkMedia.attach(id); } catch (e) { media = `média non ajouté : ${e.message}`; }
+      }
+      await loadSpace();
+      toast(`${msg}${media ? ` · ${media}` : ""}`);
+    } catch (e) { toast("Erreur : " + e.message); } });
+  };
+  dlg.returnValue = "";
+  dlg.showModal();
+  input.focus();
+}
+// identifiants des physiques qui contiennent une cible (pas de cycle à la liaison d'un enfant existant)
+function ancestorIds(t) { const out = new Set(); for (let x = t; x; x = x.parent) out.add(x.item); return out; }
+
+function hexDetails(h) {
+  closeMenu();
+  $("#hex-title").textContent = `Hexagone ${fmtHex(h)}`;
+  $("#hex-body").replaceChildren(...[
+    ["Coordonnées cube (q, r, s)", fmtHex(h)],
+    ["Distance au centre", `${Math.max(Math.abs(h.q), Math.abs(h.r), Math.abs(h.s))} anneau(x)`],
+    ["Longitude", `${h.geo.lon.toFixed(7)}°`], ["Latitude", `${h.geo.lat.toFixed(7)}°`], ["Altitude", `${h.geo.alt.toFixed(2)} m`],
+    ["Position dans la scène", `x ${h.x.toFixed(2)} m (est) · z ${h.z.toFixed(2)} m (sud)`],
+    ["Occupation", placedAt(h).length ? placedAt(h).map(p => `${shapeByKey(p.shape)?.label ?? p.shape} (${layerOf(shapeByKey(p.shape))}) : ${titleOf(p)}`).join(" · ") : "libre : « lier » y place un élément"],
+  ].flatMap(([k, val]) => [el("dt", { textContent: k }), el("dd", { className: "num", textContent: val })]));
+  $("#dlg-hex").showModal();
+}
+
+// dupliquer n fois : titres incrémentés ; un physique enfant donne des frères, sinon chaque copie va sur l'hexagone
+// libre le plus proche (dans sa couche) ; les enfants de l'original ne sont pas copiés
+function duplicate(t) {
+  closeMenu();
+  const dlg = $("#dlg-dup"), input = $("#dup-count"), max = space.maxDuplicates ?? 20;
+  $("#dup-title").textContent = `Dupliquer « ${t.title} »`;
+  $("#dup-help").textContent = t.parent ? `Les copies sont des frères dans « ${t.parent.title} » (titres incrémentés). Au plus ${max}.`
+    : `Chaque copie est placée sur l'hexagone libre le plus proche de ${fmtHex(t.hex)} (titres incrémentés). Au plus ${max}.`;
+  input.max = max; input.value = 1;
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== "confirm") return;
+    const n = Math.min(max, Math.max(1, Math.floor(+input.value || 1)));
+    const done = [];
+    await withBusy(`Dupliquer « ${t.title} » (${n} copie(s))`, async () => { try {
+      for (let i = 0; i < n; i++) {
+        busyStep(`Copie ${i + 1} sur ${n}`);
+        const r = await api("/api/econetwork/duplicate", { method: "POST", body: { item: t.item, eco: state.eco } });
+        if (!t.parent) {
+          const s = await api("/api/ecospace/place", { method: "POST", body: { eco: state.eco, item: r.id, near: { q: t.q, r: t.r } } });
+          const np = s.placements.find(x => x.item === r.id);
+          done.push(`${r.title} ${np ? fmtHex(np) : ""}`.trim());
+        } else done.push(r.title);
+      }
+      toast(`${n} copie(s) de « ${t.title} » : ${done.join(" · ")}`);
+    } catch (e) { toast(`Erreur après ${done.length} copie(s) : ${e.message}`); }
+    await loadSpace(); });
+  };
+  dlg.returnValue = "";
+  dlg.showModal();
+  input.select();
+}
+
+// détails : page d'administration d'Omeka S (relayée, même origine) ou fiche lue par l'API, avec la position
+function detailsTab(tab) {
+  $("#details-frame").classList.toggle("hidden", tab !== "omeka");
+  $("#details-help").classList.toggle("hidden", tab !== "omeka");
+  $("#details-body").classList.toggle("hidden", tab !== "sheet");
+  $("#details-tab-omeka").classList.toggle("primary", tab === "omeka");
+  $("#details-tab-sheet").classList.toggle("primary", tab === "sheet");
+}
+$("#details-tab-omeka").onclick = () => detailsTab("omeka");
+$("#details-tab-sheet").onclick = () => detailsTab("sheet");
+$("#dlg-details").addEventListener("close", () => { $("#details-frame").src = "about:blank"; });
+// position d'un élément pour la fiche : [libellé, valeur]
+function positionRows(t) {
+  const rows = [["Hexagone (q, r, s)", fmtHex(t)]];
+  if (t.shape === "actant") return [...rows, ["Centroïde du fullerène", fmtGeo(t.geo.centroid)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
+    ["Sous-grille", t.sub ? `${t.sub.slots.length} sous-hexagones de ${t.sub.size.toFixed(2)} m (${t.sub.rings} anneau(x)) · ${space.placements.filter(p => p.actant === t.item).length} occupé(s)` : "—"]];
+  if (t.owner) return [["Actant", `${t.owner.title} (item ${t.owner.item}, hexagone ${fmtHex(t.owner)})`], ["Lien", t.anchorTerm],
+    ["Sous-hexagone (q, r, s)", `${fmtHex(t.sub)} · ${t.subSize.toFixed(2)} m`], ["Centre du fullerène", fmtGeo(t.geo.center)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
+    ["Rayons", `fullerène ${t.radius.toFixed(2)} m · sphère ${(t.sphereRadius ?? t.radius).toFixed(2)} m`]];
+  const names = ids => ids?.length ? ids.map(id => space.placements.find(p => p.item === id)?.title ?? `item ${id}`).join(" · ") : "aucun";
+  if (t.shape === "concept") return [["Hexagone au-dessus (q, r, s)", fmtHex(t)],
+    ["Parent (contenant)", names(space.placements.filter(p => p.narrower?.includes(t.item)).map(p => p.item))], ["Enfants (skos:narrower)", names(t.narrower)], ["Liés (skos:related)", names(t.related)], ["Centre", `${fmtGeo(t.geo.center)} · x ${t.x.toFixed(2)} m, z ${t.z.toFixed(2)} m`],
+    ["Bulle (axe est-ouest)", `rayon ${t.radius.toFixed(2)} m · longueur ${t.length.toFixed(2)} m (${t.narrower?.length ? `${t.narrower.length} enfant(s)` : `titre de ${t.chars ?? 0} caractères`}) · niveau ${t.level ?? 0} · sommet à ${(-t.y - t.radius).toFixed(2)} m sous la grille`]];
+  const n = t.node, c = parseDate(n.created), m = parseDate(n.modified);
+  return [...rows,
+    ["Date de création", `${c != null ? new Date(c).toLocaleString("fr-FR", { timeZone: "UTC" }) : "—"}${n.createdFromRecord ? " (date de la fiche Omeka S : dcterms:created absent)" : ""}`],
+    ["Date de modification", m != null ? new Date(m).toLocaleString("fr-FR", { timeZone: "UTC" }) : "—"],
+    ["Importance", String(n.importance)],
+    ["Parent", t.parent ? `${t.parent.title} (item ${t.parent.item})` : "— (racine, sur l'hexagone)"],
+    ["Enfants", n.children.length ? n.children.map(k => `${k.title} (${k.importance})`).join(" · ") : "aucun"],
+    ["Hauteur (échelle actuelle)", `${t.y[0].toFixed(2)} → ${t.y[1].toFixed(2)} m au-dessus de la grille`]];
+}
+async function details(t, tab = "omeka") {
+  closeMenu();
+  const frame = `${space.omekaFrame ?? space.omekaBase}/admin/item/${t.item}`;
+  $("#details-title").textContent = t.title;
+  $("#details-open").href = frame;
+  $("#details-help").textContent = frame.startsWith("/") ? "Page d'administration d'Omeka S, relayée par ce serveur : se connecter une fois à Omeka S dans le cadre ci-dessous." : "Page d'administration d'Omeka S (autre origine : la connexion peut y échouer ; activer econetwork.omekaProxy).";
+  $("#details-frame").src = frame;
+  detailsTab(tab);
+  $("#details-body").replaceChildren(el("p", { className: "muted", textContent: "Chargement…" }));
+  if (!$("#dlg-details").open) $("#dlg-details").showModal();
+  let item;
+  try { item = await api(`/api/econetwork/item?id=${t.item}`); }
+  catch (e) { return $("#details-body").replaceChildren(el("p", { className: "ko", textContent: e.message })); }
+  // cibles affichées (éléments placés et physiques imbriqués) : un lien vers l'une d'elles ouvre sa fiche
+  const all = new Map();
+  for (const x of targets.values()) { all.set(x.item, x); }
+  itemsGroup.traverse(o => { const x = o.userData?.target; if (x) all.set(x.item, x); });
+  const x = item.details;
+  const value = val => val.id ? (all.has(val.id) ? el("button", { className: "link", textContent: val.text, title: `Voir l'élément ${val.id}`, onclick: () => details(all.get(val.id), "sheet") }) : el("a", { href: `${space.omekaBase}/admin/item/${val.id}`, target: "_blank", rel: "noopener", textContent: `${val.text} ↗` }))
+    : val.uri ? el("a", { href: val.uri, target: "_blank", rel: "noopener", textContent: val.text }) : document.createTextNode(val.text);
+  const fmt = s => s ? new Date(s).toLocaleString("fr-FR") : "—";
+  const shape = shapeByKey(t.shape);
+  $("#details-body").replaceChildren(
+    el("div", {}, el("span", { className: "badge", style: `background:${shape?.color ?? typeColor(x.template)}`, textContent: x.template || "sans modèle" }), " ",
+      el("span", { className: "chip", textContent: x.resourceClass || "sans classe" }), ...x.itemSets.map(s => el("span", { className: "chip", textContent: s })),
+      el("span", { className: "chip", textContent: x.isPublic ? "public" : "privé" })),
+    el("p", { className: "help", textContent: `item ${item.id} · créé le ${fmt(x.created)} · modifié le ${fmt(x.modified)}${x.media ? ` · ${x.media} média(s)` : ""}` }),
+    el("dl", { className: "props" },
+      positionRows(t).flatMap(([k, val]) => [el("dt", { textContent: k }), el("dd", { className: "num", textContent: val })]),
+      x.properties.flatMap(pr => [el("dt", { textContent: pr.label, title: pr.term }),
+        el("dd", {}, pr.values.map(val => el("div", {}, value(val), ...(val.annotation ?? []).map(a => el("span", { className: "ann", textContent: a })))))])),
+    el("div", { className: "toolbar", style: "margin-top:12px" }, el("button", { className: "btn small", textContent: "Modifier", disabled: !item.templateId, onclick: () => { $("#dlg-details").close(); edit(t); } })));
+}
+
+async function edit(t) {
+  closeMenu();
+  const dlg = $("#dlg-edit");
+  $("#edit-title").textContent = `Modifier : ${t.title}`;
+  $("#edit-form").replaceChildren(el("p", { className: "muted", textContent: "Chargement…" }));
+  dlg.showModal();
+  try {
+    const item = await api(`/api/econetwork/item?id=${t.item}`);
+    await templateForm($("#edit-form"), { api, toast, templateId: item.templateId, values: item.values, submitLabel: "Enregistrer dans Omeka S", onSubmit: async values => {
+      dlg.close();
+      await withBusy(`Modifier « ${t.title} »`, async () => { await api("/api/econetwork/item", { method: "POST", body: { id: t.item, values } }); await loadSpace(); });
+      toast("Élément enregistré");
+    } });
+  } catch (e) { $("#edit-form").replaceChildren(el("p", { className: "ko", textContent: e.message })); }
+}
+
+// suppression : élément placé → retrait de l'espace (l'item reste élément de l'écosystème), de l'écosystème, ou
+// suppression dans Omeka S ; physique enfant → détacher de son parent, ou suppression dans Omeka S
+async function remove(t) {
+  closeMenu();
+  let imp;
+  try { imp = await api(`/api/econetwork/impact?item=${t.item}`); }
+  catch (e) { return toast(e.message); }
+  const ecoParents = [...imp.ecos, ...imp.parents.filter(x => x.terms.includes(ecoProp))].filter((e, i, a) => a.findIndex(x => x.id === e.id) === i);
+  const users = [...imp.parents.filter(x => x.id !== state.eco && !ecoParents.some(e => e.id === x.id)), ...ecoParents.filter(e => e.id !== state.eco)];
+  // owner : actant d'une personne ou d'un agent (détacher = retirer le lien de l'actant)
+  const owner = t.owner ?? null, child = !!t.parent || !!owner, physShape = shapeByKey("physique"), up = owner ?? t.parent;
+  $("#del-title").textContent = `Supprimer « ${imp.item.title} »`;
+  $("#del-body").replaceChildren(
+    el("p", { textContent: `${owner ? `${shapeByKey(t.shape)?.label ?? "Élément"} de l'actant « ${owner.title} » (${t.anchorTerm}).` : child ? `Physique enfant de « ${t.parent.title} ».` : `Placé sur l'hexagone ${fmtHex(t)}.`} ${users.length ? `Utilisé par ${users.length} autre(s) nœud(s) : pas de suppression dans Omeka S tant que ces liens existent.` : "Aucun autre nœud ne l'utilise : il peut être supprimé dans Omeka S."}` }),
+    el("h3", { style: "font-size:14px;margin:10px 0 2px", textContent: "Nœuds qui l'utilisent" }),
+    el("ul", {},
+      ecoParents.map(e => el("li", {}, el("span", { className: "badge", style: "background:var(--ink);color:var(--bg)", textContent: "écosystème" }), ` ${e.title} (item ${e.id})`,
+        e.id === state.eco ? el("span", { className: "muted", textContent: " · écosystème courant" }) : el("span", { className: "ko", textContent: " · autre écosystème : bloque la suppression" }))),
+      users.filter(u => !ecoParents.includes(u)).map(x => el("li", { textContent: `${x.title} (item ${x.id}) — ${x.terms.join(", ")}${x.terms.includes(physShape?.parentTerm) ? " (physique enfant : le supprimer ou le détacher d'abord)" : " (à délier dans EcoNetwork ou Omeka S)"}` })),
+      !ecoParents.length && !users.length ? el("li", { className: "muted", textContent: "aucun" }) : null),
+    el("h3", { style: "font-size:14px;margin:10px 0 2px", textContent: `Nœuds qu'il désigne (${imp.children.length})` }),
+    imp.children.length ? el("ul", {}, imp.children.map(c => el("li", { textContent: `${c.title} (item ${c.id}) — ${c.term} : le lien disparaît, l'item est conservé` }))) : el("p", { className: "muted", textContent: "aucun" }),
+    el("p", { className: "help", textContent: owner ? "« Détacher » retire le lien de l'actant : l'item reste dans Omeka S et dans l'écosystème, mais n'est plus dessiné." : child ? "« Détacher » retire le lien vers le parent : l'item reste dans Omeka S et dans l'écosystème, mais n'est plus dessiné." : "« Retirer de l'espace » libère l'hexagone (l'item reste élément de l'écosystème) ; « Retirer de l'écosystème » supprime aussi le rattachement ; l'item reste dans Omeka S dans les deux cas." }));
+  $("#del-space").classList.toggle("hidden", child);
+  $("#del-network").classList.toggle("hidden", child || !ecoParents.some(e => e.id === state.eco));
+  $("#del-detach").classList.toggle("hidden", !child);
+  if (child) $("#del-detach").textContent = `Détacher de « ${up.title.length > 30 ? up.title.slice(0, 29) + "…" : up.title} »`;
+  $("#del-omeka").disabled = users.length > 0;
+  const run = mode => async () => {
+    if (mode === "omeka" && !confirm(`Supprimer définitivement l'item ${t.item} dans Omeka S ?`)) return;
+    const what = { space: "Retirer de l'espace", network: "Retirer de l'écosystème", omeka: "Supprimer dans Omeka S", detach: `Détacher de « ${up?.title} »` }[mode];
+    try { await withBusy(`${what} : « ${t.title} »`, async () => {
+      if (mode === "detach") await api("/api/econetwork/unlink", { method: "POST", body: owner ? { source: owner.item, target: t.item, term: t.anchorTerm } : { source: t.item, target: t.parent.item, term: physShape.parentTerm } });
+      else if (mode !== "space") await api("/api/econetwork/delete", { method: "POST", body: { item: t.item, eco: state.eco, mode } });
+      if (child) await loadSpace();
+      else await setSpace(await api("/api/ecospace/unplace", { method: "POST", body: { eco: state.eco, item: t.item } }));
+      });
+      toast({ space: "Élément retiré de l'espace", network: "Élément retiré de l'écosystème", omeka: "Item supprimé dans Omeka S", detach: owner ? `Détaché(e) de l'actant « ${owner.title} »` : "Physique détaché de son parent" }[mode]);
+      $("#dlg-delete").close();
+    } catch (e) { toast("Erreur : " + e.message); }
+  };
+  $("#del-space").onclick = run("space");
+  $("#del-network").onclick = run("network");
+  $("#del-detach").onclick = run("detach");
+  $("#del-omeka").onclick = run("omeka");
+  $("#dlg-delete").showModal();
+}
+
+// ==========================================
+// Démarrage
+// ==========================================
+readHash();
+renderSteps();
+go(state.step === "1.2" && !state.eco ? "1.1" : state.step);
+hud(null);
+</script>
+</body>
+</html>

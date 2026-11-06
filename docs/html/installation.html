@@ -152,7 +152,7 @@
 <tr>
 <td><code>json</code></td>
 <td><code>application/json</code></td>
-<td>modèle onto-éthique</td>
+<td>modèle onto-éthique, positions d&#39;un espace EcoSpace (média de l&#39;écosystème, <strong>indispensable</strong> : Omeka S déduit le type du contenu, le repli en <code>.txt</code> est refusé)</td>
 </tr>
 <tr>
 <td><code>jsonld</code></td>
@@ -175,7 +175,7 @@
 <td>spirales de Pappus</td>
 </tr>
 </tbody></table>
-<p>Une extension refusée n&#39;interrompt rien : le fichier est déposé en <code>.txt</code> (format d&#39;origine dans <code>dcterms:format</code>), ou reste disponible localement.</p>
+<p>Les médias joints aux nœuds dans EcoNetwork suivent les mêmes règles (extensions et types MIME autorisés par l&#39;instance). Une extension refusée n&#39;interrompt rien : le fichier est déposé en <code>.txt</code> (format d&#39;origine dans <code>dcterms:format</code>), ou reste disponible localement.</p>
 <h2 id="6-verifier-l-39-installation"><a class="anchor" href="#6-verifier-l-39-installation">#</a>6. Vérifier l&#39;installation</h2>
 <ol>
 <li>Ouvrir <a href="http://127.0.0.1:7280" target="_blank" rel="noopener">http://127.0.0.1:7280</a>, <strong>⚙ Paramètres › Enregistrer et tester les connexions</strong> : Albert, Zotero et Omeka S en vert.</li>
@@ -205,6 +205,10 @@
 <tr>
 <td>Fichiers absents de l&#39;item Omeka S</td>
 <td>extensions non autorisées (section 5)</td>
+</tr>
+<tr>
+<td>« Invalid or missing CSRF token » dans « détails » d&#39;EcoNetwork</td>
+<td><code>econetwork.omekaProxy</code> désactivé, ou instance Omeka S installée à la racine d&#39;un domaine (non relayée) : ouvrir l&#39;item dans un nouvel onglet</td>
 </tr>
 <tr>
 <td>Diagrammes vides</td>

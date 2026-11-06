@@ -11,6 +11,11 @@
 <https://jardindesconnaissances.univ-paris8.fr/onto/jdc#> a owl:Ontology ;
     dcterms:title "Jardin des connaissances" .
 
+jdc:EcoCon a rdfs:Class ;
+    rdfs:label "Ecosystème de connaissances" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
 jdc:SemanticPosition a rdfs:Class ;
     rdfs:label "SemanticPosition" ;
     rdfs:domain o:Resource ;
@@ -311,5 +316,25 @@ jdc:hasPouvoir  a rdf:Property ;
 
 jdc:flux a rdf:Property ;
     rdfs:label "a comme flux" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:hasEcoCon a rdf:Property ;
+    rdfs:label "a comme écosytème de connaissances" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:importance a rdf:Property ;
+    rdfs:label "importance" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:paramCrible a rdf:Property ;
+    rdfs:label "paramètre du crible" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:fonctionCrible a rdf:Property ;
+    rdfs:label "fonction du crible" ;
     rdfs:domain o:Resource ;
     vs:term_status "experimental" .

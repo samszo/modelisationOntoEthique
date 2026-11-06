@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EcoNetwork</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9;
+    --accent: #1f6f8b; --accent-ink: #ffffff; --ok: #2e7d4f; --warn: #b26a00; --err: #b3261e;
+    --code-bg: #f0eee8; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
+      --accent: #6cc0dc; --accent-ink: #0c2129; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80; --code-bg: #111317; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
+    --accent: #6cc0dc; --accent-ink: #0c2129; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80; --code-bg: #111317; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1280px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  h1 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .spacer { flex: 1; }
+  header a { color: var(--accent); font-size: 14px; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px 16px 60px; display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
+  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow); min-width: 0; }
+  section.card > h2 { font-size: 15px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 12px; font-size: 13.5px; }
+  label { font-size: 13px; font-weight: 600; }
+  .help { font-size: 12px; color: var(--muted); }
+  input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+  textarea { resize: vertical; }
+  button.btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  button.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.btn.danger { color: var(--err); }
+  button.btn.small { padding: 3px 10px; font-size: 13px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .muted { color: var(--muted); } .ko { color: var(--err); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin: 2px 4px 2px 0; }
+  /* étapes */
+  nav.steps ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  nav.steps li.step > div { font-weight: 650; font-size: 14px; margin: 6px 0; }
+  nav.steps ol ol { margin-left: 10px; border-left: 2px solid var(--line); }
+  nav.steps button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 6px 10px; font: inherit; font-size: 13.5px; color: var(--muted); cursor: pointer; border-left: 2px solid transparent; margin-left: -2px; }
+  nav.steps button.active { color: var(--ink); border-left-color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  nav.steps button:disabled { opacity: .45; cursor: default; }
+  .ecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .eco { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: var(--bg); text-align: left; font: inherit; color: var(--ink); }
+  .eco:hover, .eco.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .eco h3 { margin: 0 0 4px; font-size: 15px; }
+  .eco p { margin: 0; font-size: 13px; color: var(--muted); }
+  /* réseau */
+  #graph { width: 100%; height: 68vh; min-height: 420px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); display: block; touch-action: none; }
+  #graph text { font-size: 11px; fill: var(--ink); pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+  #graph .link { stroke: var(--muted); stroke-opacity: .55; }
+  #graph .link-label { font-size: 9.5px; fill: var(--muted); }
+  #graph .node circle { stroke: var(--panel); stroke-width: 1.5px; cursor: pointer; }
+  #graph .node.eco circle { stroke: var(--ink); stroke-width: 2.5px; }
+  #graph .node.selected circle { stroke: var(--accent); stroke-width: 3px; }
+  #graph .menu path { cursor: pointer; stroke: var(--panel); stroke-width: 2px; }
+  #graph .menu path:hover { filter: brightness(1.12); }
+  #graph .menu text { fill: #fff; stroke: none; font-weight: 600; font-size: 11px; }
+  #graph .menu .icon { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  #graph .menu text.caption { fill: var(--ink); stroke: var(--bg); stroke-width: 4px; paint-order: stroke; font-size: 12px; }
+  #graph .menu .disabled path { cursor: not-allowed; opacity: .45; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); padding: 18px 20px; width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
+  dialog::backdrop { background: rgb(0 0 0 / .35); }
+  dialog h2 { margin: 0 0 8px; font-size: 17px; }
+  dialog.wide { width: min(1200px, calc(100vw - 32px)); }
+  dialog iframe { width: 100%; height: 72vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; display: block; }
+  .props { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 0; margin: 8px 0 0; font-size: 14px; }
+  .props dt, .props dd { margin: 0; padding: 7px 8px; border-top: 1px solid var(--line); }
+  .props dt { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .props dd .ann { display: block; font-size: 12px; color: var(--muted); margin-left: 10px; }
+  .props a, .props button.link { color: var(--accent); }
+  .ac { position: relative; }
+  .ac-list { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 6px; max-height: 260px; overflow: auto; background: var(--panel); }
+  .ac-list:empty { display: none; }
+  .ac-list li { padding: 7px 10px; cursor: pointer; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); font-size: 14px; }
+  .ac-list li:first-child { border-top: 0; }
+  .ac-list li:hover, .ac-list li.active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .ac-list li.disabled { opacity: .5; cursor: default; }
+  .ac-list .t { flex: 1; min-width: 0; }
+  .media { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; }
+  .media .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .media .row > * { flex: 1 1 200px; }
+  .media .seg button { flex: 0 0 auto; }
+  .badge { font-size: 11.5px; border-radius: 999px; padding: 1px 8px; color: #fff; white-space: nowrap; }
+  @media (max-width: 600px) { .props { grid-template-columns: 1fr; } .props dd { border-top: 0; padding-top: 0; } }
+  .impact li { margin: 3px 0; font-size: 14px; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
+  .toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>EcoNetwork <small>modélisation onto-éthique pas à pas</small></h1>
+    <div class="spacer"></div>
+    <span id="eco-label" class="chip hidden"></span>
+    <a href="/">ontoÉthique</a>
+    <a href="/ecospace">EcoSpace</a>
+    <a href="/parametres" title="Connexions Albert, Zotero, Omeka S">⚙ Paramètres</a>
+    <a href="/docs/" target="_blank">Documentation</a>
+  </div>
+</header>
+
+<main>
+  <nav class="steps card" aria-label="Étapes" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;align-self:start;position:sticky;top:70px">
+    <ol id="steps"></ol>
+    <div class="toolbar" style="margin:12px 0 0">
+      <button id="prev" class="btn small">← Précédente</button>
+      <button id="next" class="btn small primary">Suivante →</button>
+    </div>
+  </nav>
+
+  <div>
+    <!-- 1.1 écosystème -->
+    <div id="step-1.1" class="hidden">
+      <section class="card">
+        <h2>1.1 Créer ou choisir un écosystème de connaissances</h2>
+        <p class="lead">Un écosystème réunit les éléments de la modélisation : ils lui sont rattachés par la propriété <code id="eco-prop">jdc:hasEcoCon</code>.</p>
+        <div class="toolbar"><button id="eco-new" class="btn primary">Nouvel écosystème</button><button id="eco-refresh" class="btn">Actualiser</button><span id="eco-info" class="muted" style="font-size:13px"></span></div>
+        <div id="eco-form" class="hidden" style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px"></div>
+        <div id="ecos" class="ecos"><p class="muted">Chargement…</p></div>
+      </section>
+    </div>
+
+    <!-- 1.2 réseau -->
+    <div id="step-1.2" class="hidden">
+      <section class="card">
+        <h2>1.2 Réseau de l'écosystème</h2>
+        <p class="lead">Éléments de l'écosystème et ressources Omeka S liées. Cliquer sur un nœud ouvre son menu (libellé au survol) : <strong>lier</strong> un nouveau nœud ou un item existant, <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour déplacer, molette pour zoomer.</p>
+        <div class="toolbar"><button id="graph-refresh" class="btn small">Actualiser</button><button id="graph-fit" class="btn small">Recentrer</button><span id="graph-info" class="muted" style="font-size:13px"></span></div>
+        <svg id="graph"></svg>
+        <div id="legend" class="legend"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- titre du nœud à lier -->
+<dialog id="dlg-link">
+  <form method="dialog">
+    <h2 id="link-title">Lier un nouveau nœud</h2>
+    <p class="help" id="link-help"></p>
+    <label for="link-name">Titre</label>
+    <div class="ac">
+      <input id="link-name" required autocomplete="off" placeholder="Saisir un titre : les items existants sont proposés">
+      <ul id="link-results" class="ac-list" role="listbox"></ul>
+    </div>
+    <div id="link-media"></div>
+    <p class="help" id="link-choice">Choisir un item existant dans la liste, ou saisir le titre d'un nouveau nœud. Un item de même titre et de même type est repris au lieu d'être recréé.</p>
+    <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+      <button value="cancel" class="btn" formnovalidate>Annuler</button>
+      <button value="confirm" id="link-submit" class="btn primary">Créer et lier</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- détails dans Omeka S -->
+<dialog id="dlg-details" class="wide">
+  <div class="toolbar"><h2 id="details-title" style="margin:0">Détails</h2><div class="spacer"></div>
+    <button id="details-tab-omeka" class="btn small primary">Omeka S</button><button id="details-tab-sheet" class="btn small">Fiche</button>
+    <a id="details-open" target="_blank" rel="noopener" style="color:var(--accent)">Nouvel onglet ↗</a><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
+  <p class="help" id="details-help">Page d'administration d'Omeka S, relayée par ce serveur : se connecter une fois à Omeka S dans le cadre ci-dessous.</p>
+  <iframe id="details-frame" title="Item dans Omeka S"></iframe>
+  <div id="details-body" class="hidden"></div>
+</dialog>
+
+<!-- modification -->
+<dialog id="dlg-edit">
+  <div class="toolbar"><h2 id="edit-title" style="margin:0">Modifier</h2><div class="spacer"></div><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
+  <div id="edit-form"></div>
+</dialog>
+
+<!-- suppression -->
+<dialog id="dlg-delete">
+  <h2 id="del-title">Supprimer</h2>
+  <div id="del-body" class="impact"></div>
+  <div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+    <button class="btn" onclick="this.closest('dialog').close()">Annuler</button>
+    <button id="del-network" class="btn">Retirer du réseau</button>
+    <button id="del-omeka" class="btn primary" style="background:var(--err);border-color:var(--err)">Supprimer dans Omeka S</button>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script type="module">
+import { templateForm } from "/templateForm.js";
+
+const $ = s => document.querySelector(s);
+const el = (tag, props = {}, ...children) => {
+  const e = Object.assign(document.createElement(tag), props);
+  for (const c of children.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+};
+const api = async (url, opts = {}) => {
+  const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opts, body: opts.body && JSON.stringify(opts.body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+};
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 3000); }
+
+// ==========================================
+// Étapes du processus (complétées au fil de la conception) ; état dans l'adresse : #step=1.2&eco=12
+// ==========================================
+const STEPS = [
+  { id: "1", label: "Modéliser l'écosystème de connaissances", sub: [
+    { id: "1.1", label: "Créer ou choisir un écosystème" },
+    { id: "1.2", label: "Réseau de l'écosystème", needsEco: true },
+  ] },
+];
+const FLAT = STEPS.flatMap(s => s.sub);
+const state = { step: "1.1", eco: null, ecoTitle: "" };
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (FLAT.some(s => s.id === p.get("step"))) state.step = p.get("step");
+  state.eco = Number(p.get("eco")) || null;
+}
+const writeHash = () => history.replaceState(null, "", `#step=${state.step}${state.eco ? `&eco=${state.eco}` : ""}`);
+
+function renderSteps() {
+  $("#steps").replaceChildren(...STEPS.map(s => el("li", { className: "step" }, el("div", { textContent: `${s.id}. ${s.label}` }),
+    el("ol", {}, s.sub.map(x => el("li", {}, el("button", { className: x.id === state.step ? "active" : "", disabled: x.needsEco && !state.eco, textContent: `${x.id} ${x.label}`, onclick: () => go(x.id) })))))));
+  const i = FLAT.findIndex(s => s.id === state.step);
+  $("#prev").disabled = i <= 0;
+  $("#next").disabled = i >= FLAT.length - 1 || (FLAT[i + 1].needsEco && !state.eco);
+  $("#eco-label").classList.toggle("hidden", !state.eco);
+  $("#eco-label").textContent = state.eco ? `Écosystème : ${state.ecoTitle || state.eco}` : "";
+}
+function go(step) {
+  const s = FLAT.find(x => x.id === step);
+  if (!s || (s.needsEco && !state.eco)) return toast("Choisir d'abord un écosystème (étape 1.1)");
+  state.step = step; writeHash(); renderSteps();
+  for (const x of FLAT) $(`[id="step-${x.id}"]`).classList.toggle("hidden", x.id !== step);
+  if (step === "1.1") loadEcos();
+  if (step === "1.2") loadGraph();
+}
+$("#prev").onclick = () => go(FLAT[FLAT.findIndex(s => s.id === state.step) - 1]?.id);
+$("#next").onclick = () => go(FLAT[FLAT.findIndex(s => s.id === state.step) + 1]?.id);
+
+// ==========================================
+// 1.1 Écosystèmes
+// ==========================================
+let ecoData = null, ecoProp = "jdc:hasEcoCon";
+async function loadEcos() {
+  try { ecoData = await api("/api/econetwork/ecos"); }
+  catch (e) { $("#ecos").replaceChildren(el("p", { className: "ko", textContent: e.message })); return; }
+  $("#eco-info").textContent = `${ecoData.ecos.length} écosystème(s)`;
+  if (state.eco && !state.ecoTitle) state.ecoTitle = ecoData.ecos.find(x => x.id === state.eco)?.title ?? "";
+  renderSteps();
+  $("#ecos").replaceChildren(...(ecoData.ecos.length ? ecoData.ecos.map(x => el("button", { className: `eco${x.id === state.eco ? " selected" : ""}`, onclick: () => chooseEco(x) },
+    el("h3", { textContent: x.title }), el("p", { textContent: x.description || "—" }), el("p", { textContent: `item ${x.id}` })))
+    : [el("p", { className: "muted", textContent: "Aucun écosystème : en créer un." })]));
+}
+function chooseEco(x) { state.eco = x.id; state.ecoTitle = x.title; positions.clear(); go("1.2"); }
+$("#eco-refresh").onclick = loadEcos;
+$("#eco-new").onclick = async () => {
+  const box = $("#eco-form");
+  box.classList.toggle("hidden");
+  if (box.classList.contains("hidden")) return;
+  try {
+    const formBox = el("div"), media = mediaPicker();
+    box.replaceChildren(formBox, media.el);
+    await templateForm(formBox, { api, toast, templateId: ecoData?.ecoTemplateId ?? 14, submitLabel: "Créer l'écosystème", onSubmit: async values => {
+      media.check();
+      const r = await api("/api/ontoethique/form/item", { method: "POST", body: { template: ecoData?.ecoTemplateId ?? 14, values } });
+      let m = "";
+      if (media.has()) { try { m = await media.attach(r.id); } catch (e) { m = `média non ajouté : ${e.message}`; } }
+      toast(`${r.created ? `Écosystème ${r.id} créé` : `Un écosystème « ${r.title} » existe déjà : il est choisi`}${m ? ` · ${m}` : ""}`);
+      box.classList.add("hidden");
+      chooseEco({ id: r.id, title: r.title });
+    } });
+    // média placé avant le bouton de création
+    formBox.querySelector("form > .toolbar:last-child")?.before(media.el);
+  } catch (e) { box.textContent = e.message; }
+};
+
+// ==========================================
+// 1.2 Réseau (d3-force)
+// ==========================================
+const PALETTE = ["#1f6f8b", "#2e7d5b", "#b8860b", "#c0392b", "#8a4fb8", "#d0602e", "#c2477d", "#1f8a8a", "#5d6d7e", "#7a8b1f", "#2f6db0", "#8c564b"];
+const positions = new Map(); // positions conservées d'un rechargement à l'autre
+let graph = null, sim = null, zoom = null, selected = null;
+const svg = d3.select("#graph");
+const root = svg.append("g");
+const linkLayer = root.append("g"), nodeLayer = root.append("g"), menuLayer = root.append("g").attr("class", "menu");
+zoom = d3.zoom().scaleExtent([0.2, 4]).on("zoom", e => root.attr("transform", e.transform));
+svg.call(zoom).on("click", () => closeMenu());
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
+svg.append("defs").append("marker").attr("id", "arrow").attr("viewBox", "0 -4 8 8").attr("refX", 8).attr("markerWidth", 7).attr("markerHeight", 7).attr("orient", "auto")
+  .append("path").attr("d", "M0,-4L8,0L0,4").attr("fill", "var(--muted)");
+
+const radius = n => n.role === "eco" ? 18 : n.role === "element" ? 11 : 8;
+let colorOf = () => PALETTE[0];
+// couleur d'un type de nœud (libellé du template), la même dans le réseau, le menu et les listes
+const typeColors = new Map();
+const typeColor = label => { const k = label || "sans modèle"; if (!typeColors.has(k)) typeColors.set(k, PALETTE[typeColors.size % PALETTE.length]); return typeColors.get(k); };
+
+async function loadGraph() {
+  if (!state.eco) return;
+  closeMenu();
+  $("#graph-info").textContent = "Chargement du réseau…";
+  try { graph = await api(`/api/econetwork/graph?eco=${state.eco}`); }
+  catch (e) { $("#graph-info").textContent = e.message; return; }
+  state.ecoTitle = graph.eco.title; renderSteps();
+  const templates = [...new Set(graph.nodes.map(n => n.template || "sans modèle"))];
+  colorOf = n => typeColor(n.template);
+  $("#legend").replaceChildren(...templates.map(t => el("span", {}, el("i", { className: "sw", style: `background:${typeColor(t)}` }), t)),
+    el("span", {}, "· grand cercle : écosystème · moyen : élément · petit : ressource liée"));
+  $("#graph-info").textContent = `${graph.nodes.length} nœud(s), ${graph.links.length} lien(s)`;
+  draw();
+}
+$("#graph-refresh").onclick = loadGraph;
+$("#graph-fit").onclick = () => fit();
+
+function draw() {
+  const { width, height } = svg.node().getBoundingClientRect();
+  const nodes = graph.nodes.map(n => ({ ...n, ...(positions.get(n.id) ?? {}) }));
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  // lien implicite élément → écosystème quand il passe par la propriété d'écosystème (déjà dans links) ; sinon rien
+  const links = graph.links.map(l => ({ ...l, source: byId.get(l.source), target: byId.get(l.target) })).filter(l => l.source && l.target);
+  const eco = byId.get(graph.eco.id);
+  if (eco && eco.x === undefined) { eco.fx = width / 2; eco.fy = height / 2; }
+
+  const link = linkLayer.selectAll("g.l").data(links, d => `${d.source.id}|${d.target.id}|${d.term}`).join(enter => {
+    const g = enter.append("g").attr("class", "l");
+    g.append("line").attr("class", "link").attr("marker-end", "url(#arrow)");
+    g.append("text").attr("class", "link-label").text(d => d.label);
+    return g;
+  });
+  const node = nodeLayer.selectAll("g.node").data(nodes, d => d.id).join(enter => {
+    const g = enter.append("g");
+    g.append("circle");
+    g.append("text").attr("dy", "0.32em");
+    g.append("title");
+    return g;
+  }).attr("class", d => `node ${d.role}${selected === d.id ? " selected" : ""}`);
+  node.select("circle").attr("r", radius).attr("fill", colorOf);
+  node.select("text").attr("x", d => radius(d) + 4).text(d => d.title.length > 32 ? d.title.slice(0, 30) + "…" : d.title);
+  node.select("title").text(d => `${d.title}\n${d.template || "sans modèle"} · ${d.classTerm || "—"} · item ${d.id}`);
+  node.on("click", (e, d) => { e.stopPropagation(); openMenu(d); })
+    .call(d3.drag().on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; closeMenu(); })
+      .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on("end", (e, d) => { if (!e.active) sim.alphaTarget(0); if (d.role !== "eco") { d.fx = null; d.fy = null; } }));
+
+  sim?.stop();
+  sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(l => l.source.role === "eco" || l.target.role === "eco" ? 120 : 80))
+    .force("charge", d3.forceManyBody().strength(-260))
+    .force("collide", d3.forceCollide(d => radius(d) + 14))
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
+    .on("tick", () => {
+      link.select("line").attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x - (d.target.x - d.source.x) * radius(d.target) / Math.max(1, Math.hypot(d.target.x - d.source.x, d.target.y - d.source.y)))
+        .attr("y2", d => d.target.y - (d.target.y - d.source.y) * radius(d.target) / Math.max(1, Math.hypot(d.target.x - d.source.x, d.target.y - d.source.y)));
+      link.select("text").attr("x", d => (d.source.x + d.target.x) / 2).attr("y", d => (d.source.y + d.target.y) / 2);
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+      for (const n of nodes) positions.set(n.id, { x: n.x, y: n.y, ...(n.role === "eco" ? { fx: n.fx, fy: n.fy } : {}) });
+      if (menuNode) menuLayer.attr("transform", `translate(${menuNode.x},${menuNode.y})`);
+    });
+  if (positions.size && nodes.every(n => positions.has(n.id))) sim.alpha(0.3);
+}
+function fit() {
+  if (!graph) return;
+  const b = root.node().getBBox(), { width, height } = svg.node().getBoundingClientRect();
+  if (!b.width) return;
+  const k = Math.min(2, 0.9 / Math.max(b.width / width, b.height / height));
+  svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(width / 2 - k * (b.x + b.width / 2), height / 2 - k * (b.y + b.height / 2)).scale(k));
+}
+
+// ==========================================
+// Menu contextuel circulaire
+// ==========================================
+let menuNode = null;
+function closeMenu() { menuLayer.selectAll("*").remove(); menuOuter = 0; menuNode = null; selected = null; nodeLayer.selectAll("g.node").classed("selected", false); }
+
+// icônes du menu (tracés 24 × 24, d'après Lucide, licence ISC)
+const ICONS = {
+  lier: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
+  dupliquer: ["M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"],
+  "détails": ["M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z", "M12 16v-4", "M12 8h.01"],
+  supprimer: ["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M10 11v6", "M14 11v6"],
+  modifier: ["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z", "m15 5 4 4"],
+};
+// libellé du secteur survolé, affiché sous le menu
+let menuOuter = 0; // rayon extérieur du dernier anneau ouvert
+function caption(text) {
+  let c = menuLayer.select("text.caption");
+  if (c.empty()) c = menuLayer.append("text").attr("class", "caption").attr("text-anchor", "middle");
+  c.attr("y", menuOuter + 18).text(text ?? "").raise();
+}
+
+// anneau de secteurs autour du nœud : items = [{ label, icon, color, disabled, title, action }]
+function ring(items, inner, outer, cls) {
+  const arc = d3.arc().innerRadius(inner).outerRadius(outer).padAngle(0.03).cornerRadius(4);
+  const pie = d3.pie().value(1).sort(null).startAngle(-Math.PI / 2).endAngle(1.5 * Math.PI)(items);
+  menuLayer.selectAll(`g.${cls}`).remove();
+  menuOuter = Math.max(menuOuter, outer);
+  const g = menuLayer.selectAll(`g.${cls}`).data(pie).join("g").attr("class", d => `${cls}${d.data.disabled ? " disabled" : ""}`);
+  g.append("path").attr("d", arc).attr("fill", d => d.data.color).on("click", (e, d) => { e.stopPropagation(); if (!d.data.disabled) d.data.action(); })
+    .on("mouseenter", (e, d) => caption(d.data.title ?? d.data.label)).on("mouseleave", () => caption(""));
+  g.append("title").text(d => d.data.title ?? d.data.label);
+  const icon = g.filter(d => d.data.icon).append("g").attr("class", "icon").attr("transform", d => { const [x, y] = arc.centroid(d); return `translate(${x - 9},${y - 9}) scale(0.75)`; });
+  icon.selectAll("path").data(d => ICONS[d.data.icon]).join("path").attr("d", p => p);
+  g.filter(d => !d.data.icon).append("text").attr("transform", d => `translate(${arc.centroid(d)})`).attr("text-anchor", "middle").attr("dy", "0.32em")
+    .text(d => d.data.label.length > 14 ? d.data.label.slice(0, 13) + "…" : d.data.label);
+}
+
+function openMenu(d) {
+  closeMenu();
+  menuNode = d; selected = d.id;
+  nodeLayer.selectAll("g.node").classed("selected", n => n.id === d.id);
+  menuLayer.attr("transform", `translate(${d.x},${d.y})`);
+  const r = radius(d) + 6, isEco = d.role === "eco";
+  ring([
+    { label: "lier", icon: "lier", color: "#1f6f8b", title: "Lier : un nouveau nœud ou un item existant", action: () => linkMenu(d, r) },
+    { label: "dupliquer", icon: "dupliquer", color: "#2e7d5b", disabled: isEco, title: isEco ? "Dupliquer : créer un autre écosystème à l'étape 1.1" : "Dupliquer (titre incrémenté)", action: () => duplicate(d) },
+    { label: "détails", icon: "détails", color: "#8a4fb8", title: "Détails", action: () => details(d) },
+    { label: "supprimer", icon: "supprimer", color: "#c0392b", disabled: isEco, title: isEco ? "Supprimer : l'écosystème ne se supprime pas depuis son réseau" : "Supprimer (conséquences affichées avant)", action: () => remove(d) },
+    { label: "modifier", icon: "modifier", color: "#b8860b", disabled: !d.templateId, title: d.templateId ? "Modifier" : "Modifier : sans resource template, le faire dans Omeka S", action: () => edit(d) },
+  ], r, r + 40, "m1");
+}
+
+// sous-menu « lier » : propriété › type de nœud, d'après les custom vocabs du template du nœud
+async function linkMenu(d, r) {
+  let opts;
+  try { opts = await api(`/api/econetwork/linkable?item=${d.id}`); }
+  catch (e) { return toast(e.message); }
+  const items = opts.flatMap(o => o.types.map(t => ({ o, t })));
+  if (!items.length) return toast("Aucun type de nœud liable : le template de ce nœud n'a pas de propriété à custom vocab adossé à une collection d'items");
+  ring(items.map(({ o, t }) => ({ label: t.label, title: `${o.label} (${o.term}) → ${t.label}`, color: typeColor(t.label), action: () => askLink(d, o, t) })), r + 44, r + 98, "m2");
+}
+// média joint à la création d'un nœud : aucun, fichier déposé ou adresse importée par Omeka S
+function mediaPicker() {
+  let mode = "none";
+  const file = el("input", { type: "file" }), url = el("input", { type: "url", placeholder: "https://… (image, PDF, page…)" }), title = el("input", { placeholder: "titre du média (facultatif)" });
+  const fileRow = el("div", { className: "row hidden" }, file), urlRow = el("div", { className: "row hidden" }, url);
+  const titleRow = el("div", { className: "row hidden" }, title);
+  const buttons = ["none", "file", "url"].map(m => el("button", { type: "button", className: `btn small${m === mode ? " primary" : ""}`, textContent: { none: "Aucun", file: "Fichier", url: "Adresse" }[m], onclick: () => set(m) }));
+  function set(m) {
+    mode = m;
+    buttons.forEach((b, i) => b.classList.toggle("primary", ["none", "file", "url"][i] === m));
+    fileRow.classList.toggle("hidden", m !== "file"); urlRow.classList.toggle("hidden", m !== "url"); titleRow.classList.toggle("hidden", m === "none");
+  }
+  const box = el("div", { className: "media" }, el("label", { textContent: "Média (facultatif)" }), el("div", { className: "row seg" }, buttons), fileRow, urlRow, titleRow);
+  return {
+    el: box,
+    reset: () => { file.value = ""; url.value = ""; title.value = ""; set("none"); },
+    // contrôle avant création : rien à joindre, ou une saisie complète
+    check: () => { if (mode === "file" && !file.files[0]) throw new Error("Choisir le fichier du média"); if (mode === "url" && !/^https?:\/\//.test(url.value.trim())) throw new Error("Adresse du média invalide"); },
+    has: () => mode !== "none",
+    // dépôt sur l'item créé ; renvoie un message pour l'utilisateur
+    async attach(itemId) {
+      if (mode === "file" && file.files[0]) {
+        const f = file.files[0];
+        const res = await fetch(`/api/econetwork/media/file?item=${itemId}&name=${encodeURIComponent(f.name)}&title=${encodeURIComponent(title.value)}`, { method: "POST", headers: { "Content-Type": f.type || "application/octet-stream" }, body: f });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data.created ? `média ${data.id} ajouté` : `média déjà présent (${data.id})`;
+      }
+      if (mode === "url") {
+        const data = await api("/api/econetwork/media/url", { method: "POST", body: { item: itemId, url: url.value.trim(), title: title.value } });
+        return data.created ? `média ${data.id} importé` : `média déjà présent (${data.id})`;
+      }
+      return "";
+    },
+  };
+}
+const linkMedia = mediaPicker();
+$("#link-media").append(linkMedia.el);
+
+// titre du nœud à lier, avec autocomplétion des items existants acceptés par la propriété (type indiqué)
+function askLink(d, o, t) {
+  const dlg = $("#dlg-link"), input = $("#link-name"), list = $("#link-results"), submit = $("#link-submit");
+  let picked = null, timer = null, request = 0, active = -1, results = [];
+  $("#link-title").textContent = `Lier : ${t.label}`;
+  $("#link-help").textContent = o.reverse ? `Élément de l'écosystème « ${d.title} » (${o.term}).` : `« ${d.title} » ${o.label} (${o.term}) → nœud ${o.types.length > 1 ? o.types.map(x => x.label).join(" ou ") : t.label}.`;
+  const choose = r => {
+    picked = r; input.value = r.title; list.replaceChildren();
+    $("#link-choice").replaceChildren("Item existant : ", el("strong", { textContent: `${r.title} (item ${r.id})` }), " ", el("span", { className: "badge", style: `background:${typeColor(r.template)}`, textContent: r.template || "sans modèle" }));
+    submit.textContent = "Lier l'item existant";
+    linkMedia.el.classList.add("hidden");
+  };
+  const reset = () => { picked = null; linkMedia.el.classList.remove("hidden"); submit.textContent = `Créer (${t.label}) et lier`; $("#link-choice").textContent = "Choisir un item existant dans la liste, ou saisir le titre d'un nouveau nœud. Un item de même titre et de même type est repris au lieu d'être recréé."; };
+  const show = () => list.replaceChildren(...results.map((r, i) => el("li", { role: "option", className: `${r.linked ? "disabled" : ""}${i === active ? " active" : ""}`, title: r.linked ? "Déjà lié" : `Lier l'item ${r.id}`,
+    onmousedown: e => { e.preventDefault(); if (!r.linked) choose(r); } },
+    el("span", { className: "t", textContent: `${r.title} ` }, el("span", { className: "muted", textContent: `item ${r.id}${r.linked ? " · déjà lié" : ""}` })),
+    el("span", { className: "badge", style: `background:${typeColor(r.template)}`, textContent: r.template || "sans modèle" }))));
+  input.value = ""; list.replaceChildren(); linkMedia.reset(); reset();
+  // média incomplet : la boîte reste ouverte
+  submit.onclick = e => { if (picked) return; try { linkMedia.check(); } catch (err) { e.preventDefault(); toast(err.message); } };
+  input.oninput = () => {
+    reset(); clearTimeout(timer);
+    const q = input.value.trim(), n = ++request;
+    if (q.length < 2) { results = []; return list.replaceChildren(); }
+    timer = setTimeout(async () => {
+      try {
+        const rs = await api(`/api/econetwork/search?parent=${d.id}&term=${encodeURIComponent(o.term)}&q=${encodeURIComponent(q)}`);
+        if (n !== request) return;
+        // le type choisi dans le menu d'abord
+        results = rs.sort((a, b) => (b.templateId === t.templateId) - (a.templateId === t.templateId)); active = -1; show();
+      } catch (e) { toast("Recherche : " + e.message); }
+    }, 250);
+  };
+  input.onkeydown = e => {
+    if (!results.length || !list.children.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : results.length - 1)) % results.length; show(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); if (!results[active].linked) choose(results[active]); }
+  };
+  dlg.onclose = async () => {
+    clearTimeout(timer); request++;
+    if (dlg.returnValue !== "confirm") return;
+    const body = picked ? { eco: state.eco, parent: d.id, term: o.term, existing: picked.id } : { eco: state.eco, parent: d.id, term: o.term, templateId: t.templateId, title: input.value };
+    try {
+      const res = await api("/api/econetwork/link", { method: "POST", body });
+      let media = "";
+      if (!picked && linkMedia.has()) {
+        toast("Dépôt du média…");
+        try { media = await linkMedia.attach(res.id); } catch (e) { media = `média non ajouté : ${e.message}`; }
+      }
+      toast(`${res.created ? `Nœud ${res.id} créé et lié` : `Nœud existant ${res.id} lié`}${media ? ` · ${media}` : ""}`);
+      if (d.x !== undefined && !positions.has(res.id)) positions.set(res.id, { x: d.x + 40, y: d.y + 40 });
+      loadGraph();
+    } catch (e) { toast("Erreur : " + e.message); }
+  };
+  dlg.returnValue = "";
+  dlg.showModal();
+}
+
+async function duplicate(d) {
+  closeMenu();
+  try {
+    const r = await api("/api/econetwork/duplicate", { method: "POST", body: { item: d.id, eco: state.eco } });
+    toast(`« ${r.title} » créé (item ${r.id})`);
+    if (d.x !== undefined) positions.set(r.id, { x: d.x + 30, y: d.y - 30 });
+    loadGraph();
+  } catch (e) { toast("Erreur : " + e.message); }
+}
+
+// fiche du nœud lue par l'API (la page d'administration d'Omeka S ne peut pas s'ouvrir dans une iframe d'une autre origine)
+// onglet « Omeka S » : page d'administration dans une iframe (de même origine grâce au mandataire du serveur) ;
+// onglet « Fiche » : valeurs lues par l'API
+function detailsTab(tab) {
+  $("#details-frame").classList.toggle("hidden", tab !== "omeka");
+  $("#details-help").classList.toggle("hidden", tab !== "omeka");
+  $("#details-body").classList.toggle("hidden", tab !== "sheet");
+  $("#details-tab-omeka").classList.toggle("primary", tab === "omeka");
+  $("#details-tab-sheet").classList.toggle("primary", tab === "sheet");
+}
+$("#details-tab-omeka").onclick = () => detailsTab("omeka");
+$("#details-tab-sheet").onclick = () => detailsTab("sheet");
+$("#dlg-details").addEventListener("close", () => { $("#details-frame").src = "about:blank"; });
+
+async function details(d, tab = "omeka") {
+  closeMenu();
+  const frame = `${graph.omekaFrame ?? graph.omekaBase}/admin/item/${d.id}`;
+  $("#details-title").textContent = d.title;
+  $("#details-open").href = frame;
+  $("#details-help").textContent = frame.startsWith("/") ? "Page d'administration d'Omeka S, relayée par ce serveur : se connecter une fois à Omeka S dans le cadre ci-dessous." : "Page d'administration d'Omeka S (autre origine : la connexion peut y échouer ; activer econetwork.omekaProxy).";
+  $("#details-frame").src = frame;
+  detailsTab(tab);
+  $("#details-body").replaceChildren(el("p", { className: "muted", textContent: "Chargement…" }));
+  if (!$("#dlg-details").open) $("#dlg-details").showModal();
+  let item;
+  try { item = await api(`/api/econetwork/item?id=${d.id}`); }
+  catch (e) { return $("#details-body").replaceChildren(el("p", { className: "ko", textContent: e.message })); }
+  const x = item.details, inGraph = id => graph.nodes.some(n => n.id === id);
+  const value = v => v.id ? (inGraph(v.id) ? el("button", { className: "link", textContent: v.text, title: `Voir le nœud ${v.id}`, onclick: () => details(graph.nodes.find(n => n.id === v.id), "sheet") }) : el("a", { href: `${graph.omekaBase}/admin/item/${v.id}`, target: "_blank", rel: "noopener", textContent: `${v.text} ↗` }))
+    : v.uri ? el("a", { href: v.uri, target: "_blank", rel: "noopener", textContent: v.text }) : document.createTextNode(v.text);
+  const fmt = s => s ? new Date(s).toLocaleString("fr-FR") : "—";
+  $("#details-body").replaceChildren(
+    el("div", {}, el("span", { className: "badge", style: `background:${typeColor(x.template)}`, textContent: x.template || "sans modèle" }), " ",
+      el("span", { className: "chip", textContent: x.resourceClass || "sans classe" }), ...x.itemSets.map(s => el("span", { className: "chip", textContent: s })),
+      el("span", { className: "chip", textContent: x.isPublic ? "public" : "privé" })),
+    el("p", { className: "help", textContent: `item ${item.id} · créé le ${fmt(x.created)} · modifié le ${fmt(x.modified)}${x.media ? ` · ${x.media} média(s)` : ""}` }),
+    el("dl", { className: "props" }, x.properties.flatMap(p => [el("dt", { textContent: p.label, title: p.term }),
+      el("dd", {}, p.values.map((v, i) => el("div", {}, value(v), ...(v.annotation ?? []).map(a => el("span", { className: "ann", textContent: a })))))])),
+    el("div", { className: "toolbar", style: "margin-top:12px" }, el("button", { className: "btn small", textContent: "Modifier", disabled: !item.templateId, onclick: () => { $("#dlg-details").close(); edit(d); } })));
+}
+
+async function edit(d) {
+  closeMenu();
+  const dlg = $("#dlg-edit");
+  $("#edit-title").textContent = `Modifier : ${d.title}`;
+  dlg.showModal();
+  try {
+    const item = await api(`/api/econetwork/item?id=${d.id}`);
+    await templateForm($("#edit-form"), { api, toast, templateId: item.templateId, values: item.values, submitLabel: "Enregistrer dans Omeka S", onSubmit: async values => {
+      await api("/api/econetwork/item", { method: "POST", body: { id: d.id, values } });
+      toast("Nœud enregistré"); dlg.close(); loadGraph();
+    } });
+  } catch (e) { $("#edit-form").replaceChildren(el("p", { className: "ko", textContent: e.message })); }
+}
+
+// suppression : conséquences (parents, enfants, écosystèmes), retrait du réseau ou suppression dans Omeka S si inutilisé
+async function remove(d) {
+  closeMenu();
+  let imp;
+  try { imp = await api(`/api/econetwork/impact?item=${d.id}`); }
+  catch (e) { return toast(e.message); }
+  // parents : nœuds qui le désignent et écosystèmes auxquels il est rattaché (lien porté par le nœud lui-même)
+  const ecoParents = [...imp.ecos, ...imp.parents.filter(p => p.terms.includes(ecoProp))].filter((e, i, a) => a.findIndex(x => x.id === e.id) === i);
+  const users = [...imp.parents.filter(p => p.id !== state.eco && !ecoParents.some(e => e.id === p.id)), ...ecoParents.filter(e => e.id !== state.eco)];
+  const isElement = ecoParents.some(e => e.id === state.eco);
+  const unlink = async (p, term) => {
+    try { await api("/api/econetwork/unlink", { method: "POST", body: { source: p.id, target: d.id, term } }); toast(`Lien ${term} retiré`); $("#dlg-delete").close(); loadGraph(); remove(d); }
+    catch (e) { toast("Erreur : " + e.message); }
+  };
+  $("#del-title").textContent = `Supprimer « ${imp.item.title} »`;
+  $("#del-body").replaceChildren(
+    el("p", { textContent: users.length ? `Ce nœud est utilisé par ${users.length} autre(s) nœud(s) : il ne peut pas être supprimé dans Omeka S tant que ces liens existent.` : "Aucun autre nœud ne l'utilise : il peut être supprimé dans Omeka S." }),
+    el("h3", { style: "font-size:14px;margin:10px 0 2px", textContent: `Nœuds parents impactés (${ecoParents.length + users.filter(u => !ecoParents.includes(u)).length})` }),
+    el("ul", {},
+      ecoParents.map(e => el("li", {}, el("span", { className: "badge", style: "background:var(--ink);color:var(--bg)", textContent: "écosystème" }), ` ${e.title} (item ${e.id}) — rattachement ${ecoProp}`,
+        e.id === state.eco ? el("span", { className: "muted", textContent: " · écosystème courant : « Retirer du réseau »" }) : el("span", { className: "ko", textContent: " · autre écosystème : bloque la suppression" }))),
+      users.filter(u => !ecoParents.includes(u)).map(p => el("li", {}, `${p.title} (item ${p.id}) — ${p.terms.join(", ")} `, ...p.terms.map(t => el("button", { className: "link", textContent: `délier (${t})`, onclick: () => unlink(p, t) })))),
+      !ecoParents.length && !users.length ? el("li", { className: "muted", textContent: "aucun" }) : null),
+    el("h3", { style: "font-size:14px;margin:10px 0 2px", textContent: `Nœuds enfants impactés (${imp.children.length})` }),
+    imp.children.length ? el("ul", {}, imp.children.map(c => el("li", { textContent: `${c.title} (item ${c.id}) — ${c.term} : le lien disparaît, l'enfant est conservé` }))) : el("p", { className: "muted", textContent: "aucun" }),
+    el("p", { className: "help", textContent: isElement ? "« Retirer du réseau » supprime seulement le rattachement à cet écosystème ; l'item reste dans Omeka S." : "Ce nœud est une ressource liée, pas un élément de l'écosystème : le délier de ses parents pour le retirer du réseau." }));
+  $("#del-network").classList.toggle("hidden", !isElement);
+  $("#del-omeka").disabled = users.length > 0;
+  const run = mode => async () => {
+    if (mode === "omeka" && !confirm(`Supprimer définitivement l'item ${d.id} dans Omeka S ?`)) return;
+    try { await api("/api/econetwork/delete", { method: "POST", body: { item: d.id, eco: state.eco, mode } }); toast(mode === "omeka" ? "Item supprimé dans Omeka S" : "Nœud retiré du réseau"); positions.delete(d.id); $("#dlg-delete").close(); loadGraph(); }
+    catch (e) { toast("Erreur : " + e.message); }
+  };
+  $("#del-network").onclick = run("network");
+  $("#del-omeka").onclick = run("omeka");
+  $("#dlg-delete").showModal();
+}
+
+// ==========================================
+// Démarrage
+// ==========================================
+readHash();
+renderSteps();
+go(state.step === "1.2" && !state.eco ? "1.1" : state.step);
+api("/api/econetwork/ecos").then(d => { ecoProp = d.ecoProperty ?? ecoProp; $("#eco-prop").textContent = ecoProp; }).catch(() => {});
+</script>
+</body>
+</html>

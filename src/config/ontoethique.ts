@@ -178,6 +178,81 @@ export const defaultOntoEthiqueConfig = {
     searchLimit: 20,
   },
 
+  // IHM EcoNetwork : modélisation pas à pas d'un écosystème de connaissances (page /econetwork)
+  econetwork: {
+    // resource template des écosystèmes de connaissances
+    ecoTemplateId: 14,
+    // propriété qui rattache un élément à son écosystème (portée par l'élément, valeur = item de l'écosystème)
+    ecoProperty: "jdc:hasEcoCon",
+    // types d'éléments proposés par « lier » depuis le nœud de l'écosystème (resource templates)
+    elementTemplateIds: [3, 5, 8, 6, 4, 2, 7, 12, 10, 9],
+    // nombre maximum d'items liés lus autour des éléments (taille du réseau)
+    maxLinked: 300,
+    // interface web d'Omeka S relayée par le serveur sous le chemin de l'instance (ex. /omk_ontoethique/) : l'iframe
+    // « détails » est alors de même origine et la session Omeka S y fonctionne ; false = iframe vers l'instance elle-même
+    omekaProxy: true,
+    // taille maximale (Mo) d'un fichier déposé comme média à la création d'un nœud
+    maxMediaMB: 50,
+  },
+
+  // IHM EcoSpace : écosystème de connaissances modélisé dans un espace 3D sur une grille hexagonale (page /ecospace)
+  ecospace: {
+    // dossier des espaces (un fichier <écosystème>.json : grille et placements), dans le répertoire de données
+    dir: "resultats/ecospace",
+    // grille créée avec un nouvel espace (reprise ensuite telle qu'enregistrée dans le fichier de l'espace)
+    grid: {
+      // nombre d'anneaux autour de l'hexagone central (3·r·(r+1)+1 hexagones)
+      radius: 6,
+      // rayon d'un hexagone (centre → sommet), en mètres ; 1 unité de la scène = 1 m
+      hexSize: 10,
+      // hexagones « pointe en haut » (pointy) ou « côté plat en haut » (flat), au sens de redblobgames.com
+      orientation: "pointy",
+      // position géographique de l'hexagone (0, 0, 0) : Université Paris 8, Saint-Denis
+      origin: { lon: 2.3637, lat: 48.9447, alt: 0 },
+    },
+    // formes des éléments ontologiques, par resource template ; dimensions en fraction de hexSize (1 = rayon de l'hexagone)
+    // layer : couche occupée sur l'hexagone (un élément par couche et par hexagone ; défaut : la clé de la forme)
+    // actant : fullerène C60 (icosaèdre tronqué) centré sur l'hexagone + sphère dont le pôle nord touche ce centre
+    shapes: [
+      // subRings : anneaux de la sous-grille de l'hexagone (personnes et agents ; plus d'anneaux si nécessaire), subMargin :
+      // réduction de la sous-grille pour qu'elle reste à l'intérieur de l'hexagone
+      { key: "actant", label: "Actant", templateId: 4, layer: "dessous", fullereneRadius: 1, sphereRadius: 1, color: "#d0602e", subRings: 2, subMargin: 0.95 },
+      // personne et agent : ajoutés seulement depuis un actant (anchor), qui les désigne par anchorTerm ; fullerène centré (moitié
+      // au-dessus, moitié en dessous de la grille) sur
+      // un hexagone de la sous-grille de l'actant (rayon memberRatio × taille du sous-hexagone), emplacement attribué au
+      // premier libre depuis le centre (le sous-hexagone central reste à l'actant) et conservé ; comme l'actant, une sphère
+      // sous la grille (rayon sphereRatio × rayon du fullerène) dont le pôle nord touche le centroïde du fullerène
+      { key: "personne", label: "Personne", templateId: 8, anchor: "actant", anchorTerm: "jdc:hasPerson", color: "#2f6fb0", memberRatio: 0.8, sphereRatio: 1 },
+      { key: "agent", label: "Agent", templateId: 6, anchor: "actant", anchorTerm: "jdc:hasAgent", color: "#c08a1e", memberRatio: 0.8, sphereRatio: 1 },
+      // physique : boîte au-dessus de la grille, à base carrée inscrite dans l'hexagone (baseRatio × le plus grand carré
+      // inscrit), allant de la date de modification (o:modified) à la date de création (createdTerm, sinon o:created) sur
+      // l'échelle temporelle ; ses enfants (items qui le désignent par parentTerm) sont des boîtes intérieures empilées
+      // de haut en bas par ordre alphabétique du titre, de hauteur proportionnelle à leur importance (importanceTerm,
+      // 1 par défaut) ; childPadding : marge intérieure d'un parent (fraction de ses dimensions) ; maxDepth : profondeur lue
+      { key: "physique", label: "Physique", templateId: 3, layer: "dessus", color: "#2e7d5b", baseRatio: 0.95,
+        createdTerm: "dcterms:created", importanceTerm: "jdc:importance", parentTerm: "dcterms:isPartOf", childPadding: 0.08, maxDepth: 6 },
+      // concept (« bulle conceptuelle ») : capsule d'axe horizontal est-ouest (cylindre fermé par deux demi-sphères) sous
+      // la grille (free : pas de couche d'hexagone) ; ni taille ni position saisies : la hiérarchie est lue dans Omeka S
+      // (narrowerTerm sur le parent, broaderTerm sur l'enfant ; relations annotées par l'écosystème ou sans annotation) et
+      // la géométrie en est calculée. Sans enfant : rayon leafRadius, longueur = 2 × rayon + caractères du titre ×
+      // charWidth (titre tronqué à maxLabel caractères, haut de labelHeight) ; parent : enfants sur une ligne le long de
+      // son axe, sous une bande pour son titre, padding de marge et d'écart. Frères répartis de façon équilibrée (ordre
+      // alphabétique, écarts égaux, centrés) ; racines en grille presque carrée centrée, écart spacing, sommet à topDepth
+      // sous la grille (sous la sphère des actants). Tailles en fraction de grid.hexSize. relatedTerm : liés (détails)
+      { key: "concept", label: "Concept", templateId: 2, free: true, color: "#8a4fb8", charWidth: 0.12, labelHeight: 0.25, leafRadius: 0.2,
+        padding: 0.08, spacing: 0.5, topDepth: 2.2, maxLabel: 40, narrowerTerm: "skos:narrower", broaderTerm: "skos:broader", relatedTerm: "skos:related" },
+    ] as Record<string, any>[],
+    // échelle temporelle verticale des physiques : surface de la grille = maintenant, hauteur `height` (m) = plus ancienne
+    // date de création ; bornes du curseur de la page ; mode linear ou log (intervalles récents dilatés)
+    timeScale: { height: 60, minHeight: 5, maxHeight: 1000, mode: "linear" },
+    // nombre maximal de copies demandées en une fois par « dupliquer »
+    maxDuplicates: 100,
+    // copie du fichier de l'espace (positions) dans Omeka S, comme média de l'item écosystème : envoyée delay ms après le
+    // dernier enregistrement (les modifications rapprochées n'en font qu'un), seulement si le contenu a changé (sha256) ;
+    // identifiée par dcterms:identifier = identifierPrefix + écosystème ; sert à restaurer un espace absent en local
+    omekaMedia: { enabled: true, delay: 3000, identifierPrefix: "ecospace-", title: "EcoSpace : positions des éléments" },
+  },
+
   // dossier des fichiers produits (dans le répertoire de données)
   outputDir: "resultats/ontoethique",
 };

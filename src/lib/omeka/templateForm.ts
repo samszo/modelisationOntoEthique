@@ -19,6 +19,9 @@ export interface TemplateForm {
 export interface FormValue { type: string; value?: string | number; id?: number; uri?: string; label?: string; annotation?: Record<string, FormValue[]> }
 
 const TEXTS: Record<string, string> = { literal: "Texte", "resource:item": "Item lié", uri: "Adresse" };
+const DEFAULT_TYPES = ["literal", "resource:item", "uri"];
+// valeur numeric:timestamp (module Numeric Data Types) : année, mois, jour, heure, minute, seconde facultatifs à partir du mois
+export const TIMESTAMP = /^-?\d{1,4}(-\d{2}(-\d{2}(T\d{2}(:\d{2}(:\d{2})?)?)?)?)?$/;
 
 // o:terms et o:uris d'un custom vocab : tableau, ou texte d'une entrée par ligne selon la version du module
 const lines = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : typeof v === "string" ? v.split("\n").map(s => s.trim()).filter(Boolean) : []);
@@ -57,7 +60,8 @@ export async function buildTemplateForm(omk: Omk, templateId: number): Promise<T
   for (const p of t["o:resource_template_property"] ?? []) {
     const d = p["o:data"]?.[0] ?? {};
     const prop = await omk.request(omk.url(`properties/${p["o:property"]["o:id"]}`));
-    const types: string[] = p["o:data_type"]?.length ? p["o:data_type"] : d["o:data_type"]?.length ? d["o:data_type"] : ["literal"];
+    // propriété sans type imposé : types par défaut d'Omeka S (texte, item lié, adresse), comme dans son formulaire
+    const types: string[] = p["o:data_type"]?.length ? p["o:data_type"] : d["o:data_type"]?.length ? d["o:data_type"] : DEFAULT_TYPES;
     const nested = Number(d.value_annotations_template) || 0;
     const annotation = nested ? (await buildTemplateForm(omk, nested)).fields : undefined;
     fields.push({
@@ -95,7 +99,8 @@ function fieldValues(field: FormField, values: FormValue[]) {
     } else {
       const text = String(v.value ?? "").trim();
       if (!text) throw new Error(`« ${field.label} » : valeur vide`);
-      if (dt.kind === "numeric" && !/^-?\d+$/.test(text)) throw new Error(`« ${field.label} » : nombre entier attendu`);
+      if (dt.type === "numeric:timestamp") { if (!TIMESTAMP.test(text)) throw new Error(`« ${field.label} » : date attendue (AAAA, AAAA-MM-JJ ou AAAA-MM-JJTHH:MM:SS)`); }
+      else if (dt.kind === "numeric" && !/^-?\d+$/.test(text)) throw new Error(`« ${field.label} » : nombre entier attendu`);
       if (dt.options?.length && !dt.open && !dt.options.some(o => o.title === text)) throw new Error(`« ${field.label} » : valeur hors de la liste « ${dt.label} »`);
       out["@value"] = text;
     }

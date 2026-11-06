@@ -9,12 +9,15 @@ import dotenv from "dotenv";
 import { defaultWorkflowConfig } from "../config";
 import { defaultOntoEthiqueConfig, ONTOETHIQUE_CONFIG_FILE } from "../config/ontoethique";
 import { ontoEthiqueRoutes } from "./ontoethiqueRoutes";
+import { econetworkRoutes } from "./econetworkRoutes";
+import { ecospaceRoutes } from "./ecospaceRoutes";
 import { AGENTS, DIAGRAMS, type AgentInfo } from "../workflow/diagrams";
 import { readAgentOverrides, writeAgentOverride, AGENTS_CONFIG_FILE } from "../agents/overrides";
 import { agentEstimate, otherUsage, usageMatcher, usageRuns } from "../lib/metrics/usageHistory";
 import { mergeConfig, readConfigOverride, writeConfigOverride } from "../config/store";
 import { Zotero } from "../lib/zotero/zotero";
 import { Omk } from "../lib/omeka/omk";
+import { isProxied, omekaWebBase, proxyOmeka } from "../lib/omeka/proxy";
 
 // ROOT : répertoire de données (.env, fichiers de configuration, résultats) = répertoire courant
 // APP_DIR : code du projet (identique à ROOT en local, distinct dans le conteneur Docker)
@@ -259,13 +262,20 @@ async function checkConnections() {
   return result;
 }
 
-// client Omeka S construit avec les connexions de ce serveur
+// client Omeka S construit avec les connexions de ce serveur ; gardé 5 minutes pour les mêmes connexions : son
+// initialisation relit propriétés, classes et templates (une quinzaine de requêtes)
+let omkCache: { key: string; at: number; omk: Promise<Omk> } | null = null;
 async function serverOmk() {
   const env = readEnv();
   if (!env.OMKS_API_URL || !env.OMKS_KEY_IDENTITY || !env.OMKS_KEY_CREDENTIAL) throw new Error("Connexion Omeka S incomplète (page Paramètres)");
-  const omk = new Omk({ api: env.OMKS_API_URL, ident: env.OMKS_KEY_IDENTITY, key: env.OMKS_KEY_CREDENTIAL, vocabs: currentConfig().omeka.vocabs });
-  await omk.init();
-  return omk;
+  const vocabs = currentConfig().omeka.vocabs;
+  const key = JSON.stringify([env.OMKS_API_URL, env.OMKS_KEY_IDENTITY, env.OMKS_KEY_CREDENTIAL, vocabs]);
+  if (!omkCache || omkCache.key !== key || Date.now() - omkCache.at > 300_000) {
+    const omk = new Omk({ api: env.OMKS_API_URL, ident: env.OMKS_KEY_IDENTITY, key: env.OMKS_KEY_CREDENTIAL, vocabs });
+    omkCache = { key, at: Date.now(), omk: omk.init().then(() => omk) };
+    omkCache.omk.catch(() => { omkCache = null; });
+  }
+  return omkCache.omk;
 }
 
 // ==========================================
@@ -475,10 +485,16 @@ const ONTOETHIQUE_ROUTES = ontoEthiqueRoutes({
   costs: () => currentConfig().costs, serverOmk, sendJson, readBody,
 });
 Object.assign(routes, ONTOETHIQUE_ROUTES);
+// IHM EcoNetwork : modélisation pas à pas d'un écosystème de connaissances, servie par le serveur ontoÉthique
+const ECONETWORK_ROUTES = econetworkRoutes({ publicDir: PUBLIC_DIR, readEnv, config: currentOntoEthiqueConfig, serverOmk, sendJson, readBody });
+Object.assign(routes, ECONETWORK_ROUTES);
+// IHM EcoSpace : écosystème de connaissances dans un espace 3D (grille hexagonale), servie par le serveur ontoÉthique
+const ECOSPACE_ROUTES = ecospaceRoutes({ root: ROOT, publicDir: PUBLIC_DIR, readEnv, config: currentOntoEthiqueConfig, serverOmk, sendJson, readBody });
+Object.assign(routes, ECOSPACE_ROUTES);
 
 // routes propres à une application (les autres sont communes à tous les serveurs)
 const APP_ONLY: Record<string, AppName> = {
-  ...Object.fromEntries(Object.keys(ONTOETHIQUE_ROUTES).map(k => [k, "ontoethique" as AppName])),
+  ...Object.fromEntries([...Object.keys(ONTOETHIQUE_ROUTES), ...Object.keys(ECONETWORK_ROUTES), ...Object.keys(ECOSPACE_ROUTES)].map(k => [k, "ontoethique" as AppName])),
 };
 
 // documentation HTML générée par npm run docs (docs/html)
@@ -511,6 +527,11 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && (url.pathname === "/docs" || url.pathname.startsWith("/docs/"))) {
     if (url.pathname === "/docs") { res.writeHead(302, { Location: "/docs/" }); return res.end(); }
     return serveDocs(res, url.pathname);
+  }
+  // interface web d'Omeka S servie sous son propre chemin (iframe « détails » d'EcoNetwork, même origine)
+  if (currentOntoEthiqueConfig().econetwork.omekaProxy) {
+    const omeka = omekaWebBase(readEnv().OMKS_API_URL);
+    if (omeka && isProxied(url.pathname, omeka.path)) return proxyOmeka(req, res, omeka.origin);
   }
   const key = `${req.method} ${url.pathname}`;
   const handler = routes[key];

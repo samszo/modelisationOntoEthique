@@ -193,10 +193,14 @@ export function ontoEthiqueRoutes(ctx: Ctx): Record<string, Handler> {
   // Formulaires générés depuis les resource templates
   // ==========================================
   // seuls les templates du processus de modélisation sont accessibles
+  // (et ceux de l'IHM EcoNetwork : écosystème, types d'éléments)
   function formTemplate(id: unknown) {
-    const t = ctx.config().omekaForms.templates.find(x => x.templateId === Number(id));
-    if (!t) throw new Error("Resource template hors du processus de modélisation");
-    return t;
+    const config = ctx.config();
+    const t = config.omekaForms.templates.find(x => x.templateId === Number(id));
+    if (t) return t;
+    const n = config.econetwork;
+    if (Number(id) === n.ecoTemplateId || n.elementTemplateIds.includes(Number(id))) return { key: `template-${id}`, label: `Template ${id}`, templateId: Number(id) };
+    throw new Error("Resource template hors du processus de modélisation");
   }
   const findField = (fields: FormField[], term: string): FormField | undefined => {
     for (const f of fields) { if (f.term === term) return f; const n = f.annotation && findField(f.annotation, term); if (n) return n; }

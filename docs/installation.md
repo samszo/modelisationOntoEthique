@@ -67,13 +67,13 @@ Dans *Admin › Paramètres › Sécurité*, autoriser si besoin :
 | Extension | Type MIME | Fichiers |
 |---|---|---|
 | `md` | `text/markdown`, `text/plain` | rapport, synthèse |
-| `json` | `application/json` | modèle onto-éthique |
+| `json` | `application/json` | modèle onto-éthique, positions d'un espace EcoSpace (média de l'écosystème, **indispensable** : Omeka S déduit le type du contenu, le repli en `.txt` est refusé) |
 | `jsonld` | `application/ld+json` | modèle (JSON-LD) |
 | `ttl` | `text/turtle` | modèle (Turtle) |
 | `csv` | `text/csv` | matrice des affects |
 | `html` | `text/html` | spirales de Pappus |
 
-Une extension refusée n'interrompt rien : le fichier est déposé en `.txt` (format d'origine dans `dcterms:format`), ou reste disponible localement.
+Les médias joints aux nœuds dans EcoNetwork suivent les mêmes règles (extensions et types MIME autorisés par l'instance). Une extension refusée n'interrompt rien : le fichier est déposé en `.txt` (format d'origine dans `dcterms:format`), ou reste disponible localement.
 
 ## 6. Vérifier l'installation
 
@@ -89,4 +89,5 @@ Une extension refusée n'interrompt rien : le fichier est déposé en `.txt` (fo
 | « Forbidden » ou « HTTP 401 » à la synthèse | clé Albert absente ou refusée |
 | « Aucune existence informationnelle identifiée » | collection sans texte ni annotation, description de l'activité trop vague, Albert indisponible |
 | Fichiers absents de l'item Omeka S | extensions non autorisées (section 5) |
+| « Invalid or missing CSRF token » dans « détails » d'EcoNetwork | `econetwork.omekaProxy` désactivé, ou instance Omeka S installée à la racine d'un domaine (non relayée) : ouvrir l'item dans un nouvel onglet |
 | Diagrammes vides | Plotly (CDN jsDelivr) inaccessible depuis le navigateur |

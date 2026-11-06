@@ -258,7 +258,8 @@ export class Omk {
       data = await this.request(this.url(type, `per_page=${this.perPage}&page=${page}` + (query ? "&" + query : "")));
       rs = rs.concat(data);
       page++;
-    } while (data.length);
+      // page incomplète : c'était la dernière (évite une requête de plus)
+    } while (data.length && data.length >= this.perPage);
     return rs;
   }
   getAllItems(query = "") {

@@ -116,7 +116,8 @@
 │   ├── analysis/             annotationPositions (grille de couleurs), codebook (codes des marqueurs), cleanGraph (identifiants)
 │   ├── extraction/           pdfExtract, attachmentExtract, zip, chunkText
 │   ├── metrics/              usage (tokens), impact (énergie, carbone, argent), usageHistory (onglet Workflow)
-│   ├── omeka/                omk (client), templateForm (formulaires des resource templates), oaAnnotations, conceptIndex, zoteroCollections
+│   ├── ecospace/             hex (grille hexagonale : coordonnées cube, scène, géographie)
+│   ├── omeka/                omk (client), templateForm (formulaires des resource templates), network (réseau EcoNetwork), proxy (mandataire de l'interface web), oaAnnotations, conceptIndex, zoteroCollections
 │   ├── albert/               albert (client de l'API Albert)
 │   └── zotero/               zotero (client), zoteroToOmeka, duplicates
 ├── tools/                    fetchZoteroData, buildResourceTemplateForm (outils Mastra)
@@ -131,7 +132,9 @@
 └── ui/
     ├── server.ts             serveur d'une application (npm run ui:ontoethique)
     ├── ontoethiqueRoutes.ts  routes d'ontoÉthique
-    └── public/               ontoethique.html, settings.html, workflowDiagram.js, templateForm.js</code></pre>
+    ├── econetworkRoutes.ts   routes de l'IHM EcoNetwork (/econetwork)
+    ├── ecospaceRoutes.ts     routes de l'IHM EcoSpace (/ecospace)
+    └── public/               ontoethique.html, econetwork.html, ecospace.html, settings.html, workflowDiagram.js, templateForm.js</code></pre>
 <p>Hors de <code>src/</code> : <code>docs/</code> (documentation), <code>scripts/build-docs.ts</code>, <code>docker/entrypoint.sh</code>, <code>.vscode/launch.json</code>, <code>.claude/launch.json</code> (configurations <code>ui-ontoethique</code> et <code>ui-ontoethique-test</code>).</p>
 <h3 id="agents-src-agents"><a class="anchor" href="#agents-src-agents">#</a>Agents (<code>src/agents/</code>)</h3>
 <table>
@@ -312,8 +315,8 @@
 <td>recherche d&#39;un item (<code>resource_query</code> du template)</td>
 </tr>
 <tr>
-<td><code>numeric:integer</code>, <code>wikidata:…</code></td>
-<td>nombre entier, adresse</td>
+<td><code>numeric:integer</code>, <code>numeric:timestamp</code>, <code>wikidata:…</code></td>
+<td>nombre entier ; date (AAAA, AAAA-MM, AAAA-MM-JJ ou AAAA-MM-JJTHH:MM:SS, contrôlée par le serveur) ; adresse</td>
 </tr>
 <tr>
 <td><code>value_annotations_template</code></td>
@@ -346,6 +349,258 @@
 </tr>
 </tbody></table>
 <p>L&#39;ordre des deux valeurs de <code>jdc:hasConcept</code> porte la source et la destination.</p>
+<h3 id="ihm-econetwork"><a class="anchor" href="#ihm-econetwork">#</a>IHM EcoNetwork</h3>
+<p>Page <code>src/ui/public/econetwork.html</code>, servie sur <code>/econetwork</code> par le serveur ontoÉthique (routes <code>src/ui/econetworkRoutes.ts</code>, bibliothèque <code>src/lib/omeka/network.ts</code>). La modélisation y suit des <strong>étapes</strong> (navigation latérale, précédente / suivante, état dans l&#39;adresse <code>#step=1.2&amp;eco=&lt;id&gt;</code>) :</p>
+<table>
+<thead>
+<tr>
+<th>Étape</th>
+<th>Contenu</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.1 Créer ou choisir un écosystème</td>
+<td>items du template <code>econetwork.ecoTemplateId</code> ; création par le formulaire du template</td>
+</tr>
+<tr>
+<td>1.2 Réseau de l&#39;écosystème</td>
+<td>graphe <strong>d3-force</strong> : l&#39;écosystème, ses <strong>éléments</strong> (items dont <code>jdc:hasEcoCon</code> le désigne, ou qu&#39;il désigne par cette propriété) et les ressources liées aux éléments (valeurs sortantes et items qui les désignent)</td>
+</tr>
+</tbody></table>
+<p>Un clic sur un nœud ouvre un <strong>menu circulaire</strong> (icônes d&#39;après Lucide, libellé au survol ; le second anneau garde les libellés des types, dans la couleur du type) :</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Effet</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lier</td>
+<td>second anneau : propriétés du template du nœud dont un type de données est un custom vocab adossé à une collection d&#39;items → template qui crée ses items dans cette collection. Le titre est autocomplété (<code>/api/econetwork/search</code>) : items dont le titre contient la saisie, parmi les templates acceptés par la propriété, avec leur type et l&#39;indication « déjà lié ». Un item choisi est lié tel quel (<code>existing</code>) ; sinon le nouvel item (repris s&#39;il existe avec ce titre et ce template) est créé. Dans les deux cas il est rattaché à l&#39;écosystème, puis ajouté aux valeurs de la propriété du parent. Un nouveau nœud peut recevoir un <strong>média</strong> (fichier déposé ou adresse importée par Omeka S), comme un nouvel écosystème à l&#39;étape 1.1 ; un média en échec n&#39;annule pas la création. Depuis l&#39;écosystème : les types <code>elementTemplateIds</code>. <code>jdc:hasEcoCon</code> n&#39;est pas proposé comme lien</td>
+</tr>
+<tr>
+<td>dupliquer</td>
+<td>copie de toutes les valeurs, titre suivant libre (« titre 2 », « titre 3 »…)</td>
+</tr>
+<tr>
+<td>détails</td>
+<td>onglet <strong>Omeka S</strong> : page d&#39;administration de l&#39;item dans une iframe, servie par le <strong>mandataire</strong> du serveur (même origine) ; onglet <strong>Fiche</strong> : valeurs lues par l&#39;API (<code>details</code> de <code>GET /api/econetwork/item</code>) ; lien vers un nouvel onglet</td>
+</tr>
+<tr>
+<td>supprimer</td>
+<td>conséquences affichées : parents — écosystèmes de rattachement (lien porté par le nœud) et nœuds qui le désignent (avec « délier ») — et enfants impactés ; <strong>retirer du réseau</strong> (retire le rattachement) ou <strong>supprimer dans Omeka S</strong>, refusé tant qu&#39;un autre nœud l&#39;utilise ou qu&#39;il est rattaché à un autre écosystème</td>
+</tr>
+<tr>
+<td>modifier</td>
+<td>formulaire du template pré-rempli ; les champs du template sont remplacés, les autres propriétés conservées</td>
+</tr>
+</tbody></table>
+<p>Mandataire Omeka S (<code>src/lib/omeka/proxy.ts</code>, <code>econetwork.omekaProxy</code>) : le serveur relaie vers l&#39;instance toutes les requêtes dont le chemin est celui de l&#39;instance (<code>/omk_ontoethique/…</code>, tiré de <code>OMKS_API_URL</code>), avant ses propres routes. Sans lui, l&#39;iframe (127.0.0.1:7280 → localhost) est d&#39;un autre site : le cookie de session d&#39;Omeka S, sans attribut <code>SameSite</code> donc traité en <code>Lax</code>, n&#39;y est pas envoyé et la connexion échoue (« Invalid or missing CSRF token »). Réécritures : <code>Host</code>, <code>Origin</code> et <code>Referer</code> vers l&#39;instance ; <code>Location</code> absolue vers l&#39;instance → chemin relatif (retour sur l&#39;item après connexion, Omeka S mémorisant <code>redirect_url</code>) ; <code>Domain</code> et <code>Secure</code> retirés des cookies. Les adresses des pages Omeka S étant relatives à la racine (<code>/omk_ontoethique/…</code>), le contenu n&#39;est pas modifié. Une instance installée à la racine d&#39;un domaine (chemin vide) n&#39;est pas relayée : l&#39;iframe pointe alors vers l&#39;instance elle-même. Le serveur écoutant sur 127.0.0.1, le mandataire n&#39;expose l&#39;instance qu&#39;à la machine locale.</p>
+<p>Formulaires : une propriété de template sans type de données imposé reçoit les types par défaut d&#39;Omeka S (texte, item lié, adresse), sans quoi une valeur liée (ex. <code>jdc:hasEcoCon</code> du template Personne) n&#39;était pas affichée.</p>
+<p>Écriture : un <code>PATCH</code> Omeka S remplace <strong>toutes</strong> les valeurs d&#39;un item ; <code>writeValues</code> relit l&#39;item et renvoie l&#39;ensemble de ses propriétés avec les valeurs modifiées. Le type de la valeur de rattachement est celui du template de l&#39;élément (<code>customvocab:15</code> sur l&#39;instance), à défaut <code>resource:item</code>. Le client Omeka S du serveur est gardé 5 minutes (son initialisation relit vocabulaires et templates).</p>
+<table>
+<thead>
+<tr>
+<th>Méthode et route</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /econetwork</code></td>
+<td>page</td>
+</tr>
+<tr>
+<td><code>GET /api/econetwork/ecos</code></td>
+<td>écosystèmes</td>
+</tr>
+<tr>
+<td><code>GET /api/econetwork/graph?eco=</code></td>
+<td>nœuds (<code>role</code> : eco, element, linked ; template, classe) et liens (propriété)</td>
+</tr>
+<tr>
+<td><code>GET /api/econetwork/linkable?item=</code></td>
+<td>propriétés et types de nœuds liables</td>
+</tr>
+<tr>
+<td><code>GET /api/econetwork/search?parent=&amp;term=&amp;q=</code></td>
+<td>items existants liables par la propriété (<code>id, title, templateId, template, linked</code>)</td>
+</tr>
+<tr>
+<td><code>POST /api/econetwork/link</code></td>
+<td><code>{ eco, parent, term, templateId, title }</code> (nouveau nœud) ou <code>{ eco, parent, term, existing }</code> (item existant)</td>
+</tr>
+<tr>
+<td><code>POST /api/econetwork/media/file?item=&amp;name=&amp;title=</code></td>
+<td>fichier en corps brut (<code>Content-Type</code> du fichier, <code>econetwork.maxMediaMB</code> au plus) → média <code>upload</code> ; repris si l&#39;item a déjà un média de même empreinte SHA-256</td>
+</tr>
+<tr>
+<td><code>POST /api/econetwork/media/url</code></td>
+<td><code>{ item, url, title }</code> → média <code>url</code> (Omeka S télécharge l&#39;adresse) ; http(s) vers une adresse publique seulement (localhost, adresses privées et de lien local refusées, y compris après résolution DNS) ; repris si cette source est déjà attachée</td>
+</tr>
+<tr>
+<td><code>POST /api/econetwork/duplicate</code></td>
+<td><code>{ item }</code></td>
+</tr>
+<tr>
+<td><code>GET</code>, <code>POST /api/econetwork/item</code></td>
+<td>valeurs au format du formulaire et fiche <code>details</code> ; <code>{ id, values }</code> : modification contrôlée par le template</td>
+</tr>
+<tr>
+<td><code>GET /api/econetwork/impact?item=</code></td>
+<td>parents, enfants, écosystèmes</td>
+</tr>
+<tr>
+<td><code>POST /api/econetwork/delete</code></td>
+<td><code>{ item, eco, mode: network | omeka }</code></td>
+</tr>
+<tr>
+<td><code>POST /api/econetwork/unlink</code></td>
+<td><code>{ source, target, term }</code></td>
+</tr>
+</tbody></table>
+<h3 id="ihm-ecospace"><a class="anchor" href="#ihm-ecospace">#</a>IHM EcoSpace</h3>
+<p>Page <code>src/ui/public/ecospace.html</code> (three.js 0.169 par carte d&#39;import, d3 pour le menu), servie sur <code>/ecospace</code> par le serveur ontoÉthique (routes <code>src/ui/ecospaceRoutes.ts</code>, bibliothèque <code>src/lib/ecospace/hex.ts</code>). Elle remplace la représentation en réseau de forces d&#39;EcoNetwork par un <strong>espace en trois dimensions</strong> ; la création, la liaison, la modification et la suppression des items passent par les routes d&#39;EcoNetwork.</p>
+<table>
+<thead>
+<tr>
+<th>Étape</th>
+<th>Contenu</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.1 Créer ou choisir un écosystème</td>
+<td>comme EcoNetwork ; un nouvel écosystème reçoit aussitôt son espace (grille)</td>
+</tr>
+<tr>
+<td>1.2 Espace de l&#39;écosystème</td>
+<td>grille hexagonale et éléments placés ; un écosystème sans espace propose « Créer la grille »</td>
+</tr>
+</tbody></table>
+<p><strong>Grille</strong> : hexagones à moins de <code>radius</code> anneaux du centre (3·r·(r+1)+1), de rayon <code>hexSize</code> mètres (1 unité de la scène = 1 m), orientation <code>pointy</code> ou <code>flat</code>. Chaque hexagone a deux systèmes de coordonnées : <strong>cube</strong> (q, r, s ; q + r + s = 0, <a href="https://www.redblobgames.com/grids/hexagons/#coordinates-cube" target="_blank" rel="noopener">redblobgames</a>) et <strong>géographique</strong> (longitude, latitude, altitude), par projection locale autour de <code>origin</code> (est = +x, nord = −z, altitude = y ; 111 320 m par degré de latitude). La grille est fixée à la création de l&#39;espace : modifier <code>ecospace.grid</code> ne change que les espaces créés ensuite.</p>
+<p><strong>Stockage</strong> : un fichier <code>resultats/ecospace/&lt;écosystème&gt;.json</code> (<code>{ eco, created, grid, placements: [{ item, q, r, s, shape, placed }] }</code>). Les items restent dans Omeka S, rattachés à l&#39;écosystème par <code>econetwork.ecoProperty</code> ; titre et template sont relus à chaque ouverture (un item supprimé apparaît « introuvable »).</p>
+<p><strong>Formes</strong> (<code>ecospace.shapes</code>, par resource template ; dimensions en fraction de <code>hexSize</code>) :</p>
+<table>
+<thead>
+<tr>
+<th>Élément</th>
+<th>Forme</th>
+<th>Placement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Actant (template 4)</td>
+<td>fullerène C60 (icosaèdre tronqué : 60 atomes, 90 liaisons, enveloppe convexe translucide), rayon <code>fullereneRadius</code> ; sphère de rayon <code>sphereRadius</code> (par défaut tous deux égaux au rayon de l&#39;hexagone, <code>hexSize</code>)</td>
+<td>centroïde du fullerène au centre de l&#39;hexagone (altitude 0) ; pôle nord de la sphère sur ce centroïde (centre de la sphère à −<code>sphereRadius</code>, sous la grille)</td>
+</tr>
+<tr>
+<td>Personne (template 8), Agent (template 6)</td>
+<td>comme l&#39;actant, petit <strong>fullerène</strong> C60 + <strong>sphère</strong> sous la grille (couleur propre) : fullerène de rayon <code>memberRatio</code> × taille du sous-hexagone, sphère de rayon <code>sphereRatio</code> × celui du fullerène, pôle nord au centroïde du fullerène ; titre au-dessus. La sphère d&#39;un actant qui a des membres devient translucide (45 % au lieu de 85 %) pour laisser voir les leurs ; <strong>ajout seulement depuis un actant</strong> (menu « lier » de l&#39;actant ; <code>POST /api/ecospace/place</code> les refuse)</td>
+<td><strong>sous-grille</strong> de l&#39;hexagone de l&#39;actant (<code>subGrid</code>, <code>src/lib/ecospace/hex.ts</code>) : sous-hexagones d&#39;orientation inverse, <code>subRings</code> anneaux (plus si nécessaire), à la plus grande taille qui les garde dans l&#39;hexagone (× <code>subMargin</code>) — 2 anneaux = 19 sous-hexagones de 0,217 × <code>hexSize</code> ×0,95 ; dessinée sur la tuile de l&#39;actant. Le sous-hexagone central reste à l&#39;actant ; un membre est centré sur le premier sous-hexagone libre, au niveau de la grille (moitié du fullerène au-dessus, moitié en dessous ; <code>y</code> = 0 ; <code>geo.sphereCenter</code> = centre de la sphère) depuis le centre, emplacement conservé dans l&#39;espace (<code>members</code> : actant → membre → q, r). Les membres sont lus dans Omeka S : valeurs <code>anchorTerm</code> de l&#39;actant (<code>jdc:hasPerson</code>, <code>jdc:hasAgent</code>) ; une même personne peut figurer dans plusieurs actants. Supprimer → « Détacher » retire la valeur de l&#39;actant</td>
+</tr>
+<tr>
+<td>Physique (template 3)</td>
+<td>boîte à base carrée : le plus grand carré inscrit dans l&#39;hexagone ((3 − √3) × rayon) × <code>baseRatio</code> ; hauteur = durée entre la date de création (<code>createdTerm</code>, sinon <code>o:created</code>) et la date de modification (<code>o:modified</code>)</td>
+<td>au-dessus de l&#39;hexagone, sur l&#39;<strong>échelle temporelle</strong> : y = 0 (surface) = maintenant, y = H = plus ancienne date de création des physiques de l&#39;espace ; la boîte va de y(modification) à y(création). <strong>Enfants</strong> (physiques qui le désignent par <code>parentTerm</code>, <code>dcterms:isPartOf</code>) : boîtes intérieures, de la base du parent moins sa marge <code>childPadding</code> ; la hauteur du parent (moins la même marge relative) est partagée en <strong>tranches empilées de haut en bas, dans l&#39;ordre alphabétique des titres</strong>, proportionnelles à leur importance (<code>importanceTerm</code>, <code>jdc:importance</code>, 1 par défaut ; toutes nulles = parts égales ; une importance nulle parmi d&#39;autres = pas de boîte) ; les dates d&#39;un enfant ne fixent donc pas sa position (elles restent affichées au survol et dans les détails) ; profondeur <code>maxDepth</code>. <strong>Image</strong> : si le physique a un média de type <code>image/*</code> (le premier), l&#39;image est plaquée sur chaque face de sa boîte (étirée à ses proportions ; opacité 0,92, ou 0,45 si la boîte contient des enfants)</td>
+</tr>
+<tr>
+<td>Concept (template 2)</td>
+<td><strong>bulle conceptuelle</strong> : capsule translucide d&#39;<strong>axe horizontal est-ouest</strong>, cylindre fermé à ses deux extrémités par des demi-sphères. <strong>Aucune taille ni position saisie à la main</strong> (ni glisser, ni poignées) : <code>layoutConcepts</code> (<code>src/lib/ecospace/concepts.ts</code>) les calcule à chaque lecture de l&#39;espace. <strong>Taille</strong> : sans enfant, rayon <code>leafRadius</code> et longueur = 2 × rayon + caractères du titre × <code>charWidth</code> (titre tronqué à <code>maxLabel</code> caractères) ; parent : ses enfants sont rangés sur une ligne le long de son axe (écarts <code>padding</code>), décalés d&#39;une demi-hauteur de titre en diagonale vers le bas-sud, et son titre occupe la bande opposée (haut-nord, <code>labelY</code>, <code>labelZ</code>) — rayon = plus grand rayon d&#39;enfant + <code>labelHeight</code>/2 + <code>padding</code>, longueur = ligne des enfants (ou titre, si plus long) + marges + demi-sphères. Titre écrit dans la scène (sprite tourné vers la caméra, <code>charWidth</code> par caractère, <code>labelHeight</code> de haut)</td>
+<td><strong>Position</strong> : frères répartis de façon équilibrée — ordre alphabétique du titre, écarts égaux, ensemble centré sur le parent ; racines (concepts sans parent dans l&#39;espace) en grille presque carrée (⌈√n⌉ colonnes, écart <code>spacing</code>) centrée sous la grille, sommets alignés à <code>topDepth</code> sous la surface. L&#39;hexagone d&#39;un concept est celui au-dessus de son centre (calculé) ; celui du placement n&#39;est gardé que pour mémoire. <strong>Hiérarchie</strong> lue dans Omeka S entre concepts placés : <code>broaderTerm</code> (<code>skos:broader</code>) de l&#39;enfant ou <code>narrowerTerm</code> (<code>skos:narrower</code>) du parent, relations <strong>gérées</strong> = annotées par cet écosystème (<code>econetwork.ecoProperty</code>, <code>jdc:hasEcoCon</code>) ou sans annotation d&#39;écosystème ; celles annotées par d&#39;autres écosystèmes seulement sont ignorées. Plusieurs parents : le plus petit identifiant ; un cycle fait du concept une racine. Elle se modifie <strong>par le menu</strong> (« lier » : concept parent, concept enfant, détacher) ; les relations écrites portent l&#39;annotation de l&#39;écosystème. <code>relatedTerm</code> (<code>skos:related</code>) est seulement affiché dans les détails</td>
+</tr>
+</tbody></table>
+<p><strong>Couches</strong> : un hexagone porte un élément par couche de forme (<code>shape.layer</code>, défaut : la clé de la forme) : l&#39;actant occupe la couche <code>dessous</code> (sa sphère est sous la grille), le physique la couche <code>dessus</code> ; un actant et un physique peuvent donc partager un hexagone, pas deux physiques racines ni deux actants.</p>
+<p><strong>Échelle temporelle</strong> : curseur de hauteur H (<code>timeScale.minHeight</code> à <code>maxHeight</code>, progression géométrique ; défaut <code>height</code>) et mode <strong>linéaire</strong> ou <strong>logarithmique</strong> (y ∝ log(1 + 99u), u = ancienneté relative : les intervalles récents sont dilatés). Un axe gradué (7 graduations, précision adaptée à leur écart) est dessiné au nord-ouest de la grille. Le curseur ne recharge rien : positions et hauteurs sont recalculées par la page.</p>
+<p><strong>Copie des positions dans Omeka S</strong> (<code>ecospace.omekaMedia</code>) : chaque enregistrement du fichier de l&#39;espace (<code>resultats/ecospace/&lt;éco&gt;.json</code> : grille, placements, emplacements des personnes et agents) programme, <code>delay</code> ms plus tard (les modifications rapprochées n&#39;en font qu&#39;un envoi), son dépôt comme <strong>média de l&#39;item écosystème</strong> : fichier <code>ecospace-&lt;éco&gt;.json</code>, <code>dcterms:title</code> = <code>title</code>, <code>dcterms:identifier</code> = <code>identifierPrefix</code> + écosystème. Rien n&#39;est envoyé si un média de même identifiant a la même empreinte (<code>o:sha256</code>) ; sinon le nouveau média est déposé puis les anciennes versions sont supprimées. Un échec est non bloquant (<code>⚠️</code> dans les journaux) ; l&#39;état de la dernière copie (<code>omekaCopy</code> : <code>ok</code>, <code>media</code>, <code>error</code>, <code>pending</code>) est renvoyé avec l&#39;espace et affiché dans la ligne d&#39;information de la page (détail de l&#39;erreur au survol). Si le fichier local est absent, <code>GET /api/ecospace/space</code> restaure l&#39;espace depuis ce média. <strong>Prérequis</strong> : Omeka S doit accepter les fichiers JSON (type <code>application/json</code> et extension <code>json</code> dans Administration &gt; Paramètres &gt; Sécurité ; le type est déduit du contenu, un dépôt en <code>.txt</code> est aussi refusé).</p>
+<p><strong>Fenêtre de progression</strong> (<code>#dlg-busy</code>, <code>withBusy(titre, fn)</code>) : les opérations longues — chargement de l&#39;espace, création de la grille, placement, liens entre concepts, détachement, duplication, modification, suppression — ouvrent une fenêtre modale (Échap inactif) qui liste leurs étapes, terminées (✓) ou en cours, avec la durée de chacune et la durée totale ; elle n&#39;apparaît qu&#39;au-delà de 300 ms. Chaque appel au serveur y ajoute une étape décrite (table <code>API_STEPS</code>), la construction de la scène 3D aussi (<code>setSpace</code>, asynchrone : la fenêtre est affichée avant ce calcul synchrone) ; <code>withBusy</code> est réentrant (une opération qui recharge l&#39;espace garde une seule fenêtre).</p>
+<p><strong>Menu circulaire</strong> (celui d&#39;EcoNetwork, sur l&#39;hexagone ou l&#39;élément cliqué — le plus proche de la caméra ; parmi des éléments de même famille traversés (boîtes imbriquées, concepts emboîtés, actant et ses personnes et agents), le plus profond ; un parent se sélectionne par sa marge ; le menu s&#39;ouvre après le délai d&#39;un double-clic ; un glisser fait tourner la vue ; un double-clic rapproche la vue de l&#39;élément) :</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Hexagone libre</th>
+<th>Hexagone occupé</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lier</td>
+<td>second anneau : <strong>seulement les éléments qui peuvent y être placés</strong> — types de <code>econetwork.elementTemplateIds</code> dotés d&#39;une forme, non ancrés (ni personne ni agent) et dont la couche est libre, plus le concept (sous la grille) ; les types sans forme ne sont pas affichés ; inactif si aucun (un physique demande aussi sa date de création, aujourd&#39;hui par défaut, et son importance) ; titre autocomplété parmi les items de ce type (un élément de l&#39;écosystème non placé est seulement placé ; un item déjà placé n&#39;est pas proposé) ; sinon création (avec média facultatif) et rattachement à l&#39;écosystème, puis placement</td>
+<td><strong>seulement les liens prévus par le resource template de l&#39;élément</strong> (<code>/api/econetwork/linkable</code> : propriétés et templates acceptés, lus une fois par template et mis en cache ; « lier » est inactif quand on sait que le modèle n&#39;en prévoit aucun) et qu&#39;EcoSpace représente : actant → personne (<code>jdc:hasPerson</code>) et agent (<code>jdc:hasAgent</code>) ; physique → <strong>physique enfant</strong> (<code>parentTerm</code> vers un physique ; nouveau, avec date, importance et média, ou existant de l&#39;écosystème ; un physique qui contient déjà le parent est refusé) ; concept → concept parent (<code>broaderTerm</code>), concept enfant (<code>narrowerTerm</code>), détacher ; personne, agent : aucun. Les routes <code>member</code>, <code>concept/relate</code> et <code>physique</code> (avec parent) refusent un lien que le modèle ne prévoit pas</td>
+</tr>
+<tr>
+<td>dupliquer</td>
+<td>—</td>
+<td>demande le <strong>nombre de copies</strong> (1 à <code>maxDuplicates</code>) ; chaque copie de l&#39;item (titre suivant libre, sans ses enfants) est placée sur l&#39;hexagone le plus proche dont la couche est libre ; un physique enfant donne des frères dans le même parent</td>
+</tr>
+<tr>
+<td>détails</td>
+<td>coordonnées cube, distance au centre, géographie, position dans la scène, occupation par couche</td>
+<td>iframe Omeka S (mandataire) et fiche, avec la position : actant, centroïde du fullerène et centre de la sphère ; physique, dates, importance, parent, enfants et hauteur à l&#39;échelle courante</td>
+</tr>
+<tr>
+<td>supprimer</td>
+<td>—</td>
+<td>retirer de l&#39;espace (l&#39;item reste élément de l&#39;écosystème), retirer de l&#39;écosystème, ou supprimer dans Omeka S (si aucun autre nœud ne l&#39;utilise : un physique qui a des enfants est bloqué) ; physique enfant : <strong>détacher</strong> de son parent (retrait de la valeur <code>parentTerm</code>) ou supprimer dans Omeka S</td>
+</tr>
+<tr>
+<td>modifier</td>
+<td>—</td>
+<td>formulaire du template</td>
+</tr>
+</tbody></table>
+<p>Sur un <strong>concept</strong>, « lier » propose : <strong>Concept parent</strong> (nouveau ou existant ; il englobera le concept ; si celui-ci avait déjà un parent, le nouveau s&#39;intercale entre les deux), <strong>Concept enfant</strong> (nouveau ou existant ; un concept existant quitte son parent actuel) et <strong>Détacher</strong> (le concept redevient une racine). Un concept repris hors de l&#39;espace y est ajouté ; les cycles sont refusés (l&#39;autocomplétion grise le concept lui-même et, selon le cas, ses descendants ou ses ancêtres).</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /ecospace</code></td>
+<td>page</td>
+</tr>
+<tr>
+<td><code>GET /api/ecospace/space?eco=</code></td>
+<td><code>{ exists: false, grid }</code> ou l&#39;espace : <code>grid</code>, <code>hexes</code> (<code>q, r, s, x, z, geo</code>), <code>placements</code> (avec <code>title</code>, <code>templateId</code>, <code>missing</code>, <code>geo</code> ; actant : <code>sub</code> (sous-grille : <code>size</code>, <code>orientation</code>, <code>rings</code>, <code>slots</code>) ; personne / agent (ajoutés à la liste) : <code>actant</code>, <code>anchorTerm</code>, <code>sub</code> (sous-hexagone), <code>subSize</code>, <code>x, y, z, radius</code>, <code>sphereRadius</code> ; concept : géométrie calculée <code>x, y, z, radius, length</code>, <code>label</code> (titre affiché), <code>chars</code>, <code>labelY</code>, <code>labelZ</code>, <code>level</code>, <code>parent</code>, <code>narrower</code> (enfants), <code>related</code> ; physique : <code>tree</code> = <code>{ id, title, created, createdFromRecord, modified, importance, image, depth, children }</code>, <code>image</code> = identifiant du premier média image ou <code>null</code>), <code>shapes</code>, <code>timeScale</code>, <code>maxDuplicates</code>, <code>now</code>, <code>omekaFrame</code></td>
+</tr>
+<tr>
+<td><code>GET /api/ecospace/image?media=</code></td>
+<td>image d&#39;un média (vignette <code>large</code> d&#39;Omeka S, sinon l&#39;original), relayée par le serveur pour que WebGL la lise depuis la même origine ; refusée si ce n&#39;est pas une image ou si son adresse n&#39;est pas sur l&#39;hôte de <code>OMKS_API_URL</code></td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/space</code></td>
+<td><code>{ eco }</code> : crée l&#39;espace (repris s&#39;il existe) ; l&#39;item doit être du template des écosystèmes</td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/place</code></td>
+<td><code>{ eco, item, q, r }</code> ou <code>{ eco, item, near: { q, r } }</code> (concept : ajouté à l&#39;espace, sa bulle est calculée) (hexagone le plus proche dont la couche est libre) ; l&#39;item doit avoir une forme ; hexagone dans la grille et libre dans la couche de la forme ; un élément déjà placé est déplacé</td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/physique</code></td>
+<td><code>{ eco, parent?, title, created?, importance? }</code> (nouveau physique, rattaché à l&#39;écosystème et, s&#39;il y a un parent, enfant de celui-ci ; repris s&#39;il existe avec ce titre et ce parent) ou <code>{ eco, parent, existing }</code> (physique existant ajouté comme enfant ; cycles refusés)</td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/member</code></td>
+<td><code>{ eco, actant, shape: &quot;personne&quot; | &quot;agent&quot;, title }</code> ou <code>{ …, existing }</code> : personne ou agent créé (rattaché à l&#39;écosystème) ou repris (même template), ajouté aux valeurs <code>anchorTerm</code> de l&#39;actant placé s&#39;il n&#39;y est pas ; renvoie <code>{ id, created }</code></td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/publish</code></td>
+<td><code>{ eco }</code> : copie immédiate du fichier de l&#39;espace dans Omeka S (média de l&#39;écosystème) ; <code>{ id, created }</code> (<code>created: false</code> si le contenu est inchangé)</td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/unplace</code></td>
+<td><code>{ eco, item }</code> : libère l&#39;hexagone ; un concept retiré garde ses relations dans Omeka S, ses enfants deviennent des racines de l&#39;espace</td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/concept/relate</code></td>
+<td><code>{ eco, item, as: &quot;parent&quot; | &quot;child&quot;, title }</code> ou <code>{ …, existing }</code> : concept parent ou enfant d&#39;un concept placé, créé (rattaché à l&#39;écosystème) ou repris, ajouté à l&#39;espace ; relations écrites (<code>setParent</code> : relations gérées remplacées, nouvelles annotées par l&#39;écosystème) ; parent intercalé si le concept en avait déjà un ; cycle refusé ; renvoie <code>{ id, created, changes }</code> (<code>+ id terme id</code> / <code>− id terme id</code>)</td>
+</tr>
+<tr>
+<td><code>POST /api/ecospace/concept/detach</code></td>
+<td><code>{ eco, item }</code> : retire le parent du concept (relations gérées avec les concepts de l&#39;espace) ; renvoie l&#39;espace et <code>changes</code></td>
+</tr>
+</tbody></table>
 <h2 id="7-configuration"><a class="anchor" href="#7-configuration">#</a>7. Configuration</h2>
 <table>
 <thead>
@@ -450,6 +705,14 @@
 <tr>
 <td><code>omekaForms.searchLimit</code></td>
 <td>résultats de la recherche d&#39;un item lié</td>
+</tr>
+<tr>
+<td><code>econetwork.ecoTemplateId</code>, <code>ecoProperty</code>, <code>elementTemplateIds</code>, <code>maxLinked</code>, <code>omekaProxy</code>, <code>maxMediaMB</code></td>
+<td>IHM EcoNetwork : template des écosystèmes (14), propriété de rattachement (<code>jdc:hasEcoCon</code>), types proposés par « lier » depuis l&#39;écosystème, taille maximale du réseau, mandataire de l&#39;interface Omeka S pour l&#39;iframe « détails » (true), taille maximale d&#39;un fichier déposé comme média (50 Mo)</td>
+</tr>
+<tr>
+<td><code>ecospace.dir</code>, <code>grid</code> (<code>radius</code>, <code>hexSize</code>, <code>orientation</code>, <code>origin</code>), <code>shapes</code> (dont <code>layer</code>), <code>timeScale</code> (<code>height</code>, <code>minHeight</code>, <code>maxHeight</code>, <code>mode</code>), <code>maxDuplicates</code>, <code>omekaMedia</code> (<code>enabled</code>, <code>delay</code>, <code>identifierPrefix</code>, <code>title</code>)</td>
+<td>IHM EcoSpace : dossier des espaces (<code>resultats/ecospace</code>), grille d&#39;un nouvel espace (6 anneaux, hexagones de 10 m, pointe en haut, origine Université Paris 8), formes par template (actant : fullerène + sphère, de même rayon que l&#39;hexagone, sous-grille <code>subRings</code>, <code>subMargin</code> ; personne et agent : petits fullerènes + sphères sur la sous-grille de leur actant, <code>anchor</code>, <code>anchorTerm</code>, <code>memberRatio</code>, <code>sphereRatio</code> ; physique : boîtes temporelles imbriquées ; concept : bulles horizontales sous la grille, dimensionnées par leur titre ou leurs enfants et réparties de façon équilibrée (<code>charWidth</code>, <code>labelHeight</code>, <code>leafRadius</code>, <code>padding</code>, <code>spacing</code>, <code>topDepth</code>, <code>maxLabel</code>), hiérarchie <code>skos:narrower</code> / <code>skos:broader</code> ; couches <code>dessous</code> et <code>dessus</code>), échelle temporelle des physiques (60 m, de 5 à 1 000 m, linéaire), copies par duplication bornées (<code>maxDuplicates</code>), copie des positions dans Omeka S comme média de l&#39;écosystème (envoi 3 s après le dernier enregistrement)</td>
 </tr>
 <tr>
 <td><code>outputDir</code></td>
@@ -692,7 +955,7 @@
 </tbody></table>
 
 </main>
-<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-architecture">1. Architecture</a><a class="l2" href="#2-organisation-du-code">2. Organisation du code</a><a class="l3" href="#agents-src-agents">Agents (src/agents/)</a><a class="l3" href="#comptage-des-tokens-et-cout">Comptage des tokens et coût</a><a class="l2" href="#3-modele-onto-ethique">3. Modèle onto-éthique</a><a class="l2" href="#4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts">4. Mesure des fluctuations (src/lib/ontoethique/metrics.ts)</a><a class="l2" href="#5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts">5. Export Linked Open Data (src/lib/ontoethique/linkedData.ts)</a><a class="l2" href="#6-modele-de-donnees-omeka-s">6. Modèle de données Omeka S</a><a class="l3" href="#formulaires-generes-depuis-les-resource-templates">Formulaires générés depuis les resource templates</a><a class="l2" href="#7-configuration">7. Configuration</a><a class="l2" href="#8-api-de-l-39-interface">8. API de l&#39;interface</a><a class="l2" href="#9-etendre-le-projet">9. Étendre le projet</a><a class="l2" href="#10-documentation-et-conteneur">10. Documentation et conteneur</a><a class="l2" href="#11-limites-connues">11. Limites connues</a><a class="l2" href="#12-workflow-ontoethique">12. Workflow ontoÉthique</a><a class="l3" href="#un-serveur-par-application">Un serveur par application</a></nav>
+<nav class="toc"><strong>Sur cette page</strong><a class="l2" href="#1-architecture">1. Architecture</a><a class="l2" href="#2-organisation-du-code">2. Organisation du code</a><a class="l3" href="#agents-src-agents">Agents (src/agents/)</a><a class="l3" href="#comptage-des-tokens-et-cout">Comptage des tokens et coût</a><a class="l2" href="#3-modele-onto-ethique">3. Modèle onto-éthique</a><a class="l2" href="#4-mesure-des-fluctuations-src-lib-ontoethique-metrics-ts">4. Mesure des fluctuations (src/lib/ontoethique/metrics.ts)</a><a class="l2" href="#5-export-linked-open-data-src-lib-ontoethique-linkeddata-ts">5. Export Linked Open Data (src/lib/ontoethique/linkedData.ts)</a><a class="l2" href="#6-modele-de-donnees-omeka-s">6. Modèle de données Omeka S</a><a class="l3" href="#formulaires-generes-depuis-les-resource-templates">Formulaires générés depuis les resource templates</a><a class="l3" href="#ihm-econetwork">IHM EcoNetwork</a><a class="l3" href="#ihm-ecospace">IHM EcoSpace</a><a class="l2" href="#7-configuration">7. Configuration</a><a class="l2" href="#8-api-de-l-39-interface">8. API de l&#39;interface</a><a class="l2" href="#9-etendre-le-projet">9. Étendre le projet</a><a class="l2" href="#10-documentation-et-conteneur">10. Documentation et conteneur</a><a class="l2" href="#11-limites-connues">11. Limites connues</a><a class="l2" href="#12-workflow-ontoethique">12. Workflow ontoÉthique</a><a class="l3" href="#un-serveur-par-application">Un serveur par application</a></nav>
 </div>
 <script type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";

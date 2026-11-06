@@ -32,7 +32,32 @@ L'onglet **Formulaires Omeka S** suit le processus de modélisation : Physiques,
 
 Un item de même titre et de même modèle n'est pas recréé : le lien vers l'item existant s'affiche.
 
-## 4. Lire et corriger l'évaluation
+## 4. EcoNetwork : modéliser pas à pas
+
+http://127.0.0.1:7280/econetwork (lien **EcoNetwork** dans l'en-tête) suit la modélisation étape par étape ; la colonne de gauche permet de revenir à une étape.
+
+1. **1.1 Créer ou choisir un écosystème de connaissances** (un média peut être joint à la création).
+2. **1.2 Réseau de l'écosystème** : l'écosystème au centre, ses éléments et les ressources qui leur sont liées. Glisser un nœud pour le déplacer, molette pour zoomer, **Recentrer** pour tout voir. Un clic sur un nœud ouvre son menu circulaire (icônes ; le libellé s'affiche au survol) :
+   - **lier** : choisir dans le second anneau le type du nœud (les types possibles dépendent des propriétés du modèle du nœud), puis saisir un titre. Les items existants dont le titre contient la saisie sont proposés avec leur type (« déjà lié » s'ils le sont) : en choisir un pour le lier, sinon un nouveau nœud est créé, avec au besoin un **média** : **Fichier** (déposé dans Omeka S) ou **Adresse** (une adresse publique qu'Omeka S télécharge), et un titre facultatif. Le nœud lié est aussi rattaché à l'écosystème ;
+   - **dupliquer** : même nœud, titre incrémenté ;
+   - **détails** : onglet **Omeka S**, la page d'administration de l'item (se connecter une fois dans le cadre : la session est ensuite gardée, et l'on revient sur l'item) ; onglet **Fiche**, toutes les valeurs du nœud (un item lié présent dans le réseau ouvre sa propre fiche) ; **Nouvel onglet ↗** ;
+   - **supprimer** : la fenêtre montre les nœuds parents (dont l'écosystème de rattachement) et les enfants impactés ; un rattachement à un autre écosystème bloque la suppression. **Retirer du réseau** garde l'item dans Omeka S ; **Supprimer dans Omeka S** n'est possible que si aucun autre nœud ne l'utilise (le **délier** d'abord) ;
+   - **modifier** : le formulaire du type de nœud, pré-rempli.
+
+## 5. EcoSpace : l'écosystème en trois dimensions
+
+http://127.0.0.1:7280/ecospace (lien **EcoSpace** dans l'en-tête) représente l'écosystème dans un espace 3D.
+
+1. **1.1 Créer ou choisir un écosystème** : un nouvel écosystème reçoit sa **grille hexagonale** ; pour un écosystème existant, **Créer la grille** à l'étape suivante.
+2. **1.2 Espace de l'écosystème** : glisser pour tourner, clic droit (ou Maj + glisser) pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone ; **Vue d'ensemble**, **Vue de dessus**, **Vue de dessous**. Le survol d'un hexagone affiche ses coordonnées **cube** (q, r, s) et **géographiques** (longitude, latitude, altitude). Les positions de l'espace sont aussi **copiées dans Omeka S**, comme média de l'écosystème (fichier `ecospace-<numéro>.json`), quelques secondes après chaque modification ; la ligne d'information indique l'état de cette copie. Il faut pour cela qu'Omeka S accepte les fichiers JSON (Administration > Paramètres > Sécurité : type `application/json`, extension `json`). Pendant une opération qui prend du temps (chargement, liens entre concepts, duplication…), une **fenêtre** indique ce qui se passe : les étapes terminées et celle en cours, avec leur durée. Un clic ouvre le menu circulaire ; **lier** n'y propose que ce qui est possible : sur un hexagone libre, les éléments qui peuvent y être placés ; sur un élément, les liens prévus par son modèle (resource template) — un actant : personne et agent ; un physique : physique enfant ; un concept : parent, enfant, détacher ; une personne ou un agent : rien.
+   - sur un hexagone libre, **lier** puis choisir le type d'élément : l'**Actant**, le **Physique** et le **Concept** ont leur forme ; **Personne** et **Agent** s'ajoutent depuis un actant ; les autres types suivront. Saisir un titre : un actant existant peut être choisi, sinon il est créé (média facultatif). L'actant apparaît sous la forme d'un **fullerène** (molécule C60) centré sur l'hexagone et d'une **sphère**, tous deux du même rayon que l'hexagone, dont le pôle nord touche le centre du fullerène, sous la grille ; **détails** donne les coordonnées de l'hexagone ;
+   - **Personne** et **Agent** : ils ne s'ajoutent que **depuis un actant** (son menu **lier** propose Personne et Agent, à créer ou à choisir parmi les existants). Chacun est, comme l'actant, un **petit fullerène** avec une **sphère** sous la grille (bleus pour une personne, ocre pour un agent ; la sphère de l'actant devient alors translucide pour les laisser voir) centré sur une **sous-grille hexagonale** dessinée sur l'hexagone de l'actant (moitié au-dessus, moitié en dessous de la grille) : le centre reste à l'actant, les suivants se placent anneau par anneau. **Supprimer** propose de le détacher de l'actant (l'item reste dans Omeka S) ;
+   - **Physique** : une **boîte** posée sur l'hexagone, qui s'élève selon le temps : la surface de la grille est *maintenant*, le haut de l'échelle la plus ancienne date de création des physiques. La boîte va de la date de dernière modification (en bas) à la date de création (en haut) : sa hauteur est sa durée. À la création, saisir la **date de création** (AAAA, AAAA-MM-JJ…) et l'**importance**. Sur un physique, **lier** ajoute un **physique enfant** : une boîte à l'intérieur de son parent. Les enfants sont empilés de haut en bas dans l'ordre alphabétique de leur titre, et la hauteur de chacun est proportionnelle à son importance face à celle des autres enfants. Si le physique a un **média image**, l'image est plaquée sur les faces de sa boîte. Le curseur **Échelle temporelle** étire ou resserre l'échelle (position et hauteur des boîtes) ; le mode **logarithmique** dilate les périodes récentes ;
+   - **Concept** : une **bulle conceptuelle** couchée sous la grille, orientée est-ouest (cylindre terminé par deux demi-sphères). Sa taille et sa place sont **calculées**, on ne les règle pas à la main : une bulle sans enfant est juste assez longue pour son titre ; une bulle parent englobe ses enfants, rangés côte à côte par ordre alphabétique, son propre titre au-dessus d'eux. Les concepts de même niveau sont répartis de façon équilibrée (écarts égaux, centrés) ; les concepts sans parent forment une grille centrée sous l'espace. La hiérarchie vient d'Omeka S (*skos:narrower* / *skos:broader*) et se modifie par le menu du concept, **lier** : **Concept parent** (un concept qui l'englobera ; s'il avait déjà un parent, le nouveau s'intercale), **Concept enfant** (un concept qu'il englobera ; un concept existant quitte son ancien parent) ou **Détacher** (il redevient un concept sans parent). Chaque relation écrite est annotée par l'écosystème. Supprimer un concept de l'espace ne touche pas à ses relations dans Omeka S ;
+   - un hexagone peut porter **un actant et un physique** (l'un sous la grille, l'autre au-dessus) : sur l'un, **lier** propose l'autre type ;
+   - sur un élément placé : **dupliquer** (indiquer le nombre de copies ; chacune va sur l'hexagone libre le plus proche), **détails** (Omeka S, fiche et position), **supprimer** (retirer de l'espace, de l'écosystème, ou supprimer dans Omeka S ; un physique enfant peut être **détaché** de son parent), **modifier**. Pour atteindre un physique qui contient des enfants, cliquer dans sa marge, autour d'eux.
+
+## 6. Lire et corriger l'évaluation
 
 | Onglet | Contenu |
 |---|---|
@@ -47,7 +72,7 @@ Un item de même titre et de même modèle n'est pas recréé : le lien vers l'i
 
 **Enregistrer dans Omeka S** (bandeau de l'évaluation) dépose la version corrigée dans l'item de configuration de l'évaluation (créé pour une évaluation manuelle).
 
-## 5. Interpréter
+## 7. Interpréter
 
 - **Grille des affects** : Discerner (cécité cognitive / stase / clarté sémiotique), Raisonner (aliénation logique / routinisation / puissance critique), Résonner (impasse intuitive / barrière numérique / scientia intuitiva), Agir (misère symbolique / geste blanc / création autopoïétique).
 - **Valeurs tardiennes** : utilité et beauté (Désir), vérité (Croyance) de ce qui est discerné ; une valeur-vérité effondrée signale l'**indignation**.
