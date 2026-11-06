@@ -43,6 +43,9 @@
   button.btn:disabled { opacity: .5; cursor: default; }
   button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar .speed, .toolbar .turbo { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted, #666); }
+  .toolbar .speed input { width: 110px; } .toolbar .speed output { min-width: 4.5em; font-variant-numeric: tabular-nums; }
+  #turbo-bar { display: inline-block; width: 80px; height: 10px; border-radius: 3px; }
   .muted { color: var(--muted); } .ko { color: var(--err); }
   .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin: 2px 4px 2px 0; }
   .badge { font-size: 11.5px; border-radius: 999px; padding: 1px 8px; color: #fff; white-space: nowrap; }
@@ -189,7 +192,7 @@
       <section class="card">
         <h2>1.2 Espace de l'écosystème</h2>
         <p class="lead">Cliquer sur un hexagone ouvre son menu (libellé au survol) : <strong>lier</strong> crée ou place un élément ontologique sur l'hexagone, avec sa forme (sur un physique : un physique enfant) ; sur un élément placé : <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour tourner, clic droit ou Maj + glisser pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone.</p>
-        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-pulse" class="btn small" aria-pressed="true" title="Arrêter ou relancer l'animation des pulsations et des flux">Pulsations</button><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
+        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-pulse" class="btn small" aria-pressed="true" title="Arrêter ou relancer l'animation des pulsations et des flux">Pulsations</button><label class="speed" title="Vitesse de propagation des éclairs des pulsations (hexagones par seconde)">Vitesse <input id="pulse-speed" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Vitesse de propagation des pulsations"><output id="pulse-speed-val">4 hex/s</output></label><span class="turbo" title="Couleur de l'éclair selon l'intensité du pouvoir parcouru (échelle turbo)">−100<span id="turbo-bar"></span>+100</span><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
         <div class="toolbar"><label for="time-height">Échelle temporelle</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span></div>
         <div class="space-wrap" id="space-wrap">
         <div id="space">
@@ -689,9 +692,11 @@ function nanotube(A, B, r, n, color) {
 }
 const nearestHex = p => space.hexes.reduce((best, h) => !best || Math.hypot(h.x - p.x, h.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z) ? h : best, null);
 // segments des pouvoirs (clé → { A, B, … }), pour attacher un élément à un hexagone
-let powerSegs = new Map();
+let powerSegs = new Map(), powerRoutes = new Map(); // parcours d'un pouvoir (éclair des pulsations) : éléments dans l'ordre
+let tubeGraph = new Map(), tubeRadius = 0; // graphe des axes des nanotubes : clé de position → { p, edges: clé → longueur }
+const posKey = p => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`;
 function buildPowers() {
-  powerSegs = new Map();
+  powerSegs = new Map(); powerRoutes = new Map(); tubeGraph = new Map();
   const sh = shapeByKey("pouvoir");
   if (!sh || !space.powers?.length) return;
   const S = space.grid.hexSize, r = sh.tubeRadius * S, n = sh.lattice ?? 8;
@@ -778,6 +783,36 @@ function buildPowers() {
     ring.add(new CSS2DObject(el("div", { className: "label small", textContent: ct.title.length > 30 ? ct.title.slice(0, 28) + "…" : ct.title })));
     itemsGroup.add(ring);
   }
+  // parcours de chaque pouvoir : éléments de chaque maillon, dans l'ordre de la séquence (crible : son anneau)
+  for (const pw of space.powers) {
+    const pts = [];
+    pw.steps.forEach(st => st.members.forEach(m => {
+      if (pw.interior && st.key === "actant") return; // pas de nanotube vers l'actant hôte
+      const at = st.key === "crible" ? rings.find(rg => rg.crible.item === m.item && rg.powers.includes(pw))?.at : anchors.get(m.item);
+      if (at && !(pts.length && pts.at(-1).at.distanceTo(at) < 1e-3)) pts.push({ item: m.item, title: m.title, at: at.clone(), pw });
+    }));
+    powerRoutes.set(pw.item, pts);
+  }
+  // graphe des nanotubes (chemins de l'éclair) : nœuds = extrémités des segments, anneaux des cribles et départs des
+  // nanotubes enfants, projetés sur l'axe du segment qui les porte ; arêtes = tronçons d'axe
+  tubeRadius = r;
+  const gnode = p => { const k = posKey(p); if (!tubeGraph.has(k)) tubeGraph.set(k, { p: p.clone(), edges: new Map() }); return k; };
+  const glink = (a, b) => { const ka = gnode(a), kb = gnode(b); if (ka === kb) return; const w = a.distanceTo(b); tubeGraph.get(ka).edges.set(kb, w); tubeGraph.get(kb).edges.set(ka, w); };
+  const branchPts = [...rings.map(rg => rg.at), ...[...segs.values()].filter(x => x.child).map(x => x.A)];
+  for (const seg of segs.values()) {
+    const d = seg.B.clone().sub(seg.A), L2 = d.lengthSq();
+    if (L2 < 1e-6) continue;
+    const cuts = [{ t: 0, p: seg.A }, { t: 1, p: seg.B }];
+    for (const x of branchPts) {
+      const t = x.clone().sub(seg.A).dot(d) / L2;
+      if (t <= 1e-3 || t >= 1 - 1e-3) continue;
+      const proj = seg.A.clone().addScaledVector(d, t);
+      if (proj.distanceTo(x) > 1.5 * r) continue;
+      cuts.push({ t, p: proj }); glink(proj, x); // de l'axe à l'hexagone de départ (ou au centre de l'anneau)
+    }
+    cuts.sort((a, b) => a.t - b.t);
+    for (let i = 1; i < cuts.length; i++) glink(cuts[i - 1].p, cuts[i].p);
+  }
   // jonctions : sphère au départ des nanotubes enfants (changement de direction, relations multiples, branches)
   for (const j of joints.values()) {
     const m = new THREE.Mesh(new THREE.SphereGeometry((sh.jointRatio ?? 1.8) * r, 16, 12), new THREE.MeshStandardMaterial({ color: j.color, roughness: 0.4 }));
@@ -785,76 +820,122 @@ function buildPowers() {
   }
 }
 // ==========================================
-// pulsations existentielles : enveloppe translucide (ellipsoïde orienté selon l'étendue des nanotubes de ses pouvoirs)
-// qui bat d'autant plus fort que l'intensité moyenne de ses pouvoirs est grande ; flux vers d'autres pulsations : arcs
-// fléchés (Avant : flèche inversée, Pendant : trait double sans flèche) où circulent des particules
+// pulsations existentielles : éclair lumineux qui parcourt les éléments de ses pouvoirs dans l'ordre (pouvoirs selon
+// leur ordre successif, puis maillons de chaque séquence), depuis un foyer cliquable au-dessus du premier élément, en
+// passant par l'intérieur des nanotubes (plus court chemin dans leur graphe) ; couleur de l'échelle turbo selon
+// l'intensité du pouvoir parcouru ; vitesse de propagation réglée par un curseur ; chaque élément atteint s'éclaire ;
+// flux vers d'autres pulsations : arcs fléchés d'un foyer à l'autre (Avant : flèche inversée, Pendant : trait double
+// sans flèche) où circulent des particules
 // ==========================================
-let pulses = [], fluxes = [], pulseOn = true;
-// axes principaux d'un nuage de points (itération de puissance sur la matrice de covariance), repère direct
-function principalAxes(pts, c) {
-  const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  for (const p of pts) { const d = [p.x - c.x, p.y - c.y, p.z - c.z]; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) C[i][j] += d[i] * d[j]; }
-  const mul = v => new THREE.Vector3(C[0][0] * v.x + C[0][1] * v.y + C[0][2] * v.z, C[1][0] * v.x + C[1][1] * v.y + C[1][2] * v.z, C[2][0] * v.x + C[2][1] * v.y + C[2][2] * v.z);
-  const ortho = (v, os) => { for (const o of os) v.sub(o.clone().multiplyScalar(v.dot(o))); return v; };
-  const iterate = (v, os) => {
-    ortho(v, os).normalize();
-    for (let k = 0; k < 50; k++) { const w = ortho(mul(v), os); if (w.lengthSq() < 1e-12) break; v.copy(w.normalize()); }
-    return v;
-  };
-  const u = iterate(new THREE.Vector3(1, 0.31, 0.17), []);
-  let v = iterate(new THREE.Vector3(-0.23, 1, 0.37), [u]);
-  if (!(v.lengthSq() > 0.5)) v = ortho(new THREE.Vector3(0, 0, 1), [u]).normalize();
-  return [u, v, new THREE.Vector3().crossVectors(u, v).normalize()];
+let pulses = [], fluxes = [], pulseOn = true, glowTex = null, pulseSpeed = null, lastPulseT = null;
+// intensité (−100 à +100) → couleur turbo (d3-scale-chromatic) ; intensité inconnue : milieu de l'échelle
+const turbo = v => new THREE.Color(d3.interpolateTurbo(Number.isFinite(v) ? Math.max(0, Math.min(1, (v + 100) / 200)) : 0.5));
+// halo : disque dégradé (blanc au centre, transparent au bord)
+function glowTexture() {
+  if (glowTex) return glowTex;
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.25, "rgba(255,255,255,0.6)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return glowTex = new THREE.CanvasTexture(c);
 }
-// distance du centre à la surface d'une enveloppe dans la direction d (unitaire)
-const surfaceAt = (p, d) => 1 / Math.sqrt(p.axes.reduce((t, ax, i) => t + (d.dot(ax) / p.radii[i]) ** 2, 0));
+const glowSprite = (color, size, opacity = 1) => {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity, depthWrite: false }));
+  sp.scale.setScalar(size); sp.raycast = () => {}; return sp;
+};
+// plus court chemin (Dijkstra) entre deux éléments le long des axes des nanotubes ; sinon saut direct, hors des tubes
+function tubePath(a, b) {
+  const ka = posKey(a), kb = posKey(b);
+  if (ka === kb) return { pts: [a.clone()], inTube: true };
+  if (!tubeGraph.has(ka) || !tubeGraph.has(kb)) return { pts: [a.clone(), b.clone()], inTube: false };
+  const dist = new Map([[ka, 0]]), prev = new Map(), done = new Set();
+  while (true) {
+    let k = null;
+    for (const [x, d] of dist) if (!done.has(x) && (k == null || d < dist.get(k))) k = x;
+    if (k == null) return { pts: [a.clone(), b.clone()], inTube: false };
+    if (k === kb) break;
+    done.add(k);
+    for (const [y, w] of tubeGraph.get(k).edges) if (!done.has(y) && dist.get(k) + w < (dist.get(y) ?? Infinity)) { dist.set(y, dist.get(k) + w); prev.set(y, k); }
+  }
+  const pts = [];
+  for (let k = kb; k != null; k = prev.get(k)) pts.unshift(tubeGraph.get(k).p.clone());
+  return { pts, inTube: true };
+}
+// éclair brisé le long d'une ligne : zigzags tous les « step » mètres, écart au plus maxDev (dans le tube), nul aux coudes
+function boltPoints(path, step, jitter, maxDev) {
+  const out = [path[0].clone()];
+  for (let i = 1; i < path.length; i++) {
+    const A = path[i - 1], B = path[i], d = B.clone().sub(A), L = d.length();
+    if (L < 1e-6) continue;
+    const u = new THREE.Vector3(0, 1, 0).cross(d); if (u.lengthSq() < 1e-9) u.set(1, 0, 0); u.normalize();
+    const v = new THREE.Vector3().crossVectors(d, u).normalize(), n = Math.max(2, Math.min(16, Math.round(L / step))), amp = Math.min(jitter * L, maxDev);
+    for (let j = 1; j <= n; j++) {
+      const t = j / n, rr = j === n ? 0 : amp * Math.sin(Math.PI * t) * Math.sqrt(Math.random()), an = Math.random() * 2 * Math.PI;
+      out.push(A.clone().lerp(B, t).addScaledVector(u, rr * Math.cos(an)).addScaledVector(v, rr * Math.sin(an)));
+    }
+  }
+  return out;
+}
+const pathLength = pts => pts.reduce((s, p, i) => i ? s + p.distanceTo(pts[i - 1]) : 0, 0);
 function buildPulsations() {
-  pulses = []; fluxes = [];
-  const sh = shapeByKey("pulsation"), tube = shapeByKey("pouvoir");
+  pulses = []; fluxes = []; glowTex = null;
+  const sh = shapeByKey("pulsation");
   if (!sh || !space.pulsations?.length) return;
-  const S = space.grid.hexSize, pad = sh.padding * S + (tube?.tubeRadius ?? 0.05) * S;
+  if (pulseSpeed == null) setPulseSpeed(sh.speed ?? 4, false);
+  const S = space.grid.hexSize, up = new THREE.Vector3(0, 1, 0), homes = new Map();
+  const boltR = (sh.boltRadius ?? 0.012) * S, glowR = boltR * 2.5, tubeDev = Math.max(0, tubeRadius - glowR) * 0.9;
   const powerById = new Map((space.powers ?? []).map(pw => [pw.item, pw]));
   space.pulsations.forEach((pl, idx) => {
-    const ids = new Set(pl.powers.map(x => x.item)), pts = [];
-    for (const seg of powerSegs.values()) if (seg.powers.some(pw => ids.has(pw.item))) for (let k = 0; k <= 4; k++) pts.push(seg.A.clone().lerp(seg.B, k / 4));
-    if (!pts.length) return; // pouvoirs non dessinés : pas d'enveloppe
-    const c = pts.reduce((t, p) => t.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
-    const axes = principalAxes(pts, c), radii = axes.map(ax => Math.max(...pts.map(p => Math.abs(p.clone().sub(c).dot(ax)))) + pad * (1 + idx * 0.04));
+    // parcours : pouvoirs dans leur ordre successif (sinon ordre d'ajout), éléments répétés consécutifs fusionnés
+    const ordered = pl.powers.map((x, i) => ({ ...x, i })).sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.i - b.i), route = [];
+    for (const x of ordered) for (const p of powerRoutes.get(x.item) ?? []) if (!route.length || route.at(-1).at.distanceTo(p.at) > 1e-3) route.push(p);
+    if (!route.length) return; // pouvoirs non dessinés : pas d'éclair
     const vals = pl.powers.map(x => powerById.get(x.item)?.intensity).filter(x => Number.isFinite(x));
-    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    const color = mean > 0 ? sh.colors?.up : mean < 0 ? sh.colors?.down : sh.colors?.neutral;
-    const g = new THREE.Group();
-    g.position.copy(c); g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(...axes));
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), new THREE.MeshStandardMaterial({ color: color ?? sh.color, transparent: true, opacity: sh.opacity ?? 0.16, depthWrite: false, side: THREE.DoubleSide, roughness: 0.35 }));
-    mesh.add(new THREE.Mesh(new THREE.SphereGeometry(1, 18, 10), new THREE.MeshBasicMaterial({ color: color ?? sh.color, wireframe: true, transparent: true, opacity: 0.16, depthWrite: false })));
-    mesh.children[0].raycast = () => {};
-    const scale = new THREE.Vector3(...radii);
-    mesh.scale.copy(scale); mesh.renderOrder = 6;
-    g.add(mesh);
-    const label = new CSS2DObject(el("div", { className: "label", textContent: `〜 ${pl.title.length > 36 ? pl.title.slice(0, 34) + "…" : pl.title}` }));
-    label.position.set(0, radii[1] * 1.02, 0); g.add(label);
-    const target = { item: pl.item, shape: "pulsation", pulsation: pl, title: pl.title, templateId: sh.templateId, depth: -1, anchor: c, hex: nearestHex(c), intensity: mean, group: g };
-    mesh.userData = { hex: target.hex, target };
+    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, col = turbo(mean);
+    // foyer : octaèdre lumineux au-dessus du premier élément (ou de la grille), empilés si plusieurs pulsations y partent
+    const k = homes.get(route[0].item) ?? 0; homes.set(route[0].item, k + 1);
+    const home = route[0].at.clone().setY(Math.max(0, route[0].at.y)).addScaledVector(up, (sh.markerLift ?? 0.8) * S * (1 + 0.6 * k));
+    const g = new THREE.Group(); // repère du monde : foyer, éclair, tête et éclats
+    const marker = new THREE.Mesh(new THREE.OctahedronGeometry((sh.markerRadius ?? 0.16) * S), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.9, roughness: 0.3 }));
+    marker.position.copy(home); marker.add(glowSprite(col, (sh.haloSize ?? 0.6) * S, 0.6)); g.add(marker);
+    const label = new CSS2DObject(el("div", { className: "label", textContent: `⚡ ${pl.title.length > 36 ? pl.title.slice(0, 34) + "…" : pl.title}` }));
+    label.position.copy(home).addScaledVector(up, (sh.markerRadius ?? 0.16) * S * 1.6); g.add(label);
+    // sauts : du foyer au premier élément (à l'air libre), puis d'élément en élément dans les nanotubes ; couleur turbo
+    // de l'intensité du pouvoir de l'élément visé
+    const hops = route.map((p, i) => {
+      const path = i ? tubePath(route[i - 1].at, p.at) : { pts: [home.clone(), p.at.clone()], inTube: false };
+      return { pts: path.pts.length > 1 ? path.pts : [path.pts[0], path.pts[0].clone()], maxDev: path.inTube ? tubeDev : Infinity, len: pathLength(path.pts), color: turbo(p.pw?.intensity), to: p.at };
+    });
+    // éclair : tube brisé (cœur clair, gaine colorée translucide), reconstruit à chaque image
+    const bolt = new THREE.Group(), boltCore = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: col, transparent: true }));
+    const boltGlow = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, depthWrite: false }));
+    for (const m of [boltCore, boltGlow]) { m.raycast = () => {}; m.frustumCulled = false; bolt.add(m); }
+    bolt.visible = false; bolt.renderOrder = 7;
+    // tête : sphère blanche, halo coloré, lumière ponctuelle qui éclaire les éléments traversés
+    const head = new THREE.Group(), core = new THREE.Mesh(new THREE.SphereGeometry((sh.headRadius ?? 0.035) * S, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    core.raycast = () => {};
+    const halo = glowSprite(col, (sh.haloSize ?? 0.6) * S), light = new THREE.PointLight(col, sh.lightIntensity ?? 1.5, (sh.lightDistance ?? 3) * S, 0);
+    head.add(core, halo, light); head.position.copy(home);
+    const burst = glowSprite(col, 1); burst.visible = false;
+    g.add(bolt, head, burst);
+    const target = { item: pl.item, shape: "pulsation", pulsation: pl, title: pl.title, templateId: sh.templateId, depth: -1, anchor: home, hex: nearestHex(home), intensity: mean, group: g, route };
+    marker.userData = { hex: target.hex, target };
     itemsGroup.add(g);
-    pulses.push({ item: pl.item, mesh, scale, axes, radii, c, period: sh.period ?? 2.4, phase: idx * 0.9,
-      amp: Math.max(sh.minAmplitude ?? 0.04, (sh.amplitude ?? 0.15) * Math.abs(mean ?? 0) / 100) });
+    pulses.push({ item: pl.item, home, hops, bolt, boltCore, boltGlow, boltR, glowR, head, halo, light, burst, pts: null, cum: null, cur: -1, jit: -1, arrived: false, burstT: -1,
+      clock: idx * 0.37, pause: sh.pause ?? 0.8, fade: sh.fade ?? 0.15, step: (sh.boltStep ?? 0.4) * S, jitter: sh.boltJitter ?? 0.08, burstSize: (sh.burstSize ?? 1.4) * S });
   });
-  // flux : de la surface d'une enveloppe à l'autre ; sens selon l'ordre relatif de la cible
-  const byItem = new Map(pulses.map(p => [p.item, p])), rad = (sh.fluxRadius ?? 0.025) * S, up = new THREE.Vector3(0, 1, 0);
+  // flux : d'un foyer à l'autre ; sens selon l'ordre relatif de la cible
+  const byItem = new Map(pulses.map(p => [p.item, p])), rad = (sh.fluxRadius ?? 0.06) * S;
   for (const pl of space.pulsations) for (const f of pl.flux) {
     let a = byItem.get(pl.item), b = byItem.get(f.to);
     if (!a || !b) continue;
     const rel = fold(f.relative?.title ?? ""), during = rel.startsWith("pendant");
     if (rel.startsWith("avant")) [a, b] = [b, a];
-    const d = b.c.clone().sub(a.c), len = d.length();
-    if (len < 1e-3) continue;
+    const P0 = a.home, P1 = b.home, d = P1.clone().sub(P0), L = d.length();
+    if (L < 1e-3) continue;
     d.normalize();
-    const ra = surfaceAt(a, d), rb = surfaceAt(b, d), gap = len - ra - rb;
-    // enveloppes séparées : d'une surface à l'autre ; imbriquées ou proches : d'un sommet à l'autre
-    const apart = gap > rad * 20;
-    const P0 = apart ? a.c.clone().addScaledVector(d, ra) : a.c.clone().addScaledVector(up, surfaceAt(a, up)), P1 = apart ? b.c.clone().addScaledVector(d, -rb) : b.c.clone().addScaledVector(up, surfaceAt(b, up));
     const side = new THREE.Vector3().crossVectors(d, up); if (side.lengthSq() < 1e-6) side.set(1, 0, 0); side.normalize();
-    const L = P0.distanceTo(P1), lift = up.clone().multiplyScalar(Math.max(L * (sh.fluxLift ?? 0.3), S * 1.5)).addScaledVector(side, (pl.item < f.to ? 1 : -1) * rad * 6);
+    const lift = up.clone().multiplyScalar(Math.max(L * (sh.fluxLift ?? 0.3), S * 0.5)).addScaledVector(side, (pl.item < f.to ? 1 : -1) * rad * 6);
     const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: sh.fluxColor ?? "#5d6d7e", roughness: 0.4 }), curves = [];
     for (const off of during ? [-1, 1] : [0]) {
       const o = side.clone().multiplyScalar(off * rad * 3);
@@ -864,7 +945,7 @@ function buildPulsations() {
     }
     if (!during) {
       const c0 = curves[0], tan = c0.getTangentAt(1), head = new THREE.Mesh(new THREE.ConeGeometry(rad * 4, rad * 12, 14), mat);
-      head.quaternion.setFromUnitVectors(up, tan); head.position.copy(c0.getPointAt(1)).addScaledVector(tan, -rad * 6); head.raycast = () => {}; g.add(head);
+      head.quaternion.setFromUnitVectors(up, tan); head.position.copy(c0.getPointAt(1)).addScaledVector(tan, -rad * 6 - (sh.markerRadius ?? 0.16) * S); head.raycast = () => {}; g.add(head);
     }
     const txt = `${f.relative?.title || "flux"}${f.order != null ? ` · ${f.order}` : ""}`;
     const lab = new CSS2DObject(el("div", { className: "label small", textContent: txt })); lab.position.copy(curves[0].getPointAt(0.5)); g.add(lab);
@@ -878,16 +959,59 @@ function buildPulsations() {
     fluxes.push({ dots, speed: 1 / Math.max(2, L / S) });
   }
 }
+// nouveaux zigzags du saut courant et longueurs cumulées
+function regenBolt(p, h) { p.pts = boltPoints(h.pts, p.step, p.jitter, h.maxDev); p.cum = p.pts.map((_, i) => 0); for (let i = 1; i < p.pts.length; i++) p.cum[i] = p.cum[i - 1] + p.pts[i].distanceTo(p.pts[i - 1]); }
+// dessine l'éclair jusqu'à la fraction s de sa longueur ; renvoie la position de la tête
+function drawBolt(p, s) {
+  const total = p.cum.at(-1), dd = s * total;
+  let i = 0; while (i < p.pts.length - 2 && p.cum[i + 1] < dd) i++;
+  const seg = p.cum[i + 1] - p.cum[i], tip = p.pts[i].clone().lerp(p.pts[i + 1], seg > 0 ? Math.min(1, (dd - p.cum[i]) / seg) : 1);
+  const pts = [...p.pts.slice(0, i + 1), tip], path = new THREE.CurvePath();
+  for (let j = 1; j < pts.length; j++) if (pts[j].distanceTo(pts[j - 1]) > 1e-4) path.add(new THREE.LineCurve3(pts[j - 1], pts[j]));
+  for (const [m, r] of [[p.boltCore, p.boltR], [p.boltGlow, p.glowR]]) {
+    m.geometry.dispose();
+    m.geometry = path.curves.length ? new THREE.TubeGeometry(path, Math.min(240, path.curves.length * 2), r, 5) : new THREE.BufferGeometry();
+  }
+  return tip;
+}
+const setBoltColor = (p, c) => { for (const m of [p.boltCore.material, p.boltGlow.material, p.halo.material, p.burst.material]) m.color.copy(c); p.light.color.copy(c); };
+// cycle : chaque saut dure sa longueur / vitesse (course de la tête) + fade s (l'éclair s'éteint, éclat sur l'élément
+// atteint) ; pause au foyer après le dernier élément ; horloge propre à chaque pulsation (le curseur ne fait pas sauter)
 function animatePulses() {
-  if (!pulseOn) return;
-  const t = performance.now() / 1000;
-  for (const p of pulses) p.mesh.scale.copy(p.scale).multiplyScalar(1 + p.amp * Math.sin(2 * Math.PI * t / p.period + p.phase));
-  for (const f of fluxes) for (const d of f.dots) { const u = (t * f.speed + d.off) % 1; d.m.position.copy(d.curve.getPointAt(d.back ? 1 - u : u)); }
+  const now = performance.now() / 1000, dt = lastPulseT == null ? 0 : Math.min(0.1, now - lastPulseT);
+  lastPulseT = now;
+  if (!pulseOn || !space) return;
+  const v = (pulseSpeed ?? 4) * space.grid.hexSize;
+  for (const p of pulses) {
+    if (p.burstT >= 0) { // éclat sur l'élément atteint : il grandit et s'éteint
+      const a = (now - p.burstT) / 0.4;
+      if (a >= 1) { p.burst.visible = false; p.burstT = -1; } else { p.burst.scale.setScalar(p.burstSize * (0.3 + 0.7 * a)); p.burst.material.opacity = 1 - a; }
+    }
+    const durs = p.hops.map(h => Math.max(0.05, h.len / v) + p.fade), total = durs.reduce((a, b) => a + b, 0) + p.pause;
+    p.clock = (p.clock + dt) % total;
+    let t = p.clock, i = 0;
+    while (i < durs.length && t >= durs[i]) t -= durs[i++];
+    if (i >= durs.length) { p.bolt.visible = false; p.head.position.copy(p.home); p.cur = -1; continue; }
+    const h = p.hops[i], travel = durs[i] - p.fade, jit = Math.floor(now * 25);
+    if (i !== p.cur) { p.cur = i; p.arrived = false; regenBolt(p, h); setBoltColor(p, h.color); }
+    else if (jit !== p.jit) { p.jit = jit; regenBolt(p, h); } // scintillement
+    p.bolt.visible = true;
+    if (t < travel) { p.head.position.copy(drawBolt(p, t / travel)); p.boltCore.material.opacity = 1; p.boltGlow.material.opacity = 0.45; continue; }
+    const fade = 1 - (t - travel) / p.fade;
+    p.head.position.copy(drawBolt(p, 1)); p.boltCore.material.opacity = fade; p.boltGlow.material.opacity = 0.45 * fade;
+    if (!p.arrived) { p.arrived = true; p.burst.position.copy(h.to); p.burst.visible = true; p.burstT = now; }
+  }
+  for (const f of fluxes) for (const d of f.dots) { const u = (now * f.speed + d.off) % 1; d.m.position.copy(d.curve.getPointAt(d.back ? 1 - u : u)); }
 }
 function setPulse(on) {
   pulseOn = on; $("#space-pulse").setAttribute("aria-pressed", String(on));
-  if (!on) for (const p of pulses) p.mesh.scale.copy(p.scale);
+  if (!on) for (const p of pulses) { p.bolt.visible = false; p.burst.visible = false; p.burstT = -1; p.cur = -1; p.head.position.copy(p.home); }
   try { localStorage.setItem("ecospace-pulse", on ? "1" : "0"); } catch {}
+}
+// vitesse de propagation (hexagones par seconde) : curseur de la barre d'outils, mémorisée dans le navigateur
+function setPulseSpeed(x, save = true) {
+  pulseSpeed = +x; $("#pulse-speed").value = pulseSpeed; $("#pulse-speed-val").textContent = `${pulseSpeed} hex/s`;
+  if (save) try { localStorage.setItem("ecospace-pulse-speed", String(pulseSpeed)); } catch {}
 }
 // ==========================================
 // 1.2 Scène three.js : grille hexagonale et éléments placés
@@ -1235,7 +1359,7 @@ async function askOrigin() {
 }
 
 const SHAPE_TEXT = {
-  pulsation: "enveloppe qui bat autour des nanotubes de ses pouvoirs (verte : augmentation, rouge : diminution) ; flux = arcs fléchés vers les autres pulsations ; ajout depuis un pouvoir",
+  pulsation: "éclair lumineux qui parcourt, par l'intérieur des nanotubes, les éléments de ses pouvoirs dans l'ordre, depuis un foyer ⚡ ; couleur turbo selon l'intensité du pouvoir parcouru (bleu −100 → rouge +100) ; flux = arcs fléchés entre foyers ; ajout depuis un pouvoir",
   actant: "fullerène C60 + sphère (pôle nord au centroïde), sous-grille pour ses personnes et agents",
   physique: "boîte de la date de modification (bas) à la date de création (haut), enfants imbriqués selon leur importance",
   concept: "bulle horizontale sous la grille, dimensionnée par son titre ou ses enfants (skos:narrower), position calculée",
@@ -1295,7 +1419,7 @@ function pick(e) {
   const r = renderer.domElement.getBoundingClientRect();
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  let best = null, pulseHit = null;
+  let best = null;
   const hits = raycaster.intersectObjects([...itemsGroup.children, ...gridGroup.children], true);
   for (const hit of hits) {
     let o = hit.object, shown = true;
@@ -1306,17 +1430,9 @@ function pick(e) {
     // impacts du plus proche au plus lointain : un élément plus profond ne l'emporte que dans la même famille (concepts
     // emboîtés, boîtes imbriquées, actant et ses personnes et agents) ; sinon le plus proche de la caméra est retenu
     const t = o.userData.target ?? null, cell = hit.object.userData.cells?.[hit.instanceId] ?? null; // hexagone d'un nanotube
-    // enveloppe de pulsation : elle entoure ses nanotubes, qui restent sélectionnables à travers elle
-    if (t?.shape === "pulsation") {
-      // sortie du rayon de l'enveloppe : un élément au-delà (derrière elle, pas dedans) ne l'emporte pas
-      if (!pulseHit) pulseHit = { hex: o.userData.hex, target: t, exit: hits.findLast(h => h.object === hit.object)?.distance ?? hit.distance };
-      continue;
-    }
-    if (pulseHit && t && !best?.target && hit.distance > pulseHit.exit) break;
     if (t && (!best?.target || (family(t) === family(best.target) && t.depth > best.target.depth))) best = { hex: o.userData.hex, target: t, cell };
     else if (!best) best = { hex: o.userData.hex, target: null };
   }
-  if (pulseHit && !best?.target) return pulseHit;
   if (best && !best.target) { const p = placedAt(best.hex)[0]; if (p) best.target = targets.get(p.item) ?? null; }
   return best;
 }
@@ -1609,7 +1725,7 @@ function pulseDialog(title, help, fields, submit) {
 }
 function askPulsation(pw) {
   const list = (space.pulsations ?? []).map(x => ({ id: x.item, title: x.title })), ctl = stepControl({ key: "pulsation", name: "Pulsation" }, list, null, "pulse-dl");
-  pulseDialog(`Pulsation de « ${pw.title} »`, `Choisir une pulsation existante de l'écosystème (le pouvoir y est ajouté) ou saisir le titre d'une nouvelle pulsation. Elle apparaît comme une enveloppe qui bat autour des nanotubes de ses pouvoirs.`,
+  pulseDialog(`Pulsation de « ${pw.title} »`, `Choisir une pulsation existante de l'écosystème (le pouvoir y est ajouté) ou saisir le titre d'une nouvelle pulsation. Elle apparaît comme un éclair lumineux qui parcourt les éléments de ses pouvoirs, dans l'ordre, depuis un foyer ⚡ cliquable.`,
     [["Pulsation", ctl.el]], async () => {
       let body;
       try { body = { eco: state.eco, power: pw.item, ...ctl.read() }; } catch (e) { return toast(e.message); }
@@ -1621,7 +1737,7 @@ function askPulsation(pw) {
 }
 function askPulsePower(t, free) {
   const sel = el("select", { required: true }, el("option", { value: "", textContent: "— choisir —" }), free.map(pw => el("option", { value: pw.item, textContent: `${pw.title} (${pw.typeLabel}, intensité ${pw.intensity ?? "—"})` })));
-  pulseDialog(`Pouvoir de « ${t.title} »`, "Le pouvoir est ajouté à la pulsation (dans l'ordre d'ajout) ; l'enveloppe s'étend à son nanotube.", [["Pouvoir", sel]], async () => {
+  pulseDialog(`Pouvoir de « ${t.title} »`, "Le pouvoir est ajouté à la fin du parcours de la pulsation (ordre successif suivant) ; l'éclair passe ensuite par ses éléments.", [["Pouvoir", sel]], async () => {
     if (!sel.value) return toast("Choisir un pouvoir");
     try {
       await withBusy(`Pouvoir de « ${t.title} »`, async () => { await api("/api/ecospace/pulsation", { method: "POST", body: { eco: state.eco, power: +sel.value, existing: t.item } }); await loadSpace(); });
@@ -1931,7 +2047,8 @@ function positionRows(t) {
   if (t.shape === "pulsation") {
     const pl = t.pulsation, pw = id => space.powers?.find(x => x.item === id), pt = id => space.pulsations?.find(x => x.item === id)?.title ?? `item ${id}`;
     const when = x => [x.relative?.title, x.order != null ? `ordre ${x.order}` : null].filter(Boolean).join(", ");
-    return [["Hexagone sous le centre", fmtHex(t.hex)], ["Centre de l'enveloppe", `${fmtGeo(t.hex.geo)} · y ${t.anchor.y.toFixed(2)} m`],
+    return [["Hexagone sous le centre", fmtHex(t.hex)], ["Foyer de l'éclair", `${fmtGeo(t.hex.geo)} · y ${t.anchor.y.toFixed(2)} m`],
+      ["Parcours de l'éclair", t.route?.length ? t.route.map(p => p.title ?? `item ${p.item}`).join(" → ") : "—"],
       ["Intensité moyenne", t.intensity == null ? "—" : String(Math.round(t.intensity))],
       ["Pouvoirs", pl.powers.length ? pl.powers.map(x => `${pw(x.item)?.title ?? `item ${x.item}`}${pw(x.item) ? ` (${pw(x.item).typeLabel}, ${pw(x.item).intensity ?? "—"})` : " (non dessiné)"}${when(x) ? ` [${when(x)}]` : ""}`).join(" · ") : "aucun"],
       ["Flux", pl.flux.length ? pl.flux.map(f => `→ ${pt(f.to)}${when(f) ? ` [${when(f)}]` : ""}`).join(" · ") : "aucun"]];
@@ -2212,6 +2329,7 @@ function refreshVisibility() { saveHidden(); applyVisibility(); renderList(); }
 function zoomTo(e) {
   const box = new THREE.Box3();
   for (const o of e.objs) if (!o.isCSS2DObject) box.expandByObject(o);
+  if (e.t.route) for (const p of [e.t.anchor, ...e.t.route.map(x => x.at)]) box.expandByPoint(p); // pulsation : tout le parcours de l'éclair
   if (box.isEmpty()) return toast("Élément sans forme dans la scène");
   const c = box.getCenter(new THREE.Vector3()), r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, space.grid.hexSize * 0.4);
   const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.1;
@@ -2237,6 +2355,9 @@ function showLegend(on) {
 $("#space-legend").onclick = () => showLegend($("#legend").classList.contains("hidden"));
 try { if (localStorage.getItem("ecospace-legend") === "1") showLegend(true); } catch {}
 $("#space-pulse").onclick = () => setPulse(!pulseOn);
+$("#pulse-speed").oninput = e => setPulseSpeed(e.target.value);
+try { const v = localStorage.getItem("ecospace-pulse-speed"); if (v != null && Number.isFinite(+v)) setPulseSpeed(+v, false); } catch {}
+$("#turbo-bar").style.background = `linear-gradient(to right, ${d3.range(0, 1.01, 0.1).map(t => d3.interpolateTurbo(t)).join(", ")})`;
 try { if (localStorage.getItem("ecospace-pulse") === "0") setPulse(false); } catch {}
 $("#space-list").onclick = () => showList($("#space-wrap").classList.contains("no-list"));
 try { if (localStorage.getItem("ecospace-list") === "0") showList(false); } catch {}

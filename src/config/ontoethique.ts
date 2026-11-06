@@ -238,16 +238,24 @@ export const defaultOntoEthiqueConfig = {
       { key: "pouvoir", label: "Pouvoir", templateId: 7, power: true, color: "#1e88e5", tubeRadius: 0.05, lattice: 8, jointRatio: 1.8, cribleRatio: 4,
         cribleColor: "#6b7c8f", interior: ["raisonner", "resonner"], interiorPadding: 0.08, roleTerm: "dcterms:type",
         colors: { discerner: "#1e88e5", raisonner: "#8e24aa", resonner: "#e6a817", agir: "#d64541" } },
-      // pulsation existentielle : enveloppe translucide (ellipsoïde orienté selon l'étendue des nanotubes, marge padding)
-      // autour des pouvoirs qu'elle désigne (powerTerm), qui bat : période period (s), amplitude amplitude × |intensité
-      // moyenne de ses pouvoirs| / 100 (au moins minAmplitude) ; couleur selon le signe de cette intensité (up, down,
-      // neutral). Flux (fluxTerm) vers d'autres pulsations : arcs fléchés (fluxColor, rayon fluxRadius, hauteur fluxLift ×
-      // longueur), sens d'après l'ordre relatif de l'annotation (relativeTerm : « Avant » inverse la flèche, « Pendant » :
-      // trait double sans flèche), ordre successif (successiveTerm) dans l'étiquette, particules qui circulent (particles).
-      // Ajout depuis un pouvoir (menu lier) ; le bouton « Pulsations » arrête ou relance l'animation
+      // pulsation existentielle : éclair lumineux qui parcourt les éléments des pouvoirs qu'elle désigne (powerTerm), dans
+      // l'ordre des pouvoirs (ordre successif de leur annotation, sinon ordre d'ajout) puis des maillons de chaque séquence,
+      // en passant par l'intérieur des nanotubes (plus court chemin le long de leurs axes) ; il part d'un foyer cliquable
+      // (octaèdre de rayon markerRadius, à markerLift au-dessus du premier élément, ou de la grille si cet élément est
+      // dessous), avance à speed hexagones par seconde (valeur initiale du curseur « Vitesse »), zigzague tous les boltStep
+      // (écart boltJitter × longueur, borné par le rayon du nanotube), s'éteint en fade s sur l'élément atteint (éclat
+      // burstSize), puis repart après pause s. Tube de rayon boltRadius dans une gaine 2,5 fois plus large ; tête : sphère
+      // headRadius, halo haloSize, lumière ponctuelle lightIntensity de portée lightDistance ; couleur : échelle turbo
+      // (d3-scale-chromatic) de l'intensité du pouvoir parcouru, de −100 (bleu) à +100 (rouge) ; foyer : intensité moyenne.
+      // Tailles en fractions d'hexagone. Flux (fluxTerm) vers d'autres pulsations : arcs fléchés d'un foyer à l'autre
+      // (fluxColor, rayon fluxRadius, hauteur fluxLift × longueur), sens d'après l'ordre relatif de l'annotation
+      // (relativeTerm : « Avant » inverse la flèche, « Pendant » : trait double sans flèche), ordre successif
+      // (successiveTerm) dans l'étiquette, particules qui circulent (particles). Ajout depuis un pouvoir (menu lier) ; le
+      // bouton « Pulsations » arrête ou relance l'animation
       { key: "pulsation", label: "Pulsation", templateId: 12, pulse: true, color: "#2e9d5b", powerTerm: "jdc:hasPouvoir", fluxTerm: "jdc:flux",
-        relativeTerm: "jdc:ordreRelatif", successiveTerm: "jdc:ordreSuccessif", padding: 0.3, period: 2.4, amplitude: 0.15, minAmplitude: 0.04, opacity: 0.16,
-        colors: { up: "#2e9d5b", down: "#d64541", neutral: "#8a8f98" }, fluxColor: "#5d6d7e", fluxRadius: 0.06, fluxLift: 0.3, particles: 4 },
+        relativeTerm: "jdc:ordreRelatif", successiveTerm: "jdc:ordreSuccessif", speed: 4, pause: 0.8, fade: 0.15, boltStep: 0.4, boltJitter: 0.08,
+        boltRadius: 0.012, markerLift: 0.8, markerRadius: 0.16, headRadius: 0.035, haloSize: 0.6, burstSize: 1.4, lightIntensity: 1.5, lightDistance: 3,
+        fluxColor: "#5d6d7e", fluxRadius: 0.06, fluxLift: 0.3, particles: 4 },
       // physique : boîte au-dessus de la grille, à base carrée inscrite dans l'hexagone (baseRatio × le plus grand carré
       // inscrit), allant de la date de modification (o:modified) à la date de création (createdTerm, sinon o:created) sur
       // l'échelle temporelle ; ses enfants (items qui le désignent par parentTerm) sont des boîtes intérieures empilées
