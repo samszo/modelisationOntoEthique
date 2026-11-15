@@ -45,6 +45,14 @@
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
   .toolbar .speed, .toolbar .turbo { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted, #666); }
   .toolbar .speed input { width: 110px; } .toolbar .speed output { min-width: 4.5em; font-variant-numeric: tabular-nums; }
+  #labels .label.cell-badge { background: var(--accent); color: #fff; font-weight: 600; z-index: 100000 !important; pointer-events: auto; cursor: zoom-in; }
+  .timeline { margin: -4px 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .timeline svg { display: block; font: 11px system-ui, sans-serif; }
+  .timeline text { fill: var(--ink); }
+  .timeline .guide { stroke: var(--line); }
+  .timeline .axis path, .timeline .axis line { stroke: var(--muted); }
+  .timeline .axis text { fill: var(--muted); }
+  .timeline .brush .selection { fill: var(--accent); fill-opacity: 0.15; stroke: var(--accent); }
   #turbo-bar { display: inline-block; width: 80px; height: 10px; border-radius: 3px; }
   .muted { color: var(--muted); } .ko { color: var(--err); }
   .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin: 2px 4px 2px 0; }
@@ -95,8 +103,15 @@
   dialog h2 { margin: 0 0 8px; font-size: 17px; }
   dialog.wide { width: min(1200px, calc(100vw - 32px)); }
   #origin-map { height: min(420px, 55vh); border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; }
-  #dlg-origin .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
-  #dlg-origin .row > div { flex: 1; min-width: 120px; }
+  #dlg-origin .row, #dlg-position .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  #dlg-origin .row > div, #dlg-position .row > div { flex: 1; min-width: 120px; }
+  #position-map { height: min(360px, 45vh); border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; }
+  #position-hist { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  #position-hist th, #position-hist td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  #position-hist td.num { font-variant-numeric: tabular-nums; }
+  #position-hist tr.cur td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  #position-hist .ic { padding: 2px 6px; }
+  .hist-wrap { max-height: 180px; overflow: auto; }
   dialog iframe { width: 100%; height: 72vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; display: block; }
   .props { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; margin: 8px 0 0; font-size: 14px; }
   .props dt, .props dd { margin: 0; padding: 7px 8px; border-top: 1px solid var(--line); }
@@ -193,7 +208,8 @@
         <h2>1.2 Espace de l'écosystème</h2>
         <p class="lead">Cliquer sur un hexagone ouvre son menu (libellé au survol) : <strong>lier</strong> crée ou place un élément ontologique sur l'hexagone, avec sa forme (sur un physique : un physique enfant) ; sur un élément placé : <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour tourner, clic droit ou Maj + glisser pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone.</p>
         <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-pulse" class="btn small" aria-pressed="true" title="Arrêter ou relancer l'animation des pulsations et des flux">Pulsations</button><label class="speed" title="Vitesse de propagation des éclairs des pulsations (hexagones par seconde)">Vitesse <input id="pulse-speed" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Vitesse de propagation des pulsations"><output id="pulse-speed-val">4 hex/s</output></label><span class="turbo" title="Couleur de l'éclair selon l'intensité du pouvoir parcouru (échelle turbo)">−100<span id="turbo-bar"></span>+100</span><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
-        <div class="toolbar"><label for="time-height">Échelle temporelle</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span></div>
+        <div class="toolbar"><label for="time-height">Échelle temporelle</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span><button id="time-reset" class="btn small hidden" title="Afficher de nouveau toute l'étendue des dates">Toutes les dates</button></div>
+        <div id="timeline" class="timeline hidden" aria-label="Frise des positions temporelles : glisser pour choisir les dates affichées"></div>
         <div class="space-wrap" id="space-wrap">
         <div id="space">
           <div id="labels"></div>
@@ -258,10 +274,35 @@
 </dialog>
 
 <!-- origine géographique de la grille : carte, recherche de lieu, géolocalisation -->
+<dialog id="dlg-position" class="wide">
+  <form method="dialog">
+    <h2 id="position-title">Position spatio-temporelle</h2>
+    <p class="help">Choisir le lieu (recherche d'une adresse, clic sur la carte, repère à déplacer, ou saisie des coordonnées) et la date de cette position ; l'adresse choisie est gardée avec la position. La position la plus récente est celle de l'élément : son hexagone en découle (la grille à niveaux s'adapte). Une position plus ancienne complète seulement l'historique. Les points gris montrent la trajectoire ; « corriger » reprend une position dans le formulaire.</p>
+    <div class="row">
+      <div style="flex:3"><label for="position-place">Adresse ou lieu</label><input id="position-place" placeholder="adresse, ville, monument… puis Rechercher" autocomplete="off" maxlength="300"></div>
+      <button type="button" id="position-search" class="btn">Rechercher</button>
+    </div>
+    <ul id="position-results" class="ac-list"></ul>
+    <div id="position-map"></div>
+    <div class="row" style="margin-top:8px">
+      <div><label for="position-lat">Latitude</label><input id="position-lat" type="number" step="0.0000001" min="-90" max="90" required></div>
+      <div><label for="position-lon">Longitude</label><input id="position-lon" type="number" step="0.0000001" min="-180" max="180" required></div>
+      <div><label for="position-alt">Altitude (m)</label><input id="position-alt" type="number" step="0.01"></div>
+      <div style="flex:1.4"><label for="position-at">Date</label><input id="position-at" type="datetime-local" step="1" required></div>
+    </div>
+    <p class="help" id="position-status"></p>
+    <div class="hist-wrap"><table id="position-hist"><thead><tr><th>Date</th><th>Événement</th><th>Lieu</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="toolbar" style="margin-top:10px;justify-content:flex-end">
+      <button value="cancel" class="btn" formnovalidate>Fermer</button>
+      <button type="button" id="position-new" class="btn" title="Vider le formulaire pour ajouter une nouvelle position">Nouvelle position</button>
+      <button value="confirm" class="btn primary" id="position-save">Ajouter la position</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="dlg-origin" class="wide">
   <form method="dialog">
     <h2>Origine géographique</h2>
-    <p class="help">Le centre de la grille (hexagone 0, 0) est placé sur ce lieu : rechercher une adresse ou un lieu, utiliser sa position, ou cliquer sur la carte et déplacer le repère. Les coordonnées géographiques de tous les hexagones et éléments en découlent ; leur disposition dans l'espace ne change pas.</p>
+    <p class="help">Le centre de la grille (hexagone 0, 0) est placé sur ce lieu : rechercher une adresse ou un lieu, utiliser sa position, ou cliquer sur la carte et déplacer le repère. Les coordonnées géographiques des hexagones en découlent ; les actants et les physiques gardent leur position géographique et changent d'hexagone si besoin (les hexagones de la grille grandissent par niveaux pour les contenir).</p>
     <div class="row">
       <div style="flex:3"><label for="origin-q">Lieu</label><input id="origin-q" placeholder="adresse, ville, monument…" autocomplete="off"></div>
       <button type="button" id="origin-search" class="btn">Rechercher</button>
@@ -398,6 +439,8 @@ const API_STEPS = [
   [/^POST \/api\/ecospace\/place/, "Placement de l'élément et relecture de l'espace"],
   [/^POST \/api\/ecospace\/unplace/, "Retrait de l'espace et relecture de l'espace"],
   [/^POST \/api\/ecospace\/physique/, "Création ou liaison du physique dans Omeka S"],
+  [/^POST \/api\/ecospace\/position\/delete/, "Suppression de la position et recalcul de l'hexagone"],
+  [/^POST \/api\/ecospace\/position/, "Enregistrement de la position et recalcul de l'hexagone"],
   [/^POST \/api\/ecospace\/origin/, "Enregistrement de l'origine et relecture de l'espace"],
   [/^POST \/api\/ecospace\/power\/link/, "Lien de l'élément au pouvoir dans Omeka S (relation multiple)"],
   [/^POST \/api\/ecospace\/power/, "Création des maillons manquants et du pouvoir dans Omeka S"],
@@ -1017,7 +1060,8 @@ function setPulseSpeed(x, save = true) {
 // 1.2 Scène three.js : grille hexagonale et éléments placés
 // ==========================================
 const container = $("#space");
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+// tampon de profondeur logarithmique : la grille à niveaux va du mètre à la centaine de kilomètres
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 container.prepend(renderer.domElement);
 const labelRenderer = new CSS2DRenderer({ element: $("#labels") });
@@ -1031,7 +1075,7 @@ const below = new THREE.DirectionalLight(0xffffff, 0.6); below.position.set(-40,
 const gridGroup = new THREE.Group(), itemsGroup = new THREE.Group();
 scene.add(gridGroup, itemsGroup);
 
-let space = null, tiles = new Map(), hovered = null, menuHex = null, extent = 100;
+let space = null, tiles = new Map(), hovered = null, menuHex = null, extent = 100, homeExtent = 100;
 const keyOf = h => `${h.q},${h.r}`;
 // éléments placés sur un hexagone (les personnes et agents, sur la sous-grille de leur actant, n'y comptent pas)
 const placedAt = h => space?.placements.filter(p => !p.actant && p.q === h.q && p.r === h.r) ?? [];
@@ -1059,26 +1103,101 @@ const paintTiles = () => { for (const t of tiles.values()) t.material.color.set(
 function clear(group) {
   for (const o of [...group.children]) { o.traverse(x => { if (x.isCSS2DObject) x.element.remove(); if (x.isSprite) { x.material.map?.dispose(); x.material.dispose(); } }); group.remove(o); }
 }
+// grille à niveaux (space.levels) : hexagones de base cliquables (niveau 0) là où sont les éléments et l'origine ; plus
+// loin, contours de grands hexagones (× levelFactor par niveau) ; la sous-grille d'un hexagone découpé n'est affichée
+// que si la caméra en est à moins de lod × sa taille (updateLod), sinon il montre le nombre de ses éléments et un clic y
+// zoome
+let lodNodes = [], cellMap = new Map();
+const cellKeyOf = (level, h) => `${level}:${h.q},${h.r}`;
+// centre (x, z) → hexagone d'une grille de taille size (arrondi cube), comme planeToHex du serveur
+function hexAt(size, p) {
+  const R3 = Math.sqrt(3), flat = space.grid.orientation === "flat";
+  const fq = flat ? (2 / 3 * p.x) / size : (R3 / 3 * p.x - 1 / 3 * p.z) / size, fr = flat ? (-1 / 3 * p.x + R3 / 3 * p.z) / size : (2 / 3 * p.z) / size, fs = -fq - fr;
+  let q = Math.round(fq), r = Math.round(fr), s = Math.round(fs);
+  const dq = Math.abs(q - fq), dr = Math.abs(r - fr), ds = Math.abs(s - fs);
+  if (dq > dr && dq > ds) q = -r - s; else if (dr > ds) r = -q - s;
+  return { q: q || 0, r: r || 0 };
+}
+// contour d'un hexagone : 6 segments (paires de points)
+function hexOutline(out, x, z, size, y) {
+  const a0 = space.grid.orientation === "flat" ? 0 : 30;
+  for (let i = 0; i < 6; i++) {
+    const a = (a0 + 60 * i) * Math.PI / 180, b = (a0 + 60 * (i + 1)) * Math.PI / 180;
+    out.push(x + size * Math.cos(a), y, z + size * Math.sin(a), x + size * Math.cos(b), y, z + size * Math.sin(b));
+  }
+}
+const fmtSize = m => m >= 1000 ? `${+(m / 1000).toFixed(1)} km` : `${+m.toFixed(1)} m`;
 function buildGrid() {
-  clear(gridGroup); tiles = new Map();
-  const S = space.grid.hexSize, flat = space.grid.orientation === "flat";
+  clear(gridGroup); tiles = new Map(); lodNodes = []; cellMap = new Map();
+  const S = space.grid.hexSize, flat = space.grid.orientation === "flat", lv = space.levels ?? { top: 0, cells: [], radius: space.grid.radius };
   const geo = new THREE.CylinderGeometry(S * 0.97, S * 0.97, S * 0.02, 6);
   if (flat) geo.rotateY(Math.PI / 6);
   const edges = new THREE.EdgesGeometry(geo);
   const lineMat = new THREE.LineBasicMaterial({ color: css("--muted"), transparent: true, opacity: 0.6 });
+  // groupes des sous-grilles, du haut vers le bas (le groupe d'un hexagone découpé est dans celui de son parent)
+  const groups = new Map();
+  for (const c of [...lv.cells].sort((a, b) => b.level - a.level)) {
+    cellMap.set(c.key, c);
+    if (!c.split) continue;
+    const g = new THREE.Group(), center = new THREE.Vector3(c.x, 0, c.z);
+    (c.parent ? groups.get(c.parent) : gridGroup).add(g); groups.set(c.key, g);
+    const badge = new CSS2DObject(el("div", { className: "label cell-badge", textContent: c.count ? `${c.count} élément${c.count > 1 ? "s" : ""}` : "origine", title: `Hexagone de ${fmtSize(c.size)} : cliquer pour zoomer sur sa sous-grille`, onclick: () => zoomCell(c) }));
+    badge.position.copy(center); gridGroup.add(badge);
+    lodNodes.push({ cell: c, group: g, center, badge });
+  }
+  const groupOf = parent => (parent && groups.get(parent)) || gridGroup;
+  // contours des grands hexagones, un tracé par groupe
+  const outlines = new Map();
+  for (const c of lv.cells) { const g = groupOf(c.parent), arr = outlines.get(g) ?? []; hexOutline(arr, c.x, c.z, c.size * 0.985, 0); outlines.set(g, arr); }
+  const coarseMat = new THREE.LineBasicMaterial({ color: css("--muted"), transparent: true, opacity: 0.85 });
+  for (const [g, arr] of outlines) { const geo2 = new THREE.BufferGeometry(); geo2.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3)); const l = new THREE.LineSegments(geo2, coarseMat); l.raycast = () => {}; g.add(l); }
   for (const h of space.hexes) {
     const t = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: tileColor(h), transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
     t.position.set(h.x, -S * 0.01, h.z); // face supérieure à l'altitude 0
     t.userData.hex = h;
     t.add(new THREE.LineSegments(edges, lineMat));
-    gridGroup.add(t); tiles.set(keyOf(h), t);
+    groupOf(h.parent).add(t); tiles.set(keyOf(h), t);
   }
-  extent = S * (space.grid.radius + 1) * Math.sqrt(3);
+  homeExtent = S * (space.grid.radius + 1) * Math.sqrt(3);
+  const topSize = S * (lv.factor ?? 10) ** (lv.top ?? 0);
+  extent = Math.max(homeExtent, topSize * ((lv.radius ?? space.grid.radius) + 1) * Math.sqrt(3));
   // rose des vents : nord vers -z (latitude croissante)
   for (const [txt, x, z] of [["N", 0, -extent - S], ["S", 0, extent + S], ["E", extent + S, 0], ["O", -extent - S, 0]]) {
     const o = new CSS2DObject(el("div", { className: "label compass", textContent: txt })); o.position.set(x, 0, z); gridGroup.add(o);
   }
   camera.far = extent * 30; camera.updateProjectionMatrix();
+  updateLod();
+}
+// sous-grilles visibles selon la distance de la caméra ; le badge d'un hexagone découpé remplace sa sous-grille cachée
+const shown = o => { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; };
+function updateLod() {
+  const k = space?.levels?.lod ?? 6;
+  for (const n of lodNodes) n.group.visible = camera.position.distanceTo(n.center) < n.cell.size * k;
+  for (const n of lodNodes) n.badge.visible = !n.group.visible && shown(n.group.parent);
+}
+// hexagone de niveau > 0 sous la souris : le plus fin dont la sous-grille est affichée
+function coarseAt(e) {
+  const lv = space?.levels;
+  if (!lv?.cells?.length) return null;
+  const p = rayPoint(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+  if (!p) return null;
+  let level = lv.top, cell = cellMap.get(cellKeyOf(level, hexAt(space.grid.hexSize * lv.factor ** level, p)));
+  while (cell?.split && level > 1) {
+    const n = lodNodes.find(x => x.cell === cell);
+    if (!n?.group.visible) break;
+    const child = cellMap.get(cellKeyOf(level - 1, hexAt(space.grid.hexSize * lv.factor ** (level - 1), p)));
+    if (!child) break;
+    cell = child; level--;
+  }
+  return cell ? { coarse: cell } : null;
+}
+// vue rapprochée d'un grand hexagone : sa sous-grille apparaît
+function zoomCell(c) {
+  closeMenu();
+  let dir = camera.position.clone().sub(controls.target);
+  if (dir.lengthSq() < 1e-9) dir.set(0.5, 0.7, 1);
+  const target = new THREE.Vector3(c.x, 0, c.z);
+  flight = { p0: camera.position.clone(), t0: controls.target.clone(), pos: target.clone().add(dir.normalize().multiplyScalar(c.size * 2.4)), target, start: performance.now(), ms: 700 };
 }
 // ==========================================
 // Échelle temporelle des physiques : surface de la grille = maintenant, hauteur H = plus ancienne date de création ;
@@ -1111,11 +1230,36 @@ const fmtDate = (ms, span = 0) => {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 };
 const walk = (node, fn, parent = null) => { fn(node, parent); for (const c of node.children ?? []) walk(c, fn, node); };
-function updateTimeBounds() {
-  time.now = Date.parse(space.now) || Date.now();
+// étendue complète : de la plus ancienne date (création d'un physique ou position d'un élément) à maintenant
+const hasTime = () => !!space?.placements.some(p => p.tree || p.track?.some(x => x.lon != null));
+function fullTimeBounds() {
+  const now = Date.parse(space.now) || Date.now();
   let oldest = Infinity;
-  for (const p of space.placements) if (p.tree) walk(p.tree, n => { const c = parseDate(n.created); if (c != null && c < oldest) oldest = c; });
-  time.oldest = Math.min(oldest, time.now - 864e5); // au moins un jour d'amplitude
+  for (const p of space.placements) {
+    if (p.tree) walk(p.tree, n => { const c = parseDate(n.created); if (c != null && c < oldest) oldest = c; });
+    for (const x of p.track ?? []) { const t = Date.parse(x.at); if (t < oldest) oldest = t; }
+  }
+  return [Math.min(oldest, now - 864e5), now]; // au moins un jour d'amplitude
+}
+// fenêtre choisie par le brush de la frise (null : toute l'étendue), mémorisée par écosystème dans le navigateur
+let timeWindow = null;
+const winKey = () => `ecospace-window-${state.eco}`;
+function updateTimeBounds() {
+  if (updateTimeBounds.eco !== state.eco) {
+    updateTimeBounds.eco = state.eco;
+    try { const w = JSON.parse(localStorage.getItem(winKey()) ?? "null"); timeWindow = Array.isArray(w) && w.length === 2 ? w.map(Number) : null; } catch { timeWindow = null; }
+  }
+  const [f0, f1] = fullTimeBounds();
+  time.fullNow = f1;
+  const w = timeWindow && timeWindow[1] > f0 && timeWindow[0] < f1 ? [Math.max(f0, timeWindow[0]), Math.min(f1, timeWindow[1])] : null;
+  [time.oldest, time.now] = w && w[1] - w[0] > 6e4 ? w : [f0, f1];
+  time.windowed = !!w;
+  $("#time-reset").classList.toggle("hidden", !w);
+}
+function setTimeWindow(w) {
+  timeWindow = w && w[1] - w[0] > 6e4 ? w : null;
+  try { timeWindow ? localStorage.setItem(winKey(), JSON.stringify(timeWindow)) : localStorage.removeItem(winKey()); } catch {}
+  updateTimeBounds(); timeInfo(); closeMenu(); buildItems(); buildList();
 }
 // curseur : 0..100 ↦ hauteur entre minHeight et maxHeight (progression géométrique)
 const sliderToH = v => space.timeScale.minHeight * Math.pow(space.timeScale.maxHeight / space.timeScale.minHeight, v / 100);
@@ -1126,13 +1270,65 @@ function initTimeControls() {
   if (!initTimeControls.done) { time.H = ts.height; time.mode = ts.mode === "log" ? "log" : "linear"; initTimeControls.done = true; }
   $("#time-height").value = hToSlider(time.H);
   $("#time-mode").value = time.mode;
-  timeInfo();
+  timeInfo(); renderTimeline();
 }
+// ==========================================
+// Frise des positions temporelles : une ligne par élément suivi (positions datées, séjours, retraits) et une ligne des
+// créations des physiques ; brush (d3-brush) pour choisir les dates affichées dans l'échelle temporelle de l'espace
+// ==========================================
+function renderTimeline() {
+  const box = $("#timeline");
+  if (!space || !hasTime()) { box.classList.add("hidden"); box.replaceChildren(); return; }
+  const lanes = [], phys = [];
+  for (const p of space.placements) if (p.tree) walk(p.tree, n => { const c = parseDate(n.created); if (c != null) phys.push({ t: c, title: n.title }); });
+  if (phys.length) lanes.push({ label: "Physiques (créations)", color: shapeByKey("physique")?.color ?? "#2e7d5b", ticks: phys });
+  for (const p of space.placements) if (p.track?.some(x => x.lon != null)) {
+    const owner = p.actant ? space.placements.find(a => a.item === p.actant && a.shape === "actant") : null;
+    lanes.push({ label: `${p.title}${owner ? ` (${owner.title})` : ""}`, color: shapeByKey(p.shape)?.color ?? "#888", pts: p.track });
+  }
+  box.classList.remove("hidden");
+  const W = Math.max(320, box.clientWidth), L = Math.min(190, W * 0.3), R = 16, lh = 20, top = 8, axisH = 24, H = top + lanes.length * lh + axisH;
+  const [f0, f1] = fullTimeBounds(), x = d3.scaleUtc().domain([f0, f1]).range([L, W - R]);
+  const fmt = d => fmtDate(+d, (f1 - f0) / 6), cut = (t, n) => t.length > n ? t.slice(0, n - 1) + "…" : t;
+  const svg = d3.select(box).selectAll("svg").data([0]).join("svg").attr("width", W).attr("height", H)
+    .attr("role", "img").attr("aria-label", `Frise des positions temporelles de ${lanes.length} ligne(s), du ${fmt(f0)} à maintenant`);
+  svg.selectAll("*").remove();
+  lanes.forEach((ln, i) => {
+    const y = top + i * lh + lh / 2, g = svg.append("g");
+    g.append("line").attr("class", "guide").attr("x1", L).attr("x2", W - R).attr("y1", y).attr("y2", y);
+    g.append("text").attr("x", L - 8).attr("y", y).attr("dy", "0.32em").attr("text-anchor", "end").text(cut(ln.label, Math.floor(L / 6.5))).append("title").text(ln.label);
+    for (const k of ln.ticks ?? [])
+      g.append("line").attr("x1", x(k.t)).attr("x2", x(k.t)).attr("y1", y - 6).attr("y2", y + 6).attr("stroke", ln.color).attr("stroke-width", 2)
+        .append("title").text(`${k.title} : créé le ${fmtDate(k.t)}`);
+    const pts = ln.pts ?? [];
+    pts.forEach((pt, j) => {
+      const t = Date.parse(pt.at), end = j + 1 < pts.length ? Date.parse(pts[j + 1].at) : f1;
+      const when = new Date(t).toLocaleString("fr-FR", { timeZone: "UTC" });
+      if (pt.lon == null) { // retrait de l'espace
+        g.append("path").attr("d", d3.symbol(d3.symbolCross, 40)()).attr("transform", `translate(${x(t)},${y}) rotate(45)`).attr("fill", "var(--muted)").append("title").text(`retiré le ${when}`);
+        return;
+      }
+      g.append("line").attr("x1", x(t)).attr("x2", x(end)).attr("y1", y).attr("y2", y).attr("stroke", ln.color).attr("stroke-width", 5).attr("stroke-opacity", 0.35);
+      g.append("circle").attr("cx", x(t)).attr("cy", y).attr("r", 4.5).attr("fill", ln.color).attr("stroke", "var(--panel)")
+        .append("title").text(`${pt.event} le ${when} (UTC)\n${pt.address ? pt.address + "\n" : ""}${pt.lat.toFixed(6)}, ${pt.lon.toFixed(6)}`);
+    });
+  });
+  svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - axisH})`)
+    .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((W - L) / 90))).tickFormat(fmt));
+  // brush : glisser pour choisir les dates affichées ; un clic hors de la sélection revient à toute l'étendue
+  const brush = d3.brushX().extent([[L, top - 4], [W - R, H - axisH]])
+    .on("end", ({ selection, sourceEvent }) => { if (sourceEvent) setTimeWindow(selection ? selection.map(v => +x.invert(v)) : null); });
+  const bg = svg.append("g").attr("class", "brush").call(brush);
+  if (time.windowed) bg.call(brush.move, [x(time.oldest), x(time.now)]);
+}
+addEventListener("resize", () => { clearTimeout(renderTimeline.timer); renderTimeline.timer = setTimeout(renderTimeline, 150); });
 function timeInfo() {
-  const has = space?.placements.some(p => p.tree);
-  $("#time-info").textContent = has ? `${Math.round(time.H)} m = ${fmtDate(time.oldest)} (plus ancienne création) → surface = maintenant` : "aucun élément physique placé";
+  $("#time-info").textContent = !hasTime() ? "aucun élément physique placé ni position datée"
+    : time.windowed ? `${Math.round(time.H)} m = ${fmtDate(time.oldest, time.now - time.oldest)} → surface = ${fmtDate(time.now, time.now - time.oldest)} (dates choisies sur la frise)`
+    : `${Math.round(time.H)} m = ${fmtDate(time.oldest)} (plus ancienne date) → surface = maintenant`;
 }
 $("#time-height").oninput = () => { if (!space) return; time.H = sliderToH(+$("#time-height").value); timeInfo(); closeMenu(); buildItems(); };
+$("#time-reset").onclick = () => { setTimeWindow(null); renderTimeline(); };
 $("#time-mode").onchange = () => { if (!space) return; time.mode = $("#time-mode").value; timeInfo(); closeMenu(); buildItems(); };
 
 // ==========================================
@@ -1208,8 +1404,8 @@ function physiqueShape(p, shape, hex, S) {
 
 function buildTimeAxis() {
   clear(timeGroup);
-  if (!space.placements.some(p => p.tree)) return;
-  const x = -extent * 0.95, z = -extent * 0.55, mat = new THREE.LineBasicMaterial({ color: css("--accent") });
+  if (!hasTime()) return;
+  const x = -homeExtent * 0.95, z = -homeExtent * 0.55, mat = new THREE.LineBasicMaterial({ color: css("--accent") });
   timeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, 0, z), new THREE.Vector3(x, time.H, z)]), mat));
   const n = 6;
   for (let i = 0; i <= n; i++) {
@@ -1217,7 +1413,7 @@ function buildTimeAxis() {
     timeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x - 1.5, y, z), new THREE.Vector3(x + 1.5, y, z)]), mat));
     // précision du libellé selon l'écart avec la graduation voisine (dilaté près de maintenant en mode logarithmique)
     const gap = Math.abs(msOfY(y) - msOfY(y - time.H / n));
-    const o = new CSS2DObject(el("div", { className: "label", textContent: i === 0 ? "maintenant" : fmtDate(msOfY(y), gap * 4) }));
+    const o = new CSS2DObject(el("div", { className: "label", textContent: i === 0 ? (time.windowed ? fmtDate(time.now, gap * 4) : "maintenant") : fmtDate(msOfY(y), gap * 4) }));
     o.position.set(x - 3, y, z); o.center.set(1, 0.5);
     timeGroup.add(o);
   }
@@ -1273,9 +1469,43 @@ function buildItems() {
   buildTimeAxis();
   buildPowers();
   buildPulsations();
+  buildTracks();
+}
+// chemin spatio-temporel d'un élément (cube espace-temps) : hauteur = date (échelle temporelle), séjour = trait vertical
+// à sa position, déplacement = trait horizontal à la date du changement ; seulement dans la fenêtre de dates affichée ;
+// une position hors de l'espace est ramenée au bord avec sa distance
+const geoToScene = g => { const o = space.grid.origin, M = 111320; return { x: (g.lon - o.lon) * M * Math.cos(o.lat * Math.PI / 180), z: -(g.lat - o.lat) * M }; };
+function buildTracks() {
+  const S = space.grid.hexSize, lim = extent * 1.15;
+  for (const p of space.placements) {
+    const pts = p.track ?? [];
+    if (!pts.some(x => x.lon != null)) continue;
+    const col = new THREE.Color(shapeByKey(p.shape)?.color ?? "#888"), g = new THREE.Group(), segs = [];
+    g.userData.trackOf = p.actant ? `m:${p.actant}:${p.item}` : String(p.item);
+    const place = x => {
+      const q = geoToScene(x), d = Math.hypot(q.x, q.z);
+      return d > lim ? { x: q.x * lim / d, z: q.z * lim / d, far: d } : { ...q, far: 0 };
+    };
+    const V = (q, y) => new THREE.Vector3(q.x, y, q.z), inWin = t => t >= time.oldest && t <= time.now;
+    pts.forEach((pt, i) => {
+      if (pt.lon == null) return;
+      const t = Date.parse(pt.at), end = i + 1 < pts.length ? Date.parse(pts[i + 1].at) : time.fullNow ?? time.now, q = place(pt);
+      const a = Math.max(t, time.oldest), b = Math.min(end, time.now);
+      if (a < b) segs.push(V(q, yOf(a)), V(q, yOf(b)));
+      if (inWin(t)) {
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(S * 0.1, 10, 8), new THREE.MeshBasicMaterial({ color: col }));
+        dot.position.copy(V(q, yOf(t))); dot.raycast = () => {}; g.add(dot);
+        if (q.far) { const o = new CSS2DObject(el("div", { className: "label small", textContent: `↗ ${pt.address ? pt.address.split(",")[0] + " · " : ""}${(q.far / 1000).toFixed(q.far < 1e4 ? 1 : 0)} km · ${fmtDate(t, 0)}` })); o.position.copy(dot.position); g.add(o); }
+      }
+      const nx = pts[i + 1];
+      if (nx?.lon != null && inWin(Date.parse(nx.at))) segs.push(V(q, yOf(Date.parse(nx.at))), V(place(nx), yOf(Date.parse(nx.at))));
+    });
+    if (segs.length) { const l = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(segs), new THREE.LineBasicMaterial({ color: col })); l.raycast = () => {}; g.add(l); }
+    if (g.children.length) itemsGroup.add(g);
+  }
 }
 function view(kind = "fit") {
-  const d = extent, H = space?.placements.some(p => p.tree) ? time.H : 0;
+  const d = extent, H = hasTime() ? time.H : 0;
   if (kind === "top") camera.position.set(0, d * 2.4 + H, 0.001);
   else if (kind === "below") camera.position.set(0, -d * 2.4, 0.001);
   else camera.position.set(d * 0.9, d * 1.2 + H * 0.6, d * 1.5);
@@ -1296,6 +1526,14 @@ async function loadLeaflet() {
   document.head.append(el("link", { rel: "stylesheet", href: `${LEAFLET}/leaflet.css` }));
   leaflet = await import(`${LEAFLET}/leaflet-src.esm.js`);
   return leaflet;
+}
+// recherche de lieux : service de géocodage configuré (Nominatim), résultats en français
+async function geocode(q) {
+  const cfg = space.map ?? {}, url = new URL(cfg.geocoder ?? "https://nominatim.openstreetmap.org/search");
+  Object.entries({ q, format: "jsonv2", limit: cfg.searchLimit ?? 6, "accept-language": "fr" }).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 async function askOrigin() {
   closeMenu();
@@ -1329,11 +1567,7 @@ async function askOrigin() {
     if (q.length < 2) return;
     status.textContent = "Recherche…";
     try {
-      const url = new URL(cfg.geocoder ?? "https://nominatim.openstreetmap.org/search");
-      Object.entries({ q, format: "jsonv2", limit: cfg.searchLimit ?? 6, "accept-language": "fr" }).forEach(([k, v]) => url.searchParams.set(k, v));
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rs = await res.json();
+      const rs = await geocode(q);
       status.textContent = rs.length ? `${rs.length} lieu(x) trouvé(s) : en choisir un` : "Aucun lieu trouvé";
       $("#origin-results").replaceChildren(...rs.map(r => el("li", { textContent: r.display_name, title: `${(+r.lat).toFixed(5)}, ${(+r.lon).toFixed(5)}`,
         onclick: () => { setPoint(r.lat, r.lon, null, cfg.zoom ?? 17); $("#origin-results").replaceChildren(); status.textContent = `Lieu choisi : ${r.display_name}`; } })));
@@ -1353,7 +1587,90 @@ async function askOrigin() {
     try {
       const body = { eco: state.eco, lat: +lat.value, lon: +lon.value, alt: alt.value === "" ? null : +alt.value };
       await withBusy("Origine géographique", async () => setSpace(await api("/api/ecospace/origin", { method: "POST", body })));
-      legend(); toast(`Origine enregistrée : ${fmtGeo(space.grid.origin)}`);
+      legend(); toast(`Origine enregistrée : ${fmtGeo(space.grid.origin)}${space.moved?.length ? ` · ${space.moved.length} élément(s) changent d'hexagone` : ""}`);
+    } catch (e) { toast("Erreur : " + e.message); }
+  };
+}
+
+// dialogue de la position spatio-temporelle : carte (repère déplaçable, trajectoire), lieu, date, historique (corriger,
+// supprimer) ; chaque enregistrement relit l'espace
+let posMap = null, posMarker = null, posTrail = null;
+async function askPosition(t) {
+  closeMenu();
+  if (!positionable(t)) return toast(positionTitle(t));
+  let L;
+  try { L = await loadLeaflet(); } catch (e) { return toast("Carte indisponible : " + e.message); }
+  const dlg = $("#dlg-position"), cfg = space.map ?? {}, p = t.placement ?? t, item = t.item;
+  const lat = $("#position-lat"), lon = $("#position-lon"), alt = $("#position-alt"), at = $("#position-at"), status = $("#position-status"), save = $("#position-save"), place = $("#position-place");
+  let editing = null, hist = [];
+  // date ISO → valeur de datetime-local (heure locale) et inversement
+  const toLocal = iso => { const d = new Date(iso), z = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; };
+  const setPoint = (la, lo, al = null, zoom = null) => {
+    lat.value = (+la).toFixed(7); lon.value = (+lo).toFixed(7); if (al != null && Number.isFinite(+al)) alt.value = (+al).toFixed(2);
+    posMarker.setLatLng([+la, +lo]); posMap.setView([+la, +lo], zoom ?? posMap.getZoom());
+  };
+  const reset = () => {
+    editing = null; save.textContent = "Ajouter la position";
+    const cur = space.placements.find(x => x.item === item && x.shape === t.shape)?.pos ?? p.pos ?? space.grid.origin;
+    setPoint(cur.lat, cur.lon, cur.alt, cfg.zoom ?? 18); at.value = toLocal(new Date().toISOString()); place.value = ""; $("#position-results").replaceChildren();
+    status.textContent = `Position actuelle : ${fmtGeo(cur)}`; renderHist();
+  };
+  const renderHist = () => {
+    const mine = hist.map((f, i) => ({ f, i })).filter(x => x.f.properties.eco === state.eco);
+    const pts = mine.filter(x => x.f.geometry).map(x => [x.f.geometry.coordinates[1], x.f.geometry.coordinates[0]]);
+    posTrail.clearLayers();
+    if (pts.length > 1) L.polyline(pts, { color: "#6b7280", weight: 2, dashArray: "4 4" }).addTo(posTrail);
+    pts.forEach(ll => L.circleMarker(ll, { radius: 4, color: "#6b7280", fillOpacity: 0.7 }).addTo(posTrail));
+    const lastIdx = [...mine].reverse().find(x => x.f.geometry)?.i;
+    $("#position-hist tbody").replaceChildren(...[...mine].reverse().map(({ f, i }) => el("tr", { className: `${i === lastIdx ? "cur" : ""}` },
+      el("td", { className: "num", textContent: new Date(f.properties.at).toLocaleString("fr-FR") }),
+      el("td", { textContent: `${f.properties.event}${i === lastIdx ? " (actuelle)" : ""}` }),
+      el("td", { textContent: f.geometry ? `${f.properties.address ? `${f.properties.address} · ` : ""}${f.geometry.coordinates[1].toFixed(6)}, ${f.geometry.coordinates[0].toFixed(6)}` : "—" }),
+      el("td", {},
+        f.geometry ? el("button", { type: "button", className: "btn small ic", textContent: "corriger", title: "Reprendre cette position dans le formulaire pour corriger son lieu ou sa date",
+          onclick: () => { editing = i; save.textContent = "Corriger la position"; setPoint(f.geometry.coordinates[1], f.geometry.coordinates[0], f.geometry.coordinates[2]); at.value = toLocal(f.properties.at); place.value = f.properties.address ?? ""; status.textContent = `Correction de la position du ${new Date(f.properties.at).toLocaleString("fr-FR")}`; } }) : "",
+        el("button", { type: "button", className: "btn small ic", textContent: "supprimer", title: "Retirer cette position de l'historique",
+          onclick: async () => {
+            try {
+              await withBusy("Position", async () => setSpace(await api("/api/ecospace/position/delete", { method: "POST", body: { eco: state.eco, item, index: i } })));
+              await load(); toast("Position supprimée de l'historique");
+            } catch (e) { toast("Erreur : " + e.message); }
+          } })))));
+  };
+  const load = async () => { hist = (await api(`/api/ecospace/geo?item=${item}`)).features ?? []; reset(); };
+  $("#position-title").textContent = `Position spatio-temporelle de « ${t.title} »`;
+  dlg.returnValue = ""; dlg.showModal();
+  if (!posMap) {
+    posMap = L.map("position-map");
+    L.tileLayer(cfg.tiles ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: cfg.attribution ?? "© OpenStreetMap" }).addTo(posMap);
+    posTrail = L.layerGroup().addTo(posMap);
+    posMarker = L.marker([0, 0], { draggable: true }).addTo(posMap);
+    posMarker.on("drag", e => { const q = e.target.getLatLng(); lat.value = q.lat.toFixed(7); lon.value = q.lng.toFixed(7); });
+    posMap.on("click", e => setPoint(e.latlng.lat, e.latlng.lng));
+  }
+  [lat, lon].forEach(i => i.onchange = () => { if (lat.value && lon.value) setPoint(lat.value, lon.value); });
+  $("#position-new").onclick = reset;
+  // recherche d'adresse : le lieu choisi place le repère et devient l'adresse de la position
+  const search = async () => {
+    const q = place.value.trim();
+    if (q.length < 2) return status.textContent = "Saisir une adresse ou un lieu (2 caractères au moins)";
+    status.textContent = "Recherche…";
+    try {
+      const rs = await geocode(q);
+      status.textContent = rs.length ? `${rs.length} lieu(x) trouvé(s) : en choisir un` : "Aucun lieu trouvé";
+      $("#position-results").replaceChildren(...rs.map(r => el("li", { textContent: r.display_name, title: `${(+r.lat).toFixed(5)}, ${(+r.lon).toFixed(5)}`,
+        onclick: () => { setPoint(r.lat, r.lon, null, cfg.zoom ?? 18); place.value = r.display_name; $("#position-results").replaceChildren(); status.textContent = `Lieu choisi : ${r.display_name}`; } })));
+    } catch (e) { status.textContent = "Recherche impossible : " + e.message; }
+  };
+  $("#position-search").onclick = search;
+  place.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); search(); } };
+  setTimeout(async () => { posMap.invalidateSize(); try { await load(); } catch (e) { status.textContent = "Historique illisible : " + e.message; } }, 50);
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== "confirm") return;
+    try {
+      const body = { eco: state.eco, item, lat: +lat.value, lon: +lon.value, alt: alt.value === "" ? null : +alt.value, at: new Date(at.value).toISOString(), address: place.value.trim(), index: editing };
+      await withBusy("Position", async () => setSpace(await api("/api/ecospace/position", { method: "POST", body })));
+      toast(`Position ${editing != null ? "corrigée" : "ajoutée"}${space.moved?.length ? ` · ${space.moved.length} élément(s) changent d'hexagone` : ""}`);
     } catch (e) { toast("Erreur : " + e.message); }
   };
 }
@@ -1434,10 +1751,11 @@ function pick(e) {
     else if (!best) best = { hex: o.userData.hex, target: null };
   }
   if (best && !best.target) { const p = placedAt(best.hex)[0]; if (p) best.target = targets.get(p.item) ?? null; }
-  return best;
+  return best ?? coarseAt(e);
 }
 function hud(hit) {
   if (!hit) return $("#hud").textContent = menuHex ? "" : "Survoler un hexagone : coordonnées cube et géographiques";
+  if (hit.coarse) { const c = hit.coarse; return $("#hud").textContent = `hexagone de ${fmtSize(c.size)} (niveau ${c.level}) · ${fmtGeo(c.geo)} · ${c.count ? `${c.count} élément(s)` : "vide"}${c.split ? " · cliquer pour zoomer sur sa sous-grille" : ""}`; }
   const { hex: h, target: t } = hit;
   let info = "";
   if (t?.node) {
@@ -1456,8 +1774,8 @@ renderer.domElement.addEventListener("pointermove", e => {
   if (!space || e.buttons) return;
   const hit = pick(e), h = hit?.hex ?? null;
   if ((h && keyOf(h)) !== (hovered && keyOf(hovered)) || hit?.target !== hoveredTarget) {
-    hovered = h; hoveredTarget = hit?.target ?? null; paintTiles(); hud(hit); renderer.domElement.style.cursor = h ? "pointer" : "";
-  } else if (hit?.cell && !menuHex) hud(hit); // hexagone survolé sur un même nanotube
+    hovered = h; hoveredTarget = hit?.target ?? null; paintTiles(); hud(hit); renderer.domElement.style.cursor = h ? "pointer" : hit?.coarse?.split ? "zoom-in" : "";
+  } else if ((hit?.cell || hit?.coarse) && !menuHex) { hud(hit); if (hit.coarse) renderer.domElement.style.cursor = hit.coarse.split ? "zoom-in" : ""; } // hexagone survolé sur un même nanotube
 });
 // point du rayon de la souris sur un plan
 function rayPoint(e, plane) {
@@ -1478,6 +1796,7 @@ renderer.domElement.addEventListener("pointerup", e => {
   // menu ouvert après le délai d'un double-clic (qui l'annule) : le second clic ne doit pas actionner un secteur
   const hit = pick(e);
   clearTimeout(clickTimer);
+  if (hit?.coarse) { closeMenu(); return hit.coarse.split ? zoomCell(hit.coarse) : undefined; }
   clickTimer = setTimeout(() => hit ? openMenu(hit.hex, hit.cell && hit.target ? { ...hit.target, cell: hit.cell } : hit.target) : closeMenu(), 260);
 });
 let clickTimer = null;
@@ -1488,6 +1807,7 @@ renderer.domElement.addEventListener("dblclick", e => {
   clearTimeout(clickTimer);
   const hit = space && pick(e);
   if (!hit) return;
+  if (hit.coarse) return zoomCell(hit.coarse);
   closeMenu();
   const S = space.grid.hexSize, dir = camera.position.clone().sub(controls.target).normalize();
   controls.target.copy(hit.target?.anchor ?? new THREE.Vector3(hit.hex.x, 0, hit.hex.z));
@@ -1506,6 +1826,7 @@ function screenOf(p) {
   return [(v.x + 1) / 2 * width, (1 - v.y) / 2 * height, v.z < 1];
 }
 renderer.setAnimationLoop(() => {
+  if (space) updateLod();
   if (flight) {
     const k = Math.min(1, (performance.now() - flight.start) / flight.ms), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
     camera.position.lerpVectors(flight.p0, flight.pos, e); controls.target.lerpVectors(flight.t0, flight.target, e);
@@ -1530,7 +1851,11 @@ const ICONS = {
   "détails": ["M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z", "M12 16v-4", "M12 8h.01"],
   supprimer: ["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M10 11v6", "M14 11v6"],
   modifier: ["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z", "m15 5 4 4"],
+  position: ["M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z", "M12 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"],
 };
+// position spatio-temporelle modifiable : actant et physique placés sur un hexagone (une personne suit son actant)
+const positionable = t => !!t && !t.owner && (t.shape === "actant" || (t.shape === "physique" && !t.parent));
+const positionTitle = t => !t ? "Position : hexagone libre" : positionable(t) ? "Position : lieu et date sur une carte, historique des positions" : t.owner ? "Position : une personne ou un agent suit son actant" : "Position : seuls les actants et les physiques racines ont une position géographique";
 let menuOuter = 0;
 // hexagone de nanotube visé par le menu : contour mis en évidence
 let cellMarker = null;
@@ -1589,6 +1914,7 @@ function openMenu(h, t) {
     { label: "détails", icon: "détails", color: "#8a4fb8", title: t ? "Détails" : "Détails de l'hexagone", action: () => t ? details(t) : hexDetails(h) },
     { label: "supprimer", icon: "supprimer", color: "#c0392b", disabled: !t, title: t ? "Supprimer (conséquences affichées avant)" : "Supprimer : hexagone libre", action: () => remove(t) },
     { label: "modifier", icon: "modifier", color: "#b8860b", disabled: !t?.templateId, title: t ? "Modifier" : "Modifier : hexagone libre", action: () => edit(t) },
+    { label: "position", icon: "position", color: "#0b7a75", disabled: !positionable(t), title: positionTitle(t), action: () => askPosition(t) },
   ], r, r + 40, "m1");
 }
 const arcSpan = n => Math.min(2 * Math.PI, (n + 1) * Math.PI / 5);
@@ -2043,6 +2369,9 @@ $("#details-tab-omeka").onclick = () => detailsTab("omeka");
 $("#details-tab-sheet").onclick = () => detailsTab("sheet");
 $("#dlg-details").addEventListener("close", () => { $("#details-frame").src = "about:blank"; });
 // position d'un élément pour la fiche : [libellé, valeur]
+// position géographique de référence et historique GeoJSON (actants, physiques, personnes)
+const geoRows = t => { const p = t.placement ?? t; return [...(p.pos ? [["Position géographique de référence", fmtGeo(p.pos)]] : []),
+  ...(p.history != null ? [["Historique des positions", el("a", { href: `/api/ecospace/geo?item=${t.item}`, target: "_blank", rel: "noopener", textContent: `${p.history} position(s) · GeoJSON` })]] : [])]; };
 function positionRows(t) {
   if (t.shape === "pulsation") {
     const pl = t.pulsation, pw = id => space.powers?.find(x => x.item === id), pt = id => space.pulsations?.find(x => x.item === id)?.title ?? `item ${id}`;
@@ -2054,7 +2383,7 @@ function positionRows(t) {
       ["Flux", pl.flux.length ? pl.flux.map(f => `→ ${pt(f.to)}${when(f) ? ` [${when(f)}]` : ""}`).join(" · ") : "aucun"]];
   }
   const rows = [["Hexagone (q, r, s)", fmtHex(t)]];
-  if (t.shape === "actant") return [...rows, ["Centroïde du fullerène", fmtGeo(t.geo.centroid)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
+  if (t.shape === "actant") return [...rows, ...geoRows(t), ["Centroïde du fullerène", fmtGeo(t.geo.centroid)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
     ["Sous-grille", t.sub ? `${t.sub.slots.length} sous-hexagones de ${t.sub.size.toFixed(2)} m (${t.sub.rings} anneau(x)) · ${space.placements.filter(p => p.actant === t.item).length} occupé(s)` : "—"],
     ["Intériorité", t.interior?.length ? `${t.interior.map(id => space.placements.find(p => p.item === id && p.shape === "concept")?.title ?? id).join(" · ")} · sphère de ${t.sphereRadius.toFixed(2)} m` : "—"]];
   if (t.shape === "pouvoir") { const pw = t.power; return [["Type", pw.typeLabel], ["Intensité", pw.intensity ?? "—"],
@@ -2064,14 +2393,14 @@ function positionRows(t) {
   if (t.shape === "crible") return [["Position", `anneau sur le nanotube · ${fmtGeo(t.hex.geo)}`], ["Pouvoirs", t.powers.map(x => x.title).join(" · ")]];
   if (t.owner) return [["Actant", `${t.owner.title} (item ${t.owner.item}, hexagone ${fmtHex(t.owner)})`], ["Lien", t.anchorTerm],
     ["Sous-hexagone (q, r, s)", `${fmtHex(t.sub)} · ${t.subSize.toFixed(2)} m`], ["Centre du fullerène", fmtGeo(t.geo.center)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
-    ["Rayons", `fullerène ${t.radius.toFixed(2)} m · sphère ${(t.sphereRadius ?? t.radius).toFixed(2)} m`]];
+    ["Rayons", `fullerène ${t.radius.toFixed(2)} m · sphère ${(t.sphereRadius ?? t.radius).toFixed(2)} m`], ...geoRows(t)];
   const names = ids => ids?.length ? ids.map(id => space.placements.find(p => p.item === id)?.title ?? `item ${id}`).join(" · ") : "aucun";
   if (t.shape === "concept") return [["Hexagone au-dessus (q, r, s)", fmtHex(t)],
     ...(t.inActant ? [["Intériorité de", `${(t.hosts ?? [t.inActant]).map(a => space.placements.find(p => p.item === a && p.shape === "actant")?.title ?? a).join(" ∩ ")} (concept d'un pouvoir${t.hosts?.length > 1 ? " : intersection des sphères" : ""})`]] : []),
     ["Parent (contenant)", names(space.placements.filter(p => p.narrower?.includes(t.item)).map(p => p.item))], ["Enfants (skos:narrower)", names(t.narrower)], ["Liés (skos:related)", names(t.related)], ["Centre", `${fmtGeo(t.geo.center)} · x ${t.x.toFixed(2)} m, z ${t.z.toFixed(2)} m`],
     ["Bulle (axe est-ouest)", `rayon ${t.radius.toFixed(2)} m · longueur ${t.length.toFixed(2)} m (${t.narrower?.length ? `${t.narrower.length} enfant(s)` : `titre de ${t.chars ?? 0} caractères`}) · niveau ${t.level ?? 0} · sommet à ${(-t.y - t.radius).toFixed(2)} m sous la grille`]];
   const n = t.node, c = parseDate(n.created), m = parseDate(n.modified);
-  return [...rows,
+  return [...rows, ...(t.parent ? [] : geoRows(t)),
     ["Date de création", `${c != null ? new Date(c).toLocaleString("fr-FR", { timeZone: "UTC" }) : "—"}${n.createdFromRecord ? " (date de la fiche Omeka S : dcterms:created absent)" : ""}`],
     ["Date de modification", m != null ? new Date(m).toLocaleString("fr-FR", { timeZone: "UTC" }) : "—"],
     ["Importance", String(n.importance)],
@@ -2107,7 +2436,7 @@ async function details(t, tab = "omeka") {
       el("span", { className: "chip", textContent: x.isPublic ? "public" : "privé" })),
     el("p", { className: "help", textContent: `item ${item.id} · créé le ${fmt(x.created)} · modifié le ${fmt(x.modified)}${x.media ? ` · ${x.media} média(s)` : ""}` }),
     el("dl", { className: "props" },
-      positionRows(t).flatMap(([k, val]) => [el("dt", { textContent: k }), el("dd", { className: "num", textContent: val })]),
+      positionRows(t).flatMap(([k, val]) => [el("dt", { textContent: k }), val instanceof Node ? el("dd", {}, val) : el("dd", { className: "num", textContent: val })]),
       x.properties.flatMap(pr => [el("dt", { textContent: pr.label, title: pr.term }),
         el("dd", {}, pr.values.map(val => el("div", {}, value(val), ...(val.annotation ?? []).map(a => el("span", { className: "ann", textContent: a })))))])),
     el("div", { className: "toolbar", style: "margin-top:12px" }, el("button", { className: "btn small", textContent: "Modifier", disabled: !item.templateId, onclick: () => { $("#dlg-details").close(); edit(t); } })));
@@ -2263,6 +2592,7 @@ function applyVisibility() {
     } else if (t?.shape === "crible") o.visible = !off(`cr:${t.item}`) && (t.powers ?? []).some(pwOn);
     else if (o.userData?.joint) o.visible = [...o.userData.joint.powers].some(pwOn);
     else if (o.userData?.flux) o.visible = !off(String(o.userData.flux.from)) && !off(String(o.userData.flux.to));
+    else if (o.userData?.trackOf) o.visible = !off(o.userData.trackOf);
   });
   for (const e of entries.values()) e.off = off(e.key);
 }
@@ -2319,6 +2649,7 @@ function listRow(e, depth, nKids = 0) {
     btn("zoom", "Zoomer", () => zoomTo(e)),
     btn("détails", "Détails", () => details(t)),
     btn("modifier", "Modifier", () => edit(t), !t.templateId),
+    btn("position", positionTitle(t), () => askPosition(t), !positionable(t)),
     btn("dupliquer", e.type === "pulsation" ? "Dupliquer : créer plutôt une pulsation depuis un pouvoir" : floating ? "Dupliquer : pour un pouvoir, utiliser lier → Branche" : member ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : "Dupliquer", () => duplicate(t), floating || member || e.type === "pulsation"),
     btn("supprimer", "Supprimer (conséquences affichées avant)", () => remove(t)));
   return row;

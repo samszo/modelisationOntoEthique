@@ -210,6 +210,11 @@ export const defaultOntoEthiqueConfig = {
       orientation: "pointy",
       // position géographique de l'hexagone (0, 0, 0) : Université Paris 8, Saint-Denis
       origin: { lon: 2.3637, lat: 48.9447, alt: 0 },
+      // grille à niveaux : quand les éléments sont loin de l'origine (ils gardent leur longitude/latitude), les hexagones
+      // du haut grandissent par paliers de levelFactor (10 m, 100 m, 1 km…) pour tenir en maxRings anneaux ; un hexagone
+      // qui contient des éléments est découpé en hexagones levelFactor fois plus petits, jusqu'à hexSize ; une sous-grille
+      // n'est affichée que si la caméra est à moins de lod × la taille de son hexagone
+      levelFactor: 10, maxRings: 8, lod: 6,
     },
     // formes des éléments ontologiques, par resource template ; dimensions en fraction de hexSize (1 = rayon de l'hexagone)
     // layer : couche occupée sur l'hexagone (un élément par couche et par hexagone ; défaut : la clé de la forme)
@@ -283,6 +288,20 @@ export const defaultOntoEthiqueConfig = {
     // dernier enregistrement (les modifications rapprochées n'en font qu'un), seulement si le contenu a changé (sha256) ;
     // identifiée par dcterms:identifier = identifierPrefix + écosystème ; sert à restaurer un espace absent en local
     omekaMedia: { enabled: true, delay: 3000, identifierPrefix: "ecospace-", title: "EcoSpace : positions des éléments" },
+    // historique des positions géographiques des éléments (shapes) : un fichier GeoJSON par item (FeatureCollection, un
+    // point par position successive, une entité sans géométrie au retrait) dans <dir>/<geoHistory.dir>, copié comme média
+    // de l'item dans Omeka S (omekaMedia ; dcterms:identifier = identifierPrefix + item, envoi delay ms après le dernier
+    // changement ; Omeka S doit accepter le type « application/geo+json » et l'extension « geojson » ; une copie en échec est retentée à la lecture de
+    // l'espace après retryDelay ms)
+    geoHistory: { enabled: true, shapes: ["actant", "physique", "personne"], dir: "geo", omekaMedia: true, delay: 3000, retryDelay: 60000,
+      identifierPrefix: "ecospace-geo-", title: "EcoSpace : historique des positions",
+      // positions aussi écrites dans la propriété property de l'item (une valeur par point de l'historique), annotées
+      // selon le modèle d'annotation de cette propriété (template 16 « Position spatio-temporelle ») : title (événement,
+      // date), place (lieu ou adresse choisie), geo (coordonnées « latitude,longitude », type geoType), time (date,
+      // numeric:timestamp) ; l'écosystème est ajouté à l'annotation (ecoProperty) : seules les valeurs des écosystèmes de
+      // l'historique sont réécrites, les autres (saisies à la main) sont conservées
+      property: "jdc:hasPosition", geoType: "geography:coordinates",
+      annotation: { title: "dcterms:title", place: "dcterms:description", geo: "jdc:geoPosition", time: "jdc:timePosition" } },
     // carte de l'origine géographique (bouton « Origine géographique ») : fond de carte (tuiles, attribution), service de
     // recherche de lieux (Nominatim, appelé par le navigateur, résultats en français), zoom sur un lieu, nombre de résultats
     map: { tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: "© contributeurs OpenStreetMap",

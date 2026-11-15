@@ -21,6 +21,11 @@ jdc:SemanticPosition a rdfs:Class ;
     rdfs:domain o:Resource ;
     vs:term_status "experimental" .
 
+jdc:SpatioTempoPosition a rdfs:Class ;
+    rdfs:label "Position spatio-temporelle" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
 jdc:Crible a rdfs:Class ;
     rdfs:label "Crible" ;
     rdfs:domain o:Resource ;
@@ -336,5 +341,20 @@ jdc:paramCrible a rdf:Property ;
 
 jdc:fonctionCrible a rdf:Property ;
     rdfs:label "fonction du crible" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:hasPosition a rdf:Property ;
+    rdfs:label "a comme position" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:geoPosition a rdf:Property ;
+    rdfs:label "position géographique" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:timePosition a rdf:Property ;
+    rdfs:label "position temporelle" ;
     rdfs:domain o:Resource ;
     vs:term_status "experimental" .

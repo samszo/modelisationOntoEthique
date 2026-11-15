@@ -10,8 +10,9 @@ import type { OntoEthiqueConfig } from "../config/ontoethique";
 import { omekaWebBase } from "../lib/omeka/proxy";
 import { buildTemplateForm, itemPayload, TIMESTAMP, type FormValue } from "../lib/omeka/templateForm";
 import { linkableTypes, toWritable, writeValues } from "../lib/omeka/network";
-import { cubeDistance, gridHexes, hexKey, hexToPlane, inGrid, nearestFree, planeToGeo, planeToHex, ringsFor, subGrid, type GridSpec } from "../lib/ecospace/hex";
+import { adaptiveGrid, cubeDistance, geoToPlane, gridHexes, hexKey, hexToPlane, nearestFree, planeToGeo, rehexPlacements, validHex, planeToHex, ringsFor, subGrid, type GridSpec } from "../lib/ecospace/hex";
 import { interiorLayout, layoutConcepts } from "../lib/ecospace/concepts";
+import { emptyHistory, pointFeature, samePosition, type GeoPoint, type PositionHistory } from "../lib/ecospace/geoHistory";
 import { checkPower, powerTypeOf } from "../lib/ontoethique/omekaForms";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => Promise<void> | void;
@@ -25,13 +26,16 @@ interface Ctx {
   readBody: (req: http.IncomingMessage) => Promise<any>;
 }
 // concept (forme libre) : q, r, s = hexagone où il a été ajouté ; sa géométrie est calculée à chaque lecture
-interface Placement { item: number; q: number; r: number; s: number; shape: string; placed: string }
+// pos : position géographique de référence (actant, physique) ; l'hexagone (q, r, s) en est déduit quand la grille change
+interface Placement { item: number; q: number; r: number; s: number; shape: string; placed: string; pos?: GeoPoint }
 // members : emplacements des personnes et agents sur la sous-grille de chaque actant (actant → membre → q, r)
 // powerLinks : élément connecté sur un hexagone d'un nanotube (pouvoir → « maillon|item » → segment seg, hexagone j, k) ;
 // seg = clé du segment calculée par la page (« type|de|vers », ou nanotube enfant « type|segment@j,k|vers »)
 interface Attach { seg: string; j: number; k: number }
 interface Space { eco: number; created: string; grid: GridSpec; placements: Placement[]; members?: Record<string, Record<string, { q: number; r: number }>>;
-  powerLinks?: Record<string, Record<string, Attach>> }
+  powerLinks?: Record<string, Record<string, Attach>>;
+  // dernière position enregistrée dans l'historique GeoJSON de chaque élément suivi (item → position)
+  geoLast?: Record<string, GeoPoint & { shape: string; q?: number; r?: number; sub?: { q: number; r: number } | null }> }
 
 const itemId = (v: unknown) => { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw new Error("Identifiant d'item invalide"); return n; };
 const text = (v: unknown, max = 500) => String(v ?? "").slice(0, max).trim();
@@ -42,7 +46,13 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
   const cfg = () => ctx.config().ecospace;
   const dir = () => path.join(ctx.root, cfg().dir);
   const file = (eco: number) => path.join(dir(), `${eco}.json`);
-  const load = (eco: number): Space | null => { try { return JSON.parse(fs.readFileSync(file(eco), "utf-8")); } catch { return null; } };
+  // un placement sans position géographique de référence (espace antérieur) la reçoit du centre de son hexagone
+  const load = (eco: number): Space | null => {
+    let s: Space;
+    try { s = JSON.parse(fs.readFileSync(file(eco), "utf-8")); } catch { return null; }
+    for (const p of s.placements ?? []) if (!p.pos && !isFree(p.shape)) p.pos = planeToGeo(s.grid, hexToPlane(s.grid, p));
+    return s;
+  };
   const save = (s: Space) => { fs.mkdirSync(dir(), { recursive: true }); fs.writeFileSync(file(s.eco), JSON.stringify(s, null, 2)); schedulePublish(s.eco); };
 
   // copie du fichier de l'espace dans Omeka S, média de l'item écosystème (omekaMedia) : envoi différé et regroupé,
@@ -101,6 +111,156 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     console.log(`📥 [OMEKA] EcoSpace : espace de l'écosystème ${eco} restauré depuis le média ${m["o:id"]}`);
     return s;
   };
+  // historique des positions (geoHistory) : un fichier GeoJSON par item dans <dir>/<geoHistory.dir>, copié comme média
+  // de l'item dans Omeka S (dcterms:identifier = identifierPrefix + item), envoi différé et regroupé comme la copie de
+  // l'espace ; un échec n'interrompt rien
+  const geoCfg = () => cfg().geoHistory ?? { enabled: false } as any;
+  const geoDir = () => path.join(dir(), geoCfg().dir ?? "geo");
+  const geoFile = (item: number) => path.join(geoDir(), `${item}.geojson`);
+  const geoMediaId = (item: number) => `${geoCfg().identifierPrefix ?? "ecospace-geo-"}${item}`;
+  const readHistory = (item: number): PositionHistory => { try { return JSON.parse(fs.readFileSync(geoFile(item), "utf-8")); } catch { return emptyHistory(item); } };
+  const geoTimers = new Map<number, NodeJS.Timeout>();
+  const geoState = new Map<number, { ok: boolean; media?: number | null; error?: string; at: string }>();
+  const propState = new Map<number, { ok: boolean; values?: number; written?: boolean; error?: string; at: string }>();
+  // copie du fichier (média) et écriture des positions dans la propriété de l'item, après delay ms sans changement
+  const scheduleGeoUpload = (item: number) => {
+    if (!geoCfg().omekaMedia && !geoCfg().property) return;
+    clearTimeout(geoTimers.get(item));
+    geoTimers.set(item, setTimeout(() => {
+      geoTimers.delete(item);
+      if (geoCfg().omekaMedia) uploadHistory(item).then(id => geoState.set(item, { ok: true, media: id, at: new Date().toISOString() }), (e: Error) => {
+        geoState.set(item, { ok: false, error: e.message, at: new Date().toISOString() });
+        console.warn(`⚠️ EcoSpace : historique des positions de l'item ${item} non copié dans Omeka S`, e.message);
+      });
+      if (geoCfg().property) syncPositions(item).then(r => propState.set(item, { ok: true, ...r, at: new Date().toISOString() }), (e: Error) => {
+        propState.set(item, { ok: false, error: e.message, at: new Date().toISOString() });
+        console.warn(`⚠️ EcoSpace : positions de l'item ${item} non écrites dans ${geoCfg().property}`, e.message);
+      });
+    }, Number(geoCfg().delay) || 3000));
+  };
+  // positions de l'historique → valeurs de la propriété (jdc:hasPosition) de l'item, annotées (modèle 16) : une valeur
+  // par point, dans l'ordre des dates ; les valeurs annotées par un écosystème de l'historique sont remplacées, les
+  // autres conservées ; rien n'est écrit si elles sont déjà à jour
+  const syncPositions = async (item: number) => {
+    const g = geoCfg(), term = g.property as string, an = g.annotation ?? {};
+    const h = readHistory(item), pts = h.features.filter(f => f.geometry), ecos = new Set(h.features.map(f => f.properties.eco));
+    const omk = await ctx.serverOmk();
+    const it = await omk.request(omk.url(`items/${item}`));
+    const cur: any[] = it[term] ?? [];
+    const ours = (v: any) => (v?.["@annotation"]?.[ecoProp()] ?? []).some((x: any) => ecos.has(x.value_resource_id));
+    const kept = cur.filter(v => !ours(v));
+    const terms = [term, an.title, an.place, an.geo, an.time, ecoProp()].filter(Boolean) as string[];
+    const pid = Object.fromEntries(await Promise.all(terms.map(async t => [t, await propId(omk, t)] as const)));
+    const date = (iso: string) => iso.slice(0, 19); // numeric:timestamp : AAAA-MM-JJTHH:MM:SS (UTC)
+    const lit = (t: string, v: string, type = "literal") => ({ type, property_id: pid[t], "@value": v });
+    const vals = pts.map(f => {
+      const [lon, lat] = f.geometry!.coordinates, p = f.properties, when = date(p.at).replace("T", " ");
+      const annotation: Record<string, any[]> = {};
+      if (an.title) annotation[an.title] = [lit(an.title, `${p.event} le ${when} (UTC)`)];
+      if (an.place && p.address) annotation[an.place] = [lit(an.place, p.address)];
+      if (an.geo) annotation[an.geo] = [lit(an.geo, `${lat},${lon}`, g.geoType ?? "literal")];
+      if (an.time) annotation[an.time] = [lit(an.time, date(p.at), "numeric:timestamp")];
+      annotation[ecoProp()] = [{ type: "resource:item", property_id: pid[ecoProp()], value_resource_id: p.eco }];
+      return { type: "literal", property_id: pid[term], "@value": `${lat}, ${lon} · ${when}${p.address ? ` · ${p.address}` : ""}`, "@annotation": annotation };
+    });
+    // déjà à jour : mêmes valeurs et mêmes annotations (comparées sur leurs textes)
+    const sig = (vs: any[]) => JSON.stringify(vs.map(v => [v["@value"], ...Object.keys(v["@annotation"] ?? {}).sort().map(k => (v["@annotation"][k] as any[]).map(x => x["@value"] ?? x.value_resource_id).join("|"))]));
+    if (sig(cur.filter(ours)) === sig(vals)) return { values: vals.length, written: false };
+    await writeValues(omk, item, { [term]: [...kept.map(toWritable), ...vals] });
+    console.log(`📤 [OMEKA] EcoSpace : ${vals.length} position(s) de l'item ${item} écrites dans ${term}`);
+    return { values: vals.length, written: true };
+  };
+  const uploadHistory = async (item: number) => {
+    if (!fs.existsSync(geoFile(item))) return null;
+    const buffer = fs.readFileSync(geoFile(item)), sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
+    const omk = await ctx.serverOmk();
+    const it = await omk.request(omk.url(`items/${item}`));
+    const medias = await Promise.all((it["o:media"] ?? []).map((m: any) => omk.request(omk.url(`media/${m["o:id"]}`)).catch(() => null)));
+    const old = medias.filter((m: any) => (m?.["dcterms:identifier"] ?? []).some((v: any) => v["@value"] === geoMediaId(item)));
+    const same = old.find((m: any) => m["o:sha256"] === sha256);
+    if (same) return same["o:id"] as number;
+    const [pt, pi] = await Promise.all([propId(omk, "dcterms:title"), propId(omk, "dcterms:identifier")]);
+    const m = await omk.request(omk.url("media"), "POST", {
+      "o:ingester": "upload", file_index: "0", "o:item": { "o:id": item },
+      "dcterms:title": [{ type: "literal", property_id: pt, "@value": geoCfg().title ?? "EcoSpace : historique des positions" }],
+      "dcterms:identifier": [{ type: "literal", property_id: pi, "@value": geoMediaId(item) }],
+    }, { buffer, fileName: `${geoMediaId(item)}.geojson`, type: "application/geo+json" }).catch((e: Error) => {
+      if (/Cannot store files/.test(e.message)) throw new Error(`Omeka S refuse les fichiers GeoJSON : ajouter le type de média « application/geo+json » et l'extension « geojson » aux listes autorisées (Omeka S > Administration > Paramètres > Sécurité) — réponse d'Omeka S : ${e.message.slice(0, 400)}`);
+      throw e;
+    });
+    for (const o of old) await omk.deleteResource(o["o:id"], "media").catch(e => console.warn(`⚠️ EcoSpace : ancien historique ${o["o:id"]} non supprimé`, e.message));
+    console.log(`📤 [OMEKA] EcoSpace : historique des positions de l'item ${item} enregistré (média ${m["o:id"]})`);
+    return m["o:id"] as number;
+  };
+  // ajoute à l'historique de chaque élément suivi sa position si elle a changé depuis la dernière (ou s'il a été retiré
+  // de l'espace) : actant et physique = position de référence ; personne = position de référence de son actant décalée
+  // de son sous-hexagone ; renvoie true si l'espace a changé (dernières positions)
+  const trackPositions = (s: Space, placements: any[]) => {
+    const g = geoCfg();
+    if (!g.enabled) return false;
+    const shapes = new Set<string>(g.shapes ?? ["actant", "physique", "personne"]), last = s.geoLast ?? {}, now = new Date().toISOString(), seen = new Set<string>();
+    const histories = new Map<number, PositionHistory>(), hist = (id: number) => { if (!histories.has(id)) histories.set(id, readHistory(id)); return histories.get(id)!; };
+    for (const p of placements) {
+      if (!shapes.has(p.shape) || p.missing) continue;
+      let pos: GeoPoint | null = null, extra: any = {};
+      if (p.actant) {
+        const a = s.placements.find(x => x.item === p.actant && x.shape === "actant");
+        if (!a?.pos) continue;
+        const ap = hexToPlane(s.grid, a), base = geoToPlane(s.grid, a.pos);
+        pos = planeToGeo(s.grid, { x: base.x + p.x - ap.x, z: base.z + p.z - ap.z }, base.y);
+        extra = { actant: p.actant, sub: { q: p.sub.q, r: p.sub.r } };
+      } else pos = p.pos ?? null;
+      if (!pos) continue;
+      // une personne peut appartenir à plusieurs actants : une position suivie par actant
+      const key = p.actant ? `${p.item}@${p.actant}` : String(p.item), cur = { ...pos, shape: p.shape, q: p.q, r: p.r, sub: extra.sub ?? null };
+      seen.add(key);
+      if (last[key] && samePosition(last[key], cur)) continue;
+      const h = hist(p.item);
+      h.title = p.title;
+      h.features.push(pointFeature(pos, { eco: s.eco, at: last[key] ? now : p.placed ?? now, event: last[key] ? "déplacé" : "placé", shape: p.shape, q: p.q, r: p.r, s: p.s, ...extra }));
+      last[key] = cur;
+    }
+    for (const key of Object.keys(last)) if (!seen.has(key)) {
+      const [id, actant] = key.split("@").map(Number);
+      hist(id).features.push({ type: "Feature", geometry: null, properties: { eco: s.eco, at: now, event: "retiré", shape: last[key].shape, ...(actant ? { actant } : {}) } });
+      delete last[key];
+    }
+    if (!histories.size) return false;
+    fs.mkdirSync(geoDir(), { recursive: true });
+    for (const [id, h] of histories) { fs.writeFileSync(geoFile(id), JSON.stringify(h, null, 2)); scheduleGeoUpload(id); }
+    s.geoLast = last;
+    console.log(`🗺️ EcoSpace : historique des positions mis à jour (${[...histories.keys()].join(", ")})`);
+    return true;
+  };
+  // position spatio-temporelle modifiée à la main (actant ou physique placé) : historique trié par date, position de
+  // référence = dernier point de cet écosystème, hexagones recalculés ; la dernière position suivie est mise à jour pour
+  // que la relecture n'ajoute pas de point
+  const editablePlacement = (s: Space, id: number) => {
+    const p = s.placements.find(x => x.item === id && (x.shape === "actant" || x.shape === "physique"));
+    if (!p) throw new Error("Seuls un actant ou un physique placé dans cet espace ont une position modifiable (une personne suit son actant)");
+    return p;
+  };
+  const applyHistory = (s: Space, p: Placement, h: PositionHistory) => {
+    h.features.sort((a, b) => Date.parse(a.properties.at) - Date.parse(b.properties.at));
+    const lastPt = [...h.features].reverse().find(f => f.properties.eco === s.eco && f.geometry);
+    if (!lastPt?.geometry) throw new Error("Il faut garder au moins une position dans cet écosystème");
+    const [lon, lat, alt] = lastPt.geometry.coordinates;
+    p.pos = { lon, lat, alt: alt ?? s.grid.origin.alt };
+    const moved = rehex(s);
+    fs.mkdirSync(geoDir(), { recursive: true }); fs.writeFileSync(geoFile(p.item), JSON.stringify(h, null, 2)); scheduleGeoUpload(p.item);
+    s.geoLast = { ...(s.geoLast ?? {}), [String(p.item)]: { ...p.pos, shape: p.shape, q: p.q, r: p.r, sub: null } };
+    save(s);
+    return moved;
+  };
+  const geoInput = (b: any, s: Space) => {
+    const lon = num(b.lon, "longitude"), lat = num(b.lat, "latitude"), alt = b.alt == null || b.alt === "" ? s.grid.origin.alt : num(b.alt, "altitude");
+    if (Math.abs(lon) > 180 || Math.abs(lat) > 90) throw new Error("Longitude (−180 à 180) ou latitude (−90 à 90) hors limites");
+    const at = b.at ? new Date(String(b.at)) : new Date();
+    if (Number.isNaN(at.getTime())) throw new Error("Date invalide");
+    return { pos: { lon: +lon.toFixed(7), lat: +lat.toFixed(7), alt: +Number(alt).toFixed(2) }, at: at.toISOString() };
+  };
+  // hexagones recalculés d'après les positions géographiques de référence (rehexPlacements) ; la grille à niveaux (adaptiveGrid) s'adapte à leur étendue
+  const rehex = (s: Space) => rehexPlacements(s.grid, s.placements.filter(p => p.pos && !isFree(p.shape)), layerOf);
   const omekaBase = () => ctx.readEnv().OMKS_API_URL?.replace(/\/api\/?$/, "") ?? "";
   const omekaFrame = () => { const w = omekaWebBase(ctx.readEnv().OMKS_API_URL); return ctx.config().econetwork.omekaProxy && w?.path ? w.path : omekaBase(); };
   const shapeOf = (templateId: number | null) => cfg().shapes.find(s => s.templateId === templateId) ?? null;
@@ -359,7 +519,12 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
 
   // espace lu pour la page : hexagones (cube, scène, géographie) et éléments placés (titre et template lus dans Omeka S)
   const view = async (omk: Omk, s: Space) => {
-    const hexes = gridHexes(s.grid).map(h => { const p = hexToPlane(s.grid, h); return { ...h, ...p, geo: planeToGeo(s.grid, p) }; });
+    // grille à niveaux : hexagones de base (niveau 0, cliquables) là où sont les éléments et l'origine, grands hexagones
+    // ailleurs (levels.cells, niveau > 0)
+    const gc = cfg().grid, lv = adaptiveGrid(s.grid, s.placements.filter(p => !isFree(p.shape)).map(p => hexToPlane(s.grid, p)), Number(gc.levelFactor) || 10, Number(gc.maxRings) || 8);
+    const hexes = lv.cells.filter(c => c.level === 0).map(c => ({ q: c.q, r: c.r, s: c.s, x: c.x, z: c.z, parent: c.parent, geo: planeToGeo(s.grid, c) }));
+    const levels = { top: lv.top, factor: lv.factor, radius: lv.radius, lod: Number(gc.lod) || 6,
+      cells: lv.cells.filter(c => c.level > 0).map(c => ({ key: c.key, level: c.level, q: c.q, r: c.r, x: c.x, z: c.z, size: c.size, count: c.count, split: c.split, parent: c.parent, geo: planeToGeo(s.grid, c) })) };
     const items = await Promise.all(s.placements.map(p => omk.request(omk.url(`items/${p.item}`)).catch(() => null)));
     const placements = s.placements.map((p, i) => {
       const it = items[i], plane = hexToPlane(s.grid, p), shape = cfg().shapes.find(x => x.key === p.shape);
@@ -418,7 +583,21 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     // types de pouvoir pour la page : libellé court, séquence (maillons et forme de chacun)
     const powerTypes = forms().powerTypes.map(t => ({ id: t.id, label: ctx.config().powers.find(x => x.id === t.id)?.label ?? t.label, longLabel: t.label,
       sequence: t.sequence.map(st => ({ name: st.name, key: stepKey(st.name), term: st.term, templateId: stepTemplate(stepKey(st.name)) })) }));
-    return { eco: s.eco, created: s.created, grid: s.grid, hexes, placements, powers, pulsations, pulseRelatives, powerTypes, map: cfg().map, omekaCopy: copyState.get(s.eco) ?? null, shapes: cfg().shapes, timeScale: cfg().timeScale, maxDuplicates: cfg().maxDuplicates ?? 20, now: new Date().toISOString(),
+    if (trackPositions(s, placements)) save(s);
+    const tracked = new Set<string>(geoCfg().enabled ? geoCfg().shapes ?? ["actant", "physique", "personne"] : []);
+    for (const p of placements as any[]) if (tracked.has(p.shape)) {
+      const feats = readHistory(p.item).features;
+      p.history = feats.length;
+      // positions temporelles de l'élément dans cet écosystème (une personne : dans cet actant), pour la frise et le
+      // chemin spatio-temporel
+      p.track = feats.filter(f => f.properties.eco === s.eco && (!p.actant || f.properties.actant === p.actant))
+        .map(f => ({ at: f.properties.at, event: f.properties.event, address: f.properties.address ?? null, ...(f.geometry ? { lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], alt: f.geometry.coordinates[2] ?? 0 } : {}) }))
+        .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+      // copie dans Omeka S jamais tentée depuis le démarrage, ou en échec depuis plus de retryDelay ms : nouvel essai
+      const due = (st?: { ok: boolean; at: string }) => !st || (!st.ok && Date.now() - Date.parse(st.at) > (Number(geoCfg().retryDelay) || 60000));
+      if (p.history && !geoTimers.has(p.item) && ((geoCfg().omekaMedia && due(geoState.get(p.item))) || (geoCfg().property && due(propState.get(p.item))))) scheduleGeoUpload(p.item);
+    }
+    return { eco: s.eco, created: s.created, grid: s.grid, hexes, levels, placements, powers, pulsations, pulseRelatives, powerTypes, map: cfg().map, omekaCopy: copyState.get(s.eco) ?? null, shapes: cfg().shapes, timeScale: cfg().timeScale, maxDuplicates: cfg().maxDuplicates ?? 20, now: new Date().toISOString(),
       omekaBase: omekaBase(), omekaFrame: omekaFrame() };
   };
   // élément d'un maillon de pouvoir ({ existing } | { title }) : physiques (racines ou boîtes intérieures d'un physique
@@ -486,6 +665,48 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       } catch (e) { ctx.sendJson(res, 404, { error: (e as Error).message }); }
     },
 
+    // historique des positions d'un item (GeoJSON) ; ?eco= : seulement les positions dans cet écosystème
+    "GET /api/ecospace/geo": (_req, res, url) => {
+      try {
+        const item = itemId(url.searchParams.get("item")), eco = url.searchParams.get("eco");
+        const h = readHistory(item);
+        if (eco) h.features = h.features.filter(f => f.properties.eco === itemId(eco));
+        res.writeHead(200, { "Content-Type": "application/geo+json; charset=utf-8", "Content-Disposition": `inline; filename="${geoMediaId(item)}.geojson"` });
+        res.end(JSON.stringify({ ...h, omeka: geoState.get(item) ?? null, omekaProperty: propState.get(item) ?? null }, null, 2));
+      } catch (e) { ctx.sendJson(res, 400, { error: (e as Error).message }); }
+    },
+
+    // position spatio-temporelle d'un actant ou d'un physique placé ({ eco, item, lon, lat, alt?, at?, address?, index? }) :
+    // nouveau point de l'historique (at : date ISO, défaut maintenant) ou point index corrigé ; la position de référence
+    // devient le point le plus récent, l'hexagone en découle
+    "POST /api/ecospace/position": json(async req => {
+      const b = await ctx.readBody(req);
+      const eco = itemId(b.eco), id = itemId(b.item), s = load(eco);
+      if (!s) throw new Error("Espace inexistant");
+      const p = editablePlacement(s, id), h = readHistory(id), { pos, at } = geoInput(b, s), address = b.address == null ? undefined : text(b.address, 300);
+      if (b.index != null && b.index !== "") {
+        const f = h.features[int(b.index, "index")];
+        if (!f || f.properties.eco !== eco || !f.geometry) throw new Error("Position introuvable dans l'historique de cet écosystème");
+        f.geometry.coordinates = [pos.lon, pos.lat, pos.alt]; f.properties.at = at;
+        if (address !== undefined) { if (address) f.properties.address = address; else delete f.properties.address; }
+      } else h.features.push(pointFeature(pos, { eco, at, event: "déplacé", shape: p.shape, ...(address ? { address } : {}) }));
+      const moved = applyHistory(s, p, h);
+      console.log(`🗺️ EcoSpace : position de l'item ${id} ${b.index != null && b.index !== "" ? "corrigée" : "ajoutée"} (${pos.lon}, ${pos.lat} le ${at}) dans l'écosystème ${eco}`);
+      return { exists: true, moved, ...(await view(await ctx.serverOmk(), s)) };
+    }),
+    // suppression d'un point de l'historique ({ eco, item, index }) ; au moins une position doit rester dans l'écosystème
+    "POST /api/ecospace/position/delete": json(async req => {
+      const b = await ctx.readBody(req);
+      const eco = itemId(b.eco), id = itemId(b.item), s = load(eco);
+      if (!s) throw new Error("Espace inexistant");
+      const p = editablePlacement(s, id), h = readHistory(id), i = int(b.index, "index"), f = h.features[i];
+      if (!f || f.properties.eco !== eco) throw new Error("Position introuvable dans l'historique de cet écosystème");
+      h.features.splice(i, 1);
+      const moved = applyHistory(s, p, h);
+      console.log(`🗺️ EcoSpace : position ${i} de l'item ${id} supprimée de l'historique`);
+      return { exists: true, moved, ...(await view(await ctx.serverOmk(), s)) };
+    }),
+
     "GET /api/ecospace/space": json(async (_req, url) => {
       const eco = itemId(url.searchParams.get("eco"));
       const omk = await ctx.serverOmk();
@@ -517,8 +738,8 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       return { exists: true, ...(await view(omk, s)) };
     }),
 
-    // origine géographique de la grille ({ eco, lon, lat, alt? }) : centre de l'hexagone (0, 0) ; les coordonnées
-    // géographiques de tous les hexagones et éléments en découlent (planeToGeo), les positions dans la scène ne changent pas
+    // origine géographique de la grille ({ eco, lon, lat, alt? }) : centre de l'hexagone (0, 0) ; les éléments gardent
+    // leur position géographique de référence et changent d'hexagone (rehex) ; la grille à niveaux couvre leur étendue
     "POST /api/ecospace/origin": json(async req => {
       const b = await ctx.readBody(req);
       const eco = itemId(b.eco), s = load(eco);
@@ -527,9 +748,10 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       if (Math.abs(lon) > 180 || Math.abs(lat) > 90) throw new Error("Longitude (−180 à 180) ou latitude (−90 à 90) hors limites");
       const old = s.grid.origin;
       s.grid.origin = { lon: +lon.toFixed(7), lat: +lat.toFixed(7), alt: +alt.toFixed(2) };
+      const moved = rehex(s);
       save(s);
-      console.log(`🧭 EcoSpace : origine de l'écosystème ${eco} : ${old.lon}, ${old.lat} → ${s.grid.origin.lon}, ${s.grid.origin.lat} (alt. ${s.grid.origin.alt} m)`);
-      return { exists: true, ...(await view(await ctx.serverOmk(), s)) };
+      console.log(`🧭 EcoSpace : origine de l'écosystème ${eco} : ${old.lon}, ${old.lat} → ${s.grid.origin.lon}, ${s.grid.origin.lat} (alt. ${s.grid.origin.alt} m), ${moved.length} élément(s) changent d'hexagone`);
+      return { exists: true, moved, ...(await view(await ctx.serverOmk(), s)) };
     }),
 
     // placement d'un élément ({ eco, item, q, r } ou { eco, item, near: { q, r } } = hexagone libre le plus proche) ;
@@ -550,7 +772,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       // concept : ajouté à l'espace ; sa bulle (taille, position) est calculée d'après sa hiérarchie
       if (shape.free) {
         const hex = b.near ? { q: int(b.near.q, "q"), r: int(b.near.r, "r") } : { q: int(b.q, "q"), r: int(b.r, "r") };
-        if (!inGrid(s.grid, hex)) throw new Error("Hexagone hors de la grille");
+        if (!validHex(hex)) throw new Error("Hexagone invalide");
         addConcept(s, id, hex);
         save(s);
         console.log(`🧭 EcoSpace : concept ${id} ajouté à l'écosystème ${eco}`);
@@ -561,9 +783,9 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       let hex: { q: number; r: number } | null;
       if (b.near) { const q = int(b.near.q, "q"), r = int(b.near.r, "r"); hex = nearestFree(s.grid, { q, r, s: -q - r }, taken); if (!hex) throw new Error("Grille pleine"); }
       else hex = { q: int(b.q, "q"), r: int(b.r, "r") };
-      if (!inGrid(s.grid, hex)) throw new Error("Hexagone hors de la grille");
+      if (!validHex(hex)) throw new Error("Hexagone invalide");
       if (taken.has(hexKey(hex))) throw new Error(`Hexagone déjà occupé (couche ${layer})`);
-      s.placements = [...s.placements.filter(p => p.item !== id), { item: id, q: hex.q, r: hex.r, s: -hex.q - hex.r || 0, shape: shape.key, placed: new Date().toISOString() }];
+      s.placements = [...s.placements.filter(p => p.item !== id), { item: id, q: hex.q, r: hex.r, s: -hex.q - hex.r || 0, shape: shape.key, placed: new Date().toISOString(), pos: planeToGeo(s.grid, hexToPlane(s.grid, hex)) }];
       save(s);
       console.log(`🧭 EcoSpace : ${shape.label} ${id} placé en (${hex.q}, ${hex.r}, ${-hex.q - hex.r || 0}) dans l'écosystème ${eco}`);
       return view(omk, s);
