@@ -4,6 +4,7 @@
 import { EXISTENCES_INSTRUCTIONS, EXISTENCES_PROMPT } from "../agents/existencesAgent";
 import { AFFECTS_INSTRUCTIONS, AFFECTS_PROMPT } from "../agents/affectsAgent";
 import { ADA_INSTRUCTIONS, ADA_PROMPT } from "../agents/adaAgent";
+import { ECO_MODEL_INSTRUCTIONS, ECO_MODEL_PROMPT, ECO_SUGGEST_INSTRUCTIONS, ECO_SUGGEST_PROMPT } from "../agents/ecoTextAgent";
 
 export type ModelRole = "analytique" | "rapide" | "vision";
 
@@ -45,6 +46,16 @@ export const AGENTS: Record<string, AgentInfo> = {
     name: "ADA onto-éthique", role: "interprète la matrice : symbiose, risques, ajustement des cribles, questions pour la discussion", model: "analytique",
     instructions: ADA_INSTRUCTIONS, prompt: ADA_PROMPT,
     promptHelp: "Variables : {{activite}}, {{existences}} (avec leurs dimensions), {{indicateurs}} (symbiose, pouvoirs, valeurs, complexité, spirales), {{alertes}}, {{pulsations}} (les plus intenses, avec leur origine)." },
+  "eco-model-agent": { id: "eco-model-agent", usageTag: "(ecoModelAgent)", estimate: { inputTokens: 3000, outputTokens: 2500, callsPerRun: 1 },
+    name: "Modélisateur d'écosystème", role: "transforme la description textuelle d'un écosystème en modélisation onto-éthique (éléments, pouvoirs, pulsations, lieux et dates)", model: "analytique",
+    instructions: ECO_MODEL_INSTRUCTIONS, prompt: ECO_MODEL_PROMPT,
+    promptHelp: "Variables : {{description}} (rubriques de la saisie guidée), {{existants}} (titres d'items existants par type), {{max}} (éléments par type).",
+    note: "Appelé par EcoSpace (étape 1.1, « Nouvel écosystème depuis un texte », bouton Analyser). La réponse suit un schéma (écosystème, actants avec personnes et agents, physiques, concepts, cribles, pouvoirs et leurs maillons, pulsations et flux) ; elle est rapprochée des items existants puis relue dans un aperçu modifiable avant la création." },
+  "eco-suggest-agent": { id: "eco-suggest-agent", usageTag: "(ecoSuggestAgent)", estimate: { inputTokens: 1200, outputTokens: 120, callsPerRun: 6 },
+    name: "Assistant de description", role: "propose la suite d'une rubrique pendant la saisie guidée d'un écosystème", model: "rapide",
+    instructions: ECO_SUGGEST_INSTRUCTIONS, prompt: ECO_SUGGEST_PROMPT,
+    promptHelp: "Variables : {{rubrique}}, {{aide}}, {{modeles}} (phrases modèles de la rubrique), {{description}} (toutes les rubriques), {{en_cours}} (texte de la rubrique), {{max}} (mots).",
+    note: "Appelé par EcoSpace (bouton « Suggérer la suite » d'une rubrique) ; la suite est proposée, à ajouter ou à ignorer." },
 };
 
 export const DIAGRAMS: Record<"ontoethique", WorkflowDiagram> = {
@@ -60,6 +71,7 @@ export const DIAGRAMS: Record<"ontoethique", WorkflowDiagram> = {
     ],
     outside: [
       { id: "synthesis", label: "Nouvelle synthèse", description: "Onglet Synthèse : synthèse rédigée à partir de la matrice corrigée et validée par les humains", agents: ["ada-agent"] },
+      { id: "ecotext", label: "Écosystème depuis un texte", description: "EcoSpace : saisie guidée par rubriques (suite proposée), modélisation onto-éthique du texte, aperçu modifiable, création de l'écosystème et de son espace", agents: ["eco-suggest-agent", "eco-model-agent"] },
     ],
   },
 };

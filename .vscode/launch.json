@@ -37,6 +37,42 @@
             "serverReadyAction": { "action": "openExternally", "pattern": "ontoÉthique : http://127\\.0\\.0\\.1:(\\d+)", "uriFormat": "http://127.0.0.1:%s" }
         },
         {
+            // Interface ontoÉthique ouverte directement sur EcoSpace, espace de l'écosystème 42 (navigateur par défaut)
+            "name": "Interface : EcoSpace éco 42 (7290)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/ui/server.ts",
+            "args": ["ontoethique"],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "cwd": "${workspaceFolder}",
+            "env": { "ONTOETHIQUE_PORT": "7290", "ONTOETHIQUE_URL": "http://127.0.0.1:7290" },
+            "autoAttachChildProcesses": true,
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "sourceMaps": true,
+            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+            "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
+            "serverReadyAction": { "action": "openExternally", "pattern": "ontoÉthique : http://127\\.0\\.0\\.1:(\\d+)", "uriFormat": "http://127.0.0.1:%s/ecospace#step=1.2&eco=42" }
+        },
+        {
+            // idem, page ouverte dans Chrome piloté par VS Code : points d'arrêt aussi dans le JS de src/ui/public/ecospace.html
+            "name": "Interface : EcoSpace éco 42 + débogage de la page (7290)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/ui/server.ts",
+            "args": ["ontoethique"],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "cwd": "${workspaceFolder}",
+            "env": { "ONTOETHIQUE_PORT": "7290", "ONTOETHIQUE_URL": "http://127.0.0.1:7290" },
+            "autoAttachChildProcesses": true,
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "sourceMaps": true,
+            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+            "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
+            "serverReadyAction": { "action": "debugWithChrome", "pattern": "ontoÉthique : http://127\\.0\\.0\\.1:(\\d+)", "uriFormat": "http://127.0.0.1:%s/ecospace#step=1.2&eco=42", "webRoot": "${workspaceFolder}/src/ui/public" }
+        },
+        {
             // fichier TypeScript ouvert dans l'éditeur
             "name": "Fichier courant",
             "type": "node",

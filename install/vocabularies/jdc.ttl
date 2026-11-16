@@ -93,6 +93,12 @@ jdc:pulsationExistentielle a rdfs:Class ;
     rdfs:domain o:Resource ;
     vs:term_status "experimental" .
 
+jdc:incitation a rdfs:Class ;
+    rdfs:label "Incitation" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+    
+
 jdc:x a rdf:Property ;
     rdfs:label "x" ;
     rdfs:domain o:Resource ;
@@ -356,5 +362,20 @@ jdc:geoPosition a rdf:Property ;
 
 jdc:timePosition a rdf:Property ;
     rdfs:label "position temporelle" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:prompt a rdf:Property ;
+    rdfs:label "prompt" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:reponse a rdf:Property ;
+    rdfs:label "réponse" ;
+    rdfs:domain o:Resource ;
+    vs:term_status "experimental" .
+
+jdc:cost a rdf:Property ;
+    rdfs:label "coût" ;
     rdfs:domain o:Resource ;
     vs:term_status "experimental" .

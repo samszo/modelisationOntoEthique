@@ -9,18 +9,21 @@
     --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f24; --muted: #6b6f78; --line: #e2e0d9;
     --accent: #2f6db0; --accent-ink: #ffffff; --ok: #2e7d4f; --warn: #b26a00; --err: #b3261e;
     --tile: #d9d6cc; --tile-hover: #f2c94c; --tile-center: #c9d8e8; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+    --sky: #f6f5f1; --under: #d8dde4; /* fond de l'espace 3D au-dessus et au-dessous de la grille */
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
       --accent: #7fb0e8; --accent-ink: #0c1a29; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80;
       --tile: #3a3f48; --tile-hover: #c9a227; --tile-center: #34506b; --shadow: none;
+      --sky: #15171b; --under: #0b1622;
     }
   }
   :root[data-theme="dark"] {
     --bg: #15171b; --panel: #1d2026; --ink: #e8e9ec; --muted: #9aa0aa; --line: #2e323a;
     --accent: #7fb0e8; --accent-ink: #0c1a29; --ok: #6cc28f; --warn: #e0a64a; --err: #f08a80;
     --tile: #3a3f48; --tile-hover: #c9a227; --tile-center: #34506b; --shadow: none;
+      --sky: #15171b; --under: #0b1622;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -43,9 +46,29 @@
   button.btn:disabled { opacity: .5; cursor: default; }
   button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  /* bouton bascule inactif (bloc masqué, animation arrêtée) : grisé */
+  button.btn.toggle[aria-pressed="false"] { color: var(--muted); background: var(--bg); border-style: dashed; opacity: .7; }
+  /* parcours d'une pulsation : étapes numérotées, étape en cours mise en évidence, clic = aller à l'étape */
+  .route-box { margin: 0 0 8px; } .route-box > summary { cursor: pointer; font-size: 13px; color: var(--ink); }
+  ol.route { margin: 4px 0 0; padding: 0 0 0 2.4em; max-height: 220px; overflow: auto; font-size: 13px; }
+  ol.route li { padding: 1px 4px; border-radius: 4px; cursor: pointer; }
+  ol.route li:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  ol.route li.cur { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+  ol.route li .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 5px 0 0; vertical-align: baseline; }
+  ol.route li small { color: var(--muted); margin-left: 6px; }
   .toolbar .speed, .toolbar .turbo { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted, #666); }
   .toolbar .speed input { width: 110px; } .toolbar .speed output { min-width: 4.5em; font-variant-numeric: tabular-nums; }
   #labels .label.cell-badge { background: var(--accent); color: #fff; font-weight: 600; z-index: 100000 !important; pointer-events: auto; cursor: zoom-in; }
+  .space-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+  .space-head h2 { margin: 0; }
+  details.rubric { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 8px; background: var(--panel); }
+  details.rubric > summary { cursor: pointer; padding: 5px 10px; font-size: 13.5px; font-weight: 600; color: var(--ink); list-style: revert; }
+  details.rubric > summary .muted { font-weight: 400; margin-left: 6px; }
+  details.rubric[open] > summary { border-bottom: 1px solid var(--line); }
+  details.rubric > :not(summary) { margin-left: 10px; margin-right: 10px; }
+  details.rubric > .toolbar { margin-top: 8px; }
+  details.rubric > .lead { margin-top: 8px; }
+  details.rubric .timeline { margin: 0 10px 10px; }
   .timeline { margin: -4px 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
   .timeline svg { display: block; font: 11px system-ui, sans-serif; }
   .timeline text { fill: var(--ink); }
@@ -147,6 +170,7 @@
   #el-list summary .n { color: var(--muted); font-weight: 400; margin-left: auto; font-variant-numeric: tabular-nums; }
   #el-list input[type=checkbox] { width: auto; margin: 0; accent-color: var(--accent); cursor: pointer; }
   .el-row { display: flex; gap: 2px; align-items: center; padding: 1px 6px 1px 10px; }
+  #el-list .out-note { margin: 0; padding: 6px 10px; font-size: 12.5px; border-bottom: 1px solid var(--line); }
   .el-row:hover, .el-row.cur { background: color-mix(in srgb, var(--accent) 9%, transparent); }
   .el-row.off .t { color: var(--muted); text-decoration: line-through; }
   .el-row .fold { flex: none; width: 18px; height: 22px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; line-height: 22px; text-align: center; }
@@ -196,8 +220,9 @@
       <section class="card">
         <h2>1.1 Créer ou choisir un écosystème de connaissances</h2>
         <p class="lead">Un nouvel écosystème reçoit son espace : une grille hexagonale repérée en coordonnées cube (q, r, s) et géographiques (longitude, latitude, altitude).</p>
-        <div class="toolbar"><button id="eco-new" class="btn primary">Nouvel écosystème</button><button id="eco-refresh" class="btn">Actualiser</button><span id="eco-info" class="muted" style="font-size:13px"></span></div>
+        <div class="toolbar"><button id="eco-new" class="btn primary">Nouvel écosystème</button><button id="eco-text" class="btn" title="Décrire l'écosystème en texte, guidé rubrique par rubrique ; un agent le modélise, à relire avant de créer l'écosystème et son espace">Nouvel écosystème depuis un texte</button><button id="eco-refresh" class="btn">Actualiser</button><span id="eco-info" class="muted" style="font-size:13px"></span></div>
         <div id="eco-form" class="hidden" style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px"></div>
+        <div id="eco-textbox" class="hidden" style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px"></div>
         <div id="ecos" class="ecos"><p class="muted">Chargement…</p></div>
       </section>
     </div>
@@ -205,11 +230,23 @@
     <!-- 1.2 espace -->
     <div id="step-1.2" class="hidden">
       <section class="card">
-        <h2>1.2 Espace de l'écosystème</h2>
+        <div class="space-head"><h2>1.2 Espace de l'écosystème</h2><span id="space-info" class="muted" style="font-size:13px"></span></div>
+        <!-- rubriques repliables au-dessus de l'espace (état mémorisé dans le navigateur) -->
+        <details class="rubric" id="rub-help"><summary>Aide</summary>
         <p class="lead">Cliquer sur un hexagone ouvre son menu (libellé au survol) : <strong>lier</strong> crée ou place un élément ontologique sur l'hexagone, avec sa forme (sur un physique : un physique enfant) ; sur un élément placé : <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour tourner, clic droit ou Maj + glisser pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone.</p>
-        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-pulse" class="btn small" aria-pressed="true" title="Arrêter ou relancer l'animation des pulsations et des flux">Pulsations</button><label class="speed" title="Vitesse de propagation des éclairs des pulsations (hexagones par seconde)">Vitesse <input id="pulse-speed" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Vitesse de propagation des pulsations"><output id="pulse-speed-val">4 hex/s</output></label><span class="turbo" title="Couleur de l'éclair selon l'intensité du pouvoir parcouru (échelle turbo)">−100<span id="turbo-bar"></span>+100</span><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button><span id="space-info" class="muted" style="font-size:13px"></span></div>
-        <div class="toolbar"><label for="time-height">Échelle temporelle</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span><button id="time-reset" class="btn small hidden" title="Afficher de nouveau toute l'étendue des dates">Toutes les dates</button></div>
-        <div id="timeline" class="timeline hidden" aria-label="Frise des positions temporelles : glisser pour choisir les dates affichées"></div>
+        </details>
+        <details class="rubric" id="rub-view" open><summary>Vues et affichage</summary>
+        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small toggle" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small toggle" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button></div>
+        </details>
+        <details class="rubric" id="rub-pulse"><summary>Pulsations <span id="pulse-sum" class="muted"></span></summary>
+        <div class="toolbar"><button id="space-pulse" class="btn small toggle" aria-pressed="false" title="Arrêter ou relancer l'animation des pulsations et des flux">Animation</button><label class="speed" title="Vitesse de propagation des éclairs des pulsations (hexagones par seconde ; un saut dure au plus maxHop secondes)">Vitesse <input id="pulse-speed" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Vitesse de propagation des pulsations"><output id="pulse-speed-val">4 hex/s</output></label><span class="turbo" title="Couleur de l'éclair selon l'intensité du pouvoir parcouru (échelle turbo)">−100<span id="turbo-bar"></span>+100</span></div>
+        <div class="toolbar"><label for="pulse-follow">Suivre</label><select id="pulse-follow" style="width:auto;max-width:320px" aria-label="Pulsation à suivre avec la caméra"><option value="">— aucune pulsation —</option></select><button id="pulse-follow-go" class="btn small" aria-pressed="false" title="La caméra accompagne la tête de l'éclair ; tourner et zoomer restent possibles (Échap pour arrêter)">Suivre</button><button id="pulse-hold" class="btn small" disabled title="Mettre en pause ou reprendre la pulsation suivie (la caméra reste libre)">⏸ Pause</button><label class="speed" title="Pendant le suivi, arrêt sur chaque élément atteint : la vue zoome sur lui puis reprend">Arrêt sur élément <input id="pulse-dwell" type="range" min="0" max="8" step="0.5" value="2.5" aria-label="Durée de la pause sur chaque élément pendant le suivi"><output id="pulse-dwell-val">2.5 s</output></label><span id="pulse-follow-info" class="muted" style="font-size:13px"></span></div>
+        <details id="pulse-route-box" class="route-box"><summary>Parcours <span id="pulse-route-n" class="muted"></span></summary><ol id="pulse-route" class="route"></ol></details>
+        </details>
+        <details class="rubric" id="rub-time" open><summary>Échelle temporelle <span id="time-sum" class="muted"></span></summary>
+        <div class="toolbar"><label for="time-height">Hauteur</label><input id="time-height" type="range" min="0" max="100" step="0.5" style="width:220px" title="Hauteur de l'échelle : de maintenant (surface) à la plus ancienne création"><select id="time-mode" style="width:auto" title="Intervalles"><option value="linear">linéaire</option><option value="log">logarithmique (récent dilaté)</option></select><span id="time-info" class="muted num" style="font-size:13px"></span><button id="time-reset" class="btn small hidden" title="Afficher de nouveau toute l'étendue des dates">Toutes les dates</button></div>
+        <div id="timeline" class="timeline hidden" aria-label="Streamgraph des éléments par type : glisser pour choisir les dates affichées"></div>
+        </details>
         <div class="space-wrap" id="space-wrap">
         <div id="space">
           <div id="labels"></div>
@@ -386,6 +423,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { ConvexGeometry } from "three/addons/geometries/ConvexGeometry.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { templateForm } from "/templateForm.js";
+import { openEcoText } from "/ecotext.js";
 
 const $ = s => document.querySelector(s);
 const el = (tag, props = {}, ...children) => {
@@ -521,6 +559,15 @@ async function loadEcos() {
 }
 function chooseEco(x) { state.eco = x.id; state.ecoTitle = x.title; space = null; go("1.2"); }
 $("#eco-refresh").onclick = loadEcos;
+// nouvel écosystème depuis une description textuelle (module ecotext.js) : saisie guidée, modélisation, aperçu, création
+$("#eco-text").onclick = () => {
+  const box = $("#eco-textbox");
+  box.classList.toggle("hidden");
+  $("#eco-text").classList.toggle("primary", !box.classList.contains("hidden"));
+  if (box.classList.contains("hidden") || box.childElementCount) return;
+  openEcoText(box, { api, toast, withBusy, busyStep, geocode: q => geocode(q), ecoTemplateId: ecoData?.ecoTemplateId ?? 14, get ecos() { return ecoData?.ecos ?? []; },
+    onCreated: x => { box.classList.add("hidden"); $("#eco-text").classList.remove("primary"); chooseEco(x); } });
+};
 $("#eco-new").onclick = async () => {
   const box = $("#eco-form");
   box.classList.toggle("hidden");
@@ -611,8 +658,8 @@ function actantShape(shape, S, open = false, sphereR = null) {
 const SHAPES = { actant: actantShape };
 
 // ==========================================
-// pouvoirs : nanotubes de carbone entre les maillons de leur séquence (un nanotube par segment droit ; segments
-// suivants et branches = nanotubes enfants, joints par une sphère) ; crible = anneau traversé par le nanotube
+// pouvoirs : cylindres entre les maillons de leur séquence (un tube par segment droit ; segments
+// suivants et branches = tubes enfants, joints par une sphère) ; crible = anneau traversé par le tube
 // ==========================================
 // concept (« bulle conceptuelle ») : capsule translucide d'axe horizontal est-ouest (cylindre fermé par deux
 // demi-sphères ; length = longueur totale) ; taille et position calculées par le serveur (titre ou enfants, répartition
@@ -678,8 +725,9 @@ function memberShape(p, shape) {
   return g;
 }
 
-// nanotube « zigzag » (n, 0) fait d'hexagones indépendants : surfaces (faces cliquables, une instance par hexagone,
-// cells[i] = { j, k } : ligne le long de l'axe, rang autour), nœuds (atomes) et liens (liaisons) ; de A à B
+// tube d'un pouvoir : cylindre translucide de A à B (une seule géométrie, quelle que soit sa longueur) ; ses hexagones
+// (maillage « zigzag » (n, 0) d'un tube) ne sont plus dessinés mais calculés : cellAt donne l'hexagone (j : ligne le
+// long de l'axe, k : rang autour) d'un point de la surface, cellLocal son centre (relations multiples « Connecter ici »)
 const latticeB = (r, n) => 2 * Math.PI * r / (n * Math.sqrt(3));
 function tubeFrame(A, B) {
   return { len: A.distanceTo(B), mid: A.clone().add(B).multiplyScalar(0.5), q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()) };
@@ -689,54 +737,30 @@ function cellLocal(len, r, n, j, k) {
   const b = latticeB(r, n), y = -len / 2 + b + 1.5 * b * j, a = 2 * Math.PI * k / n + (j % 2 ? Math.PI / n : 0);
   return { y, a, p: new THREE.Vector3(r * Math.cos(a), y, r * Math.sin(a)) };
 }
-const cellRows = (len, r, n) => Math.max(0, Math.floor((len - 2 * latticeB(r, n)) / (1.5 * latticeB(r, n))) + 1);
+const cellRows = (len, r, n) => Math.max(1, Math.floor((len - 2 * latticeB(r, n)) / (1.5 * latticeB(r, n))) + 1);
 function cellWorld(A, B, r, n, j, k) {
   const f = tubeFrame(A, B), rows = cellRows(f.len, r, n), c = cellLocal(f.len, r, n, Math.min(j, Math.max(0, rows - 1)), k);
   return c.p.applyQuaternion(f.q).add(f.mid);
 }
-const hexFace = new Map(); // géométrie d'une face (hexagone plat, pointe le long de l'axe), par taille
-function nanotube(A, B, r, n, color) {
-  const g = new THREE.Group(), f = tubeFrame(A, B), len = f.len, b = latticeB(r, n), col = new THREE.Color(color);
-  // surfaces : une face par hexagone, légèrement réduite (hexagones indépendants)
-  const rows = cellRows(len, r, n), cells = [];
-  const key = b.toFixed(4);
-  if (!hexFace.has(key)) hexFace.set(key, new THREE.CircleGeometry(b * 0.9, 6).rotateZ(Math.PI / 6));
-  const faces = new THREE.InstancedMesh(hexFace.get(key), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }), Math.max(1, rows * n));
-  const m = new THREE.Matrix4(), X = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3();
-  for (let j = 0; j < rows; j++) for (let k = 0; k < n; k++) {
-    const c = cellLocal(len, r, n, j, k);
-    Z.set(Math.cos(c.a), 0, Math.sin(c.a)); X.set(-Math.sin(c.a), 0, Math.cos(c.a));
-    m.makeBasis(X, Y, Z).setPosition(c.p.x * 0.99, c.y, c.p.z * 0.99);
-    faces.setMatrixAt(cells.length, m); cells.push({ j, k });
-  }
-  faces.count = cells.length;
-  faces.userData.cells = cells;
-  // nœuds et liens : quatre anneaux d'atomes par maille (hauteurs 0, b/2, 3b/2, 2b ; anneaux 1 et 2 décalés d'un demi-pas)
-  const rl = r * 1.02, at = (k, h, off) => { const a = 2 * Math.PI * k / n + (off ? Math.PI / n : 0); return [rl * Math.cos(a), h, rl * Math.sin(a)]; };
-  const pts = [], atoms = [];
-  for (let y0 = -len / 2; y0 < len / 2; y0 += 3 * b) {
-    const z = [0, b / 2, 1.5 * b, 2 * b].map(h => Math.min(len / 2, y0 + h)), next = Math.min(len / 2, y0 + 3 * b);
-    for (let k = 0; k < n; k++) {
-      atoms.push(at(k, z[0], 0), at(k, z[1], 1), at(k, z[2], 1), at(k, z[3], 0));
-      pts.push(...at(k, z[0], 0), ...at(k, z[1], 1), ...at(k, z[0], 0), ...at(k - 1, z[1], 1));
-      pts.push(...at(k, z[1], 1), ...at(k, z[2], 1));
-      pts.push(...at(k, z[2], 1), ...at(k, z[3], 0), ...at(k + 1, z[2], 1), ...at(k, z[3], 0));
-      if (next > z[3]) pts.push(...at(k, z[3], 0), ...at(k, next, 0));
-    }
-  }
-  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-  const links = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x1c1c1c }));
-  const nodes = new THREE.InstancedMesh(new THREE.SphereGeometry(b * 0.14, 6, 4), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.4 }), atoms.length);
-  atoms.forEach((p, i) => nodes.setMatrixAt(i, m.makeTranslation(p[0], p[1], p[2])));
-  links.raycast = () => {}; nodes.raycast = () => {}; // seules les surfaces se cliquent
-  g.add(faces, links, nodes);
-  g.position.copy(f.mid); g.quaternion.copy(f.q);
-  return { group: g, faces };
+// hexagone du tube sous un point de sa surface (repère local du cylindre : axe y, centré)
+function cellAt(tube, local) {
+  const { len, r, n } = tube.userData.tube, b = latticeB(r, n), rows = cellRows(len, r, n);
+  const j = Math.min(rows - 1, Math.max(0, Math.round((local.y + len / 2 - b) / (1.5 * b))));
+  const a = Math.atan2(local.z, local.x) - (j % 2 ? Math.PI / n : 0);
+  return { j, k: ((Math.round(a * n / (2 * Math.PI)) % n) + n) % n };
+}
+const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true); // partagée, mise à l'échelle (rayon, longueur)
+function powerTube(A, B, r, n, color) {
+  const f = tubeFrame(A, B);
+  const tube = new THREE.Mesh(tubeGeo, new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.6, roughness: 0.45, side: THREE.DoubleSide, depthWrite: false }));
+  tube.scale.set(r, f.len, r); tube.position.copy(f.mid); tube.quaternion.copy(f.q);
+  tube.userData.tube = { len: f.len, r, n };
+  return tube;
 }
 const nearestHex = p => space.hexes.reduce((best, h) => !best || Math.hypot(h.x - p.x, h.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z) ? h : best, null);
 // segments des pouvoirs (clé → { A, B, … }), pour attacher un élément à un hexagone
 let powerSegs = new Map(), powerRoutes = new Map(); // parcours d'un pouvoir (éclair des pulsations) : éléments dans l'ordre
-let tubeGraph = new Map(), tubeRadius = 0; // graphe des axes des nanotubes : clé de position → { p, edges: clé → longueur }
+let tubeGraph = new Map(), tubeRadius = 0; // graphe des axes des tubes : clé de position → { p, edges: clé → longueur }
 const posKey = p => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`;
 function buildPowers() {
   powerSegs = new Map(); powerRoutes = new Map(); tubeGraph = new Map();
@@ -762,7 +786,7 @@ function buildPowers() {
     let prev = null, pending = [];
     pw.steps.forEach((st, i) => {
       if (st.key === "crible") { pending.push(...st.members.filter(m => !m.attach)); return; }
-      if (pw.interior && st.key === "actant") return; // l'actant héberge : le nanotube relie directement les concepts
+      if (pw.interior && st.key === "actant") return; // l'actant héberge : le tube relie directement les concepts
       const m0 = st.members[0], at = m0 ? anchors.get(m0.item) : null;
       if (!at) { prev = null; pending = []; return; }
       const node = { i, item: m0.item, at };
@@ -776,9 +800,9 @@ function buildPowers() {
     });
     nodesOf.set(pw, nodes);
   }
-  // 2. relations multiples : élément attaché à un hexagone (nanotube enfant depuis cet hexagone ; crible : anneau sur
-  // l'hexagone), sinon nanotube enfant depuis le maillon principal précédent (ou suivant, pour le premier maillon) ;
-  // plusieurs passes, un élément pouvant s'attacher à un nanotube enfant
+  // 2. relations multiples : élément attaché à un hexagone (tube enfant depuis cet hexagone ; crible : anneau sur
+  // l'hexagone), sinon tube enfant depuis le maillon principal précédent (ou suivant, pour le premier maillon) ;
+  // plusieurs passes, un élément pouvant s'attacher à un tube enfant
   const todo = [];
   for (const pw of space.powers) pw.steps.forEach((st, i) => st.members.forEach((m, mi) => {
     if (st.key === "crible" ? m.attach : mi > 0 && !(pw.interior && st.key === "actant")) todo.push({ pw, st, i, m });
@@ -804,18 +828,18 @@ function buildPowers() {
       joint(from, pw.color, pw);
     }
   }
-  // nanotubes : une instance de surfaces cliquable par segment (cible = pouvoir, segment)
+  // tubes : un cylindre cliquable par segment (cible = pouvoir, segment ; hexagone visé calculé par cellAt)
   for (const seg of segs.values()) {
     if (seg.A.distanceTo(seg.B) < 1e-3) continue;
     const pw = seg.powers[0], mid = seg.A.clone().add(seg.B).multiplyScalar(0.5);
-    const { group, faces } = nanotube(seg.A, seg.B, r, n, seg.color);
+    const group = powerTube(seg.A, seg.B, r, n, seg.color);
     const target = { item: pw.item, shape: "pouvoir", power: pw, powers: seg.powers, seg, title: pw.title, templateId: sh.templateId, depth: 0, anchor: mid, hex: nearestHex(mid) };
-    group.userData = { hex: target.hex, target };
+    Object.assign(group.userData, { hex: target.hex, target });
     itemsGroup.add(group);
     const cs = [...seg.cribles.values()], dir = seg.B.clone().sub(seg.A).normalize();
     cs.forEach((c, i) => rings.push({ at: seg.A.clone().lerp(seg.B, (i + 1) / (cs.length + 1)), dir, crible: c, powers: seg.powers }));
   }
-  // cribles : anneaux traversés par le nanotube, avec leur titre
+  // cribles : anneaux traversés par le tube, avec leur titre
   const cribleTpl = (space.powerTypes ?? []).flatMap(t => t.sequence).find(x => x.key === "crible")?.templateId ?? null;
   for (const rg of rings) {
     const R = (sh.cribleRatio ?? 4) * r, c = rg.crible;
@@ -830,14 +854,14 @@ function buildPowers() {
   for (const pw of space.powers) {
     const pts = [];
     pw.steps.forEach(st => st.members.forEach(m => {
-      if (pw.interior && st.key === "actant") return; // pas de nanotube vers l'actant hôte
+      if (pw.interior && st.key === "actant") return; // pas de tube vers l'actant hôte
       const at = st.key === "crible" ? rings.find(rg => rg.crible.item === m.item && rg.powers.includes(pw))?.at : anchors.get(m.item);
       if (at && !(pts.length && pts.at(-1).at.distanceTo(at) < 1e-3)) pts.push({ item: m.item, title: m.title, at: at.clone(), pw });
     }));
     powerRoutes.set(pw.item, pts);
   }
-  // graphe des nanotubes (chemins de l'éclair) : nœuds = extrémités des segments, anneaux des cribles et départs des
-  // nanotubes enfants, projetés sur l'axe du segment qui les porte ; arêtes = tronçons d'axe
+  // graphe des tubes (chemins de l'éclair) : nœuds = extrémités des segments, anneaux des cribles et départs des
+  // tubes enfants, projetés sur l'axe du segment qui les porte ; arêtes = tronçons d'axe
   tubeRadius = r;
   const gnode = p => { const k = posKey(p); if (!tubeGraph.has(k)) tubeGraph.set(k, { p: p.clone(), edges: new Map() }); return k; };
   const glink = (a, b) => { const ka = gnode(a), kb = gnode(b); if (ka === kb) return; const w = a.distanceTo(b); tubeGraph.get(ka).edges.set(kb, w); tubeGraph.get(kb).edges.set(ka, w); };
@@ -856,7 +880,7 @@ function buildPowers() {
     cuts.sort((a, b) => a.t - b.t);
     for (let i = 1; i < cuts.length; i++) glink(cuts[i - 1].p, cuts[i].p);
   }
-  // jonctions : sphère au départ des nanotubes enfants (changement de direction, relations multiples, branches)
+  // jonctions : sphère au départ des tubes enfants (changement de direction, relations multiples, branches)
   for (const j of joints.values()) {
     const m = new THREE.Mesh(new THREE.SphereGeometry((sh.jointRatio ?? 1.8) * r, 16, 12), new THREE.MeshStandardMaterial({ color: j.color, roughness: 0.4 }));
     m.position.copy(j.at); m.raycast = () => {}; m.userData.joint = j; itemsGroup.add(m);
@@ -865,12 +889,12 @@ function buildPowers() {
 // ==========================================
 // pulsations existentielles : éclair lumineux qui parcourt les éléments de ses pouvoirs dans l'ordre (pouvoirs selon
 // leur ordre successif, puis maillons de chaque séquence), depuis un foyer cliquable au-dessus du premier élément, en
-// passant par l'intérieur des nanotubes (plus court chemin dans leur graphe) ; couleur de l'échelle turbo selon
+// passant par l'intérieur des tubes (plus court chemin dans leur graphe) ; couleur de l'échelle turbo selon
 // l'intensité du pouvoir parcouru ; vitesse de propagation réglée par un curseur ; chaque élément atteint s'éclaire ;
 // flux vers d'autres pulsations : arcs fléchés d'un foyer à l'autre (Avant : flèche inversée, Pendant : trait double
 // sans flèche) où circulent des particules
 // ==========================================
-let pulses = [], fluxes = [], pulseOn = true, glowTex = null, pulseSpeed = null, lastPulseT = null;
+let pulses = [], fluxes = [], pulseOn = false, glowTex = null, pulseSpeed = null, lastPulseT = null;
 // intensité (−100 à +100) → couleur turbo (d3-scale-chromatic) ; intensité inconnue : milieu de l'échelle
 const turbo = v => new THREE.Color(d3.interpolateTurbo(Number.isFinite(v) ? Math.max(0, Math.min(1, (v + 100) / 200)) : 0.5));
 // halo : disque dégradé (blanc au centre, transparent au bord)
@@ -886,7 +910,7 @@ const glowSprite = (color, size, opacity = 1) => {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity, depthWrite: false }));
   sp.scale.setScalar(size); sp.raycast = () => {}; return sp;
 };
-// plus court chemin (Dijkstra) entre deux éléments le long des axes des nanotubes ; sinon saut direct, hors des tubes
+// plus court chemin (Dijkstra) entre deux éléments le long des axes des tubes ; sinon saut direct, hors des tubes
 function tubePath(a, b) {
   const ka = posKey(a), kb = posKey(b);
   if (ka === kb) return { pts: [a.clone()], inTube: true };
@@ -935,36 +959,41 @@ function buildPulsations() {
     if (!route.length) return; // pouvoirs non dessinés : pas d'éclair
     const vals = pl.powers.map(x => powerById.get(x.item)?.intensity).filter(x => Number.isFinite(x));
     const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, col = turbo(mean);
-    // foyer : octaèdre lumineux au-dessus du premier élément (ou de la grille), empilés si plusieurs pulsations y partent
-    const k = homes.get(route[0].item) ?? 0; homes.set(route[0].item, k + 1);
-    const home = route[0].at.clone().setY(Math.max(0, route[0].at.y)).addScaledVector(up, (sh.markerLift ?? 0.8) * S * (1 + 0.6 * k));
+    // foyer : octaèdre lumineux au-dessus de la position de la pulsation à la date de la surface (positions
+    // spatio-temporelles, comme placeInTime), sinon au-dessus du premier élément ; empilés si plusieurs partent du même lieu
+    const at = positionAt(pl, time.now), base = at ? (q => new THREE.Vector3(q.x, 0, q.z))(geoToScene(at)) : route[0].at.clone().setY(Math.max(0, route[0].at.y));
+    const hk = at ? `${base.x.toFixed(1)},${base.z.toFixed(1)}` : route[0].item, k = homes.get(hk) ?? 0; homes.set(hk, k + 1);
+    const home = base.addScaledVector(up, (sh.markerLift ?? 0.8) * S * (1 + 0.6 * k));
     const g = new THREE.Group(); // repère du monde : foyer, éclair, tête et éclats
     const marker = new THREE.Mesh(new THREE.OctahedronGeometry((sh.markerRadius ?? 0.16) * S), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.9, roughness: 0.3 }));
     marker.position.copy(home); marker.add(glowSprite(col, (sh.haloSize ?? 0.6) * S, 0.6)); g.add(marker);
     const label = new CSS2DObject(el("div", { className: "label", textContent: `⚡ ${pl.title.length > 36 ? pl.title.slice(0, 34) + "…" : pl.title}` }));
     label.position.copy(home).addScaledVector(up, (sh.markerRadius ?? 0.16) * S * 1.6); g.add(label);
-    // sauts : du foyer au premier élément (à l'air libre), puis d'élément en élément dans les nanotubes ; couleur turbo
+    // sauts : du foyer au premier élément (à l'air libre), puis d'élément en élément dans les tubes ; couleur turbo
     // de l'intensité du pouvoir de l'élément visé
     const hops = route.map((p, i) => {
       const path = i ? tubePath(route[i - 1].at, p.at) : { pts: [home.clone(), p.at.clone()], inTube: false };
       return { pts: path.pts.length > 1 ? path.pts : [path.pts[0], path.pts[0].clone()], maxDev: path.inTube ? tubeDev : Infinity, len: pathLength(path.pts), color: turbo(p.pw?.intensity), to: p.at };
     });
     // éclair : tube brisé (cœur clair, gaine colorée translucide), reconstruit à chaque image
-    const bolt = new THREE.Group(), boltCore = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: col, transparent: true }));
-    const boltGlow = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, depthWrite: false }));
-    for (const m of [boltCore, boltGlow]) { m.raycast = () => {}; m.frustumCulled = false; bolt.add(m); }
+    // éclair, tête et éclats dessinés par-dessus tout (sans test de profondeur) : ils restent visibles quand ils passent
+    // dans une sphère d'actant ou derrière une boîte
+    const bolt = new THREE.Group(), boltCore = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: col, transparent: true, depthTest: false }));
+    const boltGlow = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, depthWrite: false, depthTest: false }));
+    for (const m of [boltCore, boltGlow]) { m.raycast = () => {}; m.frustumCulled = false; m.renderOrder = 50; bolt.add(m); }
     bolt.visible = false; bolt.renderOrder = 7;
     // tête : sphère blanche, halo coloré, lumière ponctuelle qui éclaire les éléments traversés
-    const head = new THREE.Group(), core = new THREE.Mesh(new THREE.SphereGeometry((sh.headRadius ?? 0.035) * S, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const head = new THREE.Group(), core = new THREE.Mesh(new THREE.SphereGeometry((sh.headRadius ?? 0.035) * S, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }));
     core.raycast = () => {};
     const halo = glowSprite(col, (sh.haloSize ?? 0.6) * S), light = new THREE.PointLight(col, sh.lightIntensity ?? 1.5, (sh.lightDistance ?? 3) * S, 0);
     head.add(core, halo, light); head.position.copy(home);
     const burst = glowSprite(col, 1); burst.visible = false;
+    for (const o of [core, halo, burst]) { o.material.depthTest = false; o.renderOrder = 51; }
     g.add(bolt, head, burst);
-    const target = { item: pl.item, shape: "pulsation", pulsation: pl, title: pl.title, templateId: sh.templateId, depth: -1, anchor: home, hex: nearestHex(home), intensity: mean, group: g, route };
+    const target = { item: pl.item, shape: "pulsation", pulsation: pl, title: pl.title, templateId: sh.templateId, depth: -1, anchor: home, hex: at ? hexOfScene(home) : nearestHex(home), intensity: mean, group: g, route, track: pl.track, at };
     marker.userData = { hex: target.hex, target };
     itemsGroup.add(g);
-    pulses.push({ item: pl.item, home, hops, bolt, boltCore, boltGlow, boltR, glowR, head, halo, light, burst, pts: null, cum: null, cur: -1, jit: -1, arrived: false, burstT: -1,
+    pulses.push({ item: pl.item, title: pl.title, route, marker, maxHop: sh.maxHop ?? 4, hopEase: sh.hopEase ?? 1.5, holdUntil: 0, home, hops, bolt, boltCore, boltGlow, boltR, glowR, head, halo, light, burst, pts: null, cum: null, cur: -1, jit: -1, arrived: false, burstT: -1,
       clock: idx * 0.37, pause: sh.pause ?? 0.8, fade: sh.fade ?? 0.15, step: (sh.boltStep ?? 0.4) * S, jitter: sh.boltJitter ?? 0.08, burstSize: (sh.burstSize ?? 1.4) * S });
   });
   // flux : d'un foyer à l'autre ; sens selon l'ordre relatif de la cible
@@ -1001,6 +1030,7 @@ function buildPulsations() {
     itemsGroup.add(g);
     fluxes.push({ dots, speed: 1 / Math.max(2, L / S) });
   }
+  fillFollow();
 }
 // nouveaux zigzags du saut courant et longueurs cumulées
 function regenBolt(p, h) { p.pts = boltPoints(h.pts, p.step, p.jitter, h.maxDev); p.cum = p.pts.map((_, i) => 0); for (let i = 1; i < p.pts.length; i++) p.cum[i] = p.cum[i - 1] + p.pts[i].distanceTo(p.pts[i - 1]); }
@@ -1011,7 +1041,7 @@ function drawBolt(p, s) {
   const seg = p.cum[i + 1] - p.cum[i], tip = p.pts[i].clone().lerp(p.pts[i + 1], seg > 0 ? Math.min(1, (dd - p.cum[i]) / seg) : 1);
   const pts = [...p.pts.slice(0, i + 1), tip], path = new THREE.CurvePath();
   for (let j = 1; j < pts.length; j++) if (pts[j].distanceTo(pts[j - 1]) > 1e-4) path.add(new THREE.LineCurve3(pts[j - 1], pts[j]));
-  for (const [m, r] of [[p.boltCore, p.boltR], [p.boltGlow, p.glowR]]) {
+  for (const [m, r] of [[p.boltCore, p.boltR * (p.f ?? 1)], [p.boltGlow, p.glowR * (p.f ?? 1)]]) {
     m.geometry.dispose();
     m.geometry = path.curves.length ? new THREE.TubeGeometry(path, Math.min(240, path.curves.length * 2), r, 5) : new THREE.BufferGeometry();
   }
@@ -1023,15 +1053,33 @@ const setBoltColor = (p, c) => { for (const m of [p.boltCore.material, p.boltGlo
 function animatePulses() {
   const now = performance.now() / 1000, dt = lastPulseT == null ? 0 : Math.min(0.1, now - lastPulseT);
   lastPulseT = now;
-  if (!pulseOn || !space) return;
+  if (!space) return;
+  // taille apparente minimale : loin de la caméra (espace de plusieurs kilomètres), foyer, éclair et tête grossissent
+  // pour rester visibles (facteur f = distance / (sizeRef × hexSize), au moins 1)
+  const ref = (shapeByKey("pulsation")?.sizeRef ?? 12) * space.grid.hexSize;
+  for (const p of pulses) {
+    p.marker.scale.setScalar(Math.max(1, camera.position.distanceTo(p.home) / ref));
+    p.f = Math.max(1, camera.position.distanceTo(p.head.position) / ref);
+    p.head.scale.setScalar(p.f);
+  }
+  if (!pulseOn) return;
   const v = (pulseSpeed ?? 4) * space.grid.hexSize;
   for (const p of pulses) {
+    // pause sur l'élément atteint (suivi) : l'horloge de la pulsation s'arrête, l'éclair reste allumé
+    // pause demandée (bouton ⏸ du suivi) : horloge et arrêt sur élément figés
+    if (follow?.paused && follow.item === p.item) { if (p.holdUntil > now) p.holdUntil += dt; continue; }
+    const held = p.holdUntil > now;
     if (p.burstT >= 0) { // éclat sur l'élément atteint : il grandit et s'éteint
       const a = (now - p.burstT) / 0.4;
-      if (a >= 1) { p.burst.visible = false; p.burstT = -1; } else { p.burst.scale.setScalar(p.burstSize * (0.3 + 0.7 * a)); p.burst.material.opacity = 1 - a; }
+      if (a >= 1) { p.burst.visible = false; p.burstT = -1; } else { p.burst.scale.setScalar(p.burstSize * (p.burstF ?? 1) * (0.3 + 0.7 * a)); p.burst.material.opacity = 1 - a; }
     }
-    const durs = p.hops.map(h => Math.max(0.05, h.len / v) + p.fade), total = durs.reduce((a, b) => a + b, 0) + p.pause;
-    p.clock = (p.clock + dt) % total;
+    // durée d'un saut selon sa longueur : len / vitesse pour un saut court, croissance logarithmique au-delà de
+    // hopEase s (un saut 1 000 fois plus long ne dure que quelques fois plus longtemps), au plus maxHop s ; la vitesse
+    // apparente augmente donc avec la distance
+    const hopTime = len => Math.max(0.05, Math.min(p.maxHop, p.hopEase * Math.log1p(len / (v * p.hopEase))));
+    const durs = p.hops.map(h => hopTime(h.len) + p.fade), total = durs.reduce((a, b) => a + b, 0) + p.pause;
+    p.durs = durs;
+    if (!held) p.clock = (p.clock + dt) % total;
     let t = p.clock, i = 0;
     while (i < durs.length && t >= durs[i]) t -= durs[i++];
     if (i >= durs.length) { p.bolt.visible = false; p.head.position.copy(p.home); p.cur = -1; continue; }
@@ -1039,18 +1087,148 @@ function animatePulses() {
     if (i !== p.cur) { p.cur = i; p.arrived = false; regenBolt(p, h); setBoltColor(p, h.color); }
     else if (jit !== p.jit) { p.jit = jit; regenBolt(p, h); } // scintillement
     p.bolt.visible = true;
-    if (t < travel) { p.head.position.copy(drawBolt(p, t / travel)); p.boltCore.material.opacity = 1; p.boltGlow.material.opacity = 0.45; continue; }
+    // départ et arrivée ralentis (accélération sinusoïdale) : la tête file entre deux éléments et s'attarde près d'eux
+    if (t < travel) { const u = t / travel; p.head.position.copy(drawBolt(p, 0.5 - 0.5 * Math.cos(Math.PI * u))); p.boltCore.material.opacity = 1; p.boltGlow.material.opacity = 0.45; continue; }
     const fade = 1 - (t - travel) / p.fade;
     p.head.position.copy(drawBolt(p, 1)); p.boltCore.material.opacity = fade; p.boltGlow.material.opacity = 0.45 * fade;
-    if (!p.arrived) { p.arrived = true; p.burst.position.copy(h.to); p.burst.visible = true; p.burstT = now; }
+    if (!p.arrived) {
+      p.arrived = true; p.burst.position.copy(h.to); p.burst.visible = true; p.burstT = now; p.burstF = p.f;
+      if (follow?.item === p.item && followDwell > 0 && !flight) p.holdUntil = now + followDwell; // suivi : pause sur l'élément
+    }
   }
+  const rp = routePulse(); if (rp) markRoute(rp);
   for (const f of fluxes) for (const d of f.dots) { const u = (now * f.speed + d.off) % 1; d.m.position.copy(d.curve.getPointAt(d.back ? 1 - u : u)); }
 }
 function setPulse(on) {
   pulseOn = on; $("#space-pulse").setAttribute("aria-pressed", String(on));
-  if (!on) for (const p of pulses) { p.bolt.visible = false; p.burst.visible = false; p.burstT = -1; p.cur = -1; p.head.position.copy(p.home); }
-  try { localStorage.setItem("ecospace-pulse", on ? "1" : "0"); } catch {}
+  $("#pulse-sum").textContent = on ? "" : "· animation arrêtée";
+  if (!on) for (const p of pulses) { p.holdUntil = 0; p.bolt.visible = false; p.burst.visible = false; p.burstT = -1; p.cur = -1; p.head.position.copy(p.home); }
 }
+// suivi d'une pulsation : la caméra accompagne la tête de l'éclair (ou le foyer pendant la pause) en gardant son
+// orientation et sa distance, que l'utilisateur peut changer (tourner, zoomer) ; un autre déplacement de vue (vue
+// d'ensemble, zoom sur un élément…), Échap ou le bouton l'arrêtent
+let follow = null, followDwell = 2.5;
+// cadrage d'un élément du parcours : centre et distance de caméra (boîte englobante de ses objets ; actant : son
+// fullerène, sa sphère pouvant faire des kilomètres)
+function frameOf(pt) {
+  const S = space.grid.hexSize, e = [...entries.values()].find(x => !["pouvoir", "pulsation"].includes(x.type) && (x.t?.item === pt.item));
+  let center = pt.at.clone(), r = S;
+  if (e?.type === "actant") r = (shapeByKey("actant")?.fullereneRadius ?? 0.5) * S * 2;
+  else if (e) {
+    const box = new THREE.Box3();
+    for (const o of e.objs) if (!o.isCSS2DObject) box.expandByObject(o);
+    if (!box.isEmpty()) { center = box.getCenter(new THREE.Vector3()); r = Math.max(S * 0.5, box.getSize(new THREE.Vector3()).length() / 2); }
+  }
+  return { center, dist: r / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.3, title: e?.t?.title ?? pt.title, type: shapeByKey(e?.type)?.label ?? e?.type ?? "" };
+}
+function fillFollow() {
+  const sel = $("#pulse-follow"), cur = sel.value;
+  sel.replaceChildren(el("option", { value: "", textContent: pulses.length ? "— choisir une pulsation —" : "— aucune pulsation dessinée —" }),
+    ...pulses.map(p => el("option", { value: String(p.item), textContent: p.title })));
+  sel.value = pulses.some(p => String(p.item) === cur) ? cur : pulses.length === 1 ? String(pulses[0].item) : "";
+  if (follow && !pulses.some(p => p.item === follow.item)) stopFollow();
+  renderRoute();
+}
+function startFollow(item) {
+  const p = pulses.find(x => x.item === item);
+  if (!p) return toast("Choisir une pulsation à suivre");
+  if (!pulseOn) setPulse(true);
+  const at = (p.bolt.visible ? p.head.position : p.home).clone(), S = space.grid.hexSize;
+  let dir = camera.position.clone().sub(controls.target);
+  if (dir.lengthSq() < 1e-9) dir.set(0.5, 0.7, 1);
+  follow = { item, hold: null, dist: 30 * S, back: false, paused: false };
+  $("#pulse-hold").disabled = false; setFollowPaused(false);
+  flight = { p0: camera.position.clone(), t0: controls.target.clone(), pos: at.clone().add(dir.normalize().multiplyScalar(30 * S)), target: at, start: performance.now(), ms: 600, follow: true };
+  $("#pulse-follow-go").setAttribute("aria-pressed", "true"); $("#pulse-follow-go").textContent = "Arrêter le suivi";
+}
+function stopFollow() {
+  if (!follow) return;
+  for (const p of pulses) p.holdUntil = 0;
+  follow = null;
+  $("#pulse-hold").disabled = true; $("#pulse-hold").textContent = "⏸ Pause";
+  $("#pulse-follow-go").setAttribute("aria-pressed", "false"); $("#pulse-follow-go").textContent = "Suivre"; $("#pulse-follow-info").textContent = "";
+}
+// à chaque image : décalage de la cible vers la tête, appliqué aussi à la caméra ; à l'arrivée sur un élément, pause
+// de followDwell s : la vue se recentre et zoome sur lui (frameOf), puis revient à la distance choisie par l'utilisateur
+function followTick(dt) {
+  if (!follow || (flight && !flight.follow)) { if (follow && flight) stopFollow(); return; }
+  if (flight) return;
+  const p = pulses.find(x => x.item === follow.item);
+  if (!p) return stopFollow();
+  const offset = camera.position.clone().sub(controls.target), setDist = d => camera.position.copy(controls.target).addScaledVector(offset.normalize(), d);
+  const held = p.holdUntil > performance.now() / 1000, k = Math.min(1, dt * 4);
+  markRoute(p);
+  let txt;
+  if (held && p.cur >= 0) {
+    if (!follow.hold) { follow.hold = frameOf(p.route[p.cur]); if (!follow.back) follow.dist = camera.position.distanceTo(controls.target); follow.back = false; }
+    const f = follow.hold, move = f.center.clone().sub(controls.target).multiplyScalar(k);
+    camera.position.add(move); controls.target.add(move);
+    setDist(THREE.MathUtils.lerp(camera.position.distanceTo(controls.target), f.dist, k));
+    txt = `⏸ ${f.title}${f.type ? ` (${f.type.toLowerCase()})` : ""} · étape ${p.cur + 1} / ${p.route.length} · ${Math.max(0, p.holdUntil - performance.now() / 1000).toFixed(1)} s`;
+  } else {
+    if (follow.hold) { follow.hold = null; follow.back = true; }
+    // pendant un saut, la caméra reste calée sur la tête (elle parcourt parfois des kilomètres en quelques secondes) ;
+    // retour au foyer (pause) : déplacement lissé
+    const at = p.bolt.visible ? p.head.position : p.home, move = at.clone().sub(controls.target).multiplyScalar(p.bolt.visible ? 1 : Math.min(1, dt * 6));
+    camera.position.add(move); controls.target.add(move);
+    if (follow.back) { // retour progressif à la distance de suivi
+      const d = camera.position.distanceTo(controls.target);
+      setDist(THREE.MathUtils.lerp(d, follow.dist, k));
+      if (Math.abs(d - follow.dist) < follow.dist * 0.02) follow.back = false;
+    }
+    const h = p.cur >= 0 ? p.route[p.cur] : null;
+    txt = !pulseOn ? "animation arrêtée" : h ? `→ ${h.title ?? `item ${h.item}`}${h.pw ? ` (${h.pw.title ?? h.pw.typeLabel ?? "pouvoir"})` : ""} · étape ${p.cur + 1} / ${p.route.length}` : "au foyer";
+  }
+  if (follow.paused) txt = `⏸ en pause · ${txt.replace(/^⏸ /, "")}`;
+  if ($("#pulse-follow-info").textContent !== txt) $("#pulse-follow-info").textContent = txt;
+}
+function setFollowPaused(on) {
+  if (!follow) return;
+  follow.paused = on;
+  $("#pulse-hold").textContent = on ? "▶ Reprendre" : "⏸ Pause"; $("#pulse-hold").setAttribute("aria-pressed", String(on));
+}
+$("#pulse-hold").onclick = () => setFollowPaused(!follow?.paused);
+// parcours de la pulsation choisie : une ligne par élément atteint (numéro, couleur et titre du pouvoir, type) ; l'étape
+// en cours est mise en évidence ; un clic amène l'éclair sur cet élément (et lance le suivi)
+const routePulse = () => pulses.find(p => String(p.item) === $("#pulse-follow").value) ?? null;
+function renderRoute() {
+  const p = routePulse(), ol = $("#pulse-route");
+  $("#pulse-route-box").classList.toggle("hidden", !p);
+  if (!p) return ol.replaceChildren();
+  $("#pulse-route-n").textContent = `· ${p.route.length} étape${p.route.length > 1 ? "s" : ""}`;
+  const typeOf = it => { const e = [...entries.values()].find(x => !["pouvoir", "pulsation"].includes(x.type) && x.t?.item === it); return e ? shapeByKey(e.type)?.label ?? LIST_TYPES[e.type]?.label ?? e.type : ""; };
+  ol.replaceChildren(...p.route.map((pt, i) => el("li", { title: `Aller à « ${pt.title ?? pt.item} » (étape ${i + 1})`, onclick: () => goToStep(p, i) },
+    el("i", { className: "sw", style: `background:${pt.pw?.color ?? "#888"}` }), String(pt.title ?? `item ${pt.item}`),
+    el("small", { textContent: [typeOf(pt.item), pt.pw?.title].filter(Boolean).join(" · ") }))));
+  ol.dataset.cur = "";
+  markRoute(p);
+}
+function markRoute(p) {
+  const ol = $("#pulse-route");
+  if (routePulse() !== p || ol.dataset.cur === String(p.cur)) return;
+  ol.dataset.cur = String(p.cur);
+  [...ol.children].forEach((li, i) => li.classList.toggle("cur", i === p.cur));
+  ol.children[p.cur]?.scrollIntoView({ block: "nearest" });
+}
+// étape i : l'horloge est placée juste avant l'arrivée sur l'élément (arrêt et zoom si suivi)
+function goToStep(p, i) {
+  if (!follow || follow.item !== p.item) startFollow(p.item);
+  if (!p.durs) return;
+  // arrivée 0,7 s plus tard au plus (le vol de la caméra vers l'éclair se termine avant)
+  const start = p.durs.slice(0, i).reduce((a, b) => a + b, 0), arrive = start + p.durs[i] - p.fade;
+  p.clock = Math.max(start, arrive - 0.7);
+  p.holdUntil = 0; p.cur = -1; follow.hold = null; setFollowPaused(false);
+}
+// durée de la pause sur chaque élément pendant le suivi (0 : sans pause), mémorisée dans le navigateur
+function setDwell(x, save = true) {
+  followDwell = +x; $("#pulse-dwell").value = followDwell; $("#pulse-dwell-val").textContent = followDwell ? `${followDwell} s` : "sans";
+  if (save) try { localStorage.setItem("ecospace-pulse-dwell", String(followDwell)); } catch {}
+}
+$("#pulse-dwell").oninput = e => setDwell(e.target.value);
+try { const v = localStorage.getItem("ecospace-pulse-dwell"); setDwell(v != null && Number.isFinite(+v) ? +v : 2.5, false); } catch { setDwell(2.5, false); }
+$("#pulse-follow-go").onclick = () => follow ? stopFollow() : startFollow(Number($("#pulse-follow").value));
+$("#pulse-follow").onchange = () => { renderRoute(); if (follow) { const v = Number($("#pulse-follow").value); v ? startFollow(v) : stopFollow(); } };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && follow) stopFollow(); });
 // vitesse de propagation (hexagones par seconde) : curseur de la barre d'outils, mémorisée dans le navigateur
 function setPulseSpeed(x, save = true) {
   pulseSpeed = +x; $("#pulse-speed").value = pulseSpeed; $("#pulse-speed-val").textContent = `${pulseSpeed} hex/s`;
@@ -1066,6 +1244,18 @@ renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 container.prepend(renderer.domElement);
 const labelRenderer = new CSS2DRenderer({ element: $("#labels") });
 const scene = new THREE.Scene();
+// fond de l'espace : vu d'au-dessus de la grille, son emprise (disque sous la grille) a la couleur --under et le reste
+// du fond --sky ; vu d'en dessous, le fond est --under et l'emprise, vue à travers la grille, --sky. Le disque est
+// dessiné avant tout le reste (sans test de profondeur) : les éléments sous la grille restent visibles par-dessus
+const bgSky = new THREE.Color(), bgUnder = new THREE.Color();
+const groundTop = new THREE.MeshBasicMaterial({ side: THREE.FrontSide, depthTest: false, depthWrite: false });
+const groundBottom = new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthTest: false, depthWrite: false });
+function paintBackground() {
+  bgSky.set(css("--sky")); bgUnder.set(css("--under"));
+  groundTop.color.copy(bgUnder); groundBottom.color.copy(bgSky);
+}
+paintBackground();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintBackground);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -1098,41 +1288,51 @@ function tileColor(h) {
   if (hovered && keyOf(hovered) === keyOf(h)) return css("--tile-hover");
   return h.q === 0 && h.r === 0 ? css("--tile-center") : css("--tile");
 }
-const paintTiles = () => { for (const t of tiles.values()) t.material.color.set(tileColor(t.userData.hex)); };
+const tileCol = new THREE.Color();
+const paintTiles = () => { const dirty = new Set(); for (const t of tiles.values()) { t.mesh.setColorAt(t.i, tileCol.set(tileColor(t.hex))); dirty.add(t.mesh); } for (const m of dirty) m.instanceColor.needsUpdate = true; };
 
 function clear(group) {
   for (const o of [...group.children]) { o.traverse(x => { if (x.isCSS2DObject) x.element.remove(); if (x.isSprite) { x.material.map?.dispose(); x.material.dispose(); } }); group.remove(o); }
 }
-// grille à niveaux (space.levels) : hexagones de base cliquables (niveau 0) là où sont les éléments et l'origine ; plus
-// loin, contours de grands hexagones (× levelFactor par niveau) ; la sous-grille d'un hexagone découpé n'est affichée
-// que si la caméra en est à moins de lod × sa taille (updateLod), sinon il montre le nombre de ses éléments et un clic y
-// zoome
+// grille à niveaux (space.levels), hiérarchie d'ouverture 7 à la façon de H3 : hexagones de base cliquables (niveau 0)
+// là où sont les éléments et autour de l'origine ; plus loin, contours de grands hexagones (√7 fois plus grands et tournés
+// de 19,1° par niveau) ; la sous-grille (7 enfants) d'un hexagone découpé n'est affichée que si la caméra en est à moins
+// de lod × sa taille (updateLod), sinon il montre le nombre de ses éléments et un clic y zoome. Rendu : un tracé de
+// contours et un maillage instancié de tuiles par sous-grille (quelques appels de dessin au lieu d'un par hexagone)
 let lodNodes = [], cellMap = new Map();
 const cellKeyOf = (level, h) => `${level}:${h.q},${h.r}`;
-// centre (x, z) → hexagone d'une grille de taille size (arrondi cube), comme planeToHex du serveur
+// centre (x, z) → hexagone de base (arrondi cube), comme planeToHex du serveur
 function hexAt(size, p) {
   const R3 = Math.sqrt(3), flat = space.grid.orientation === "flat";
-  const fq = flat ? (2 / 3 * p.x) / size : (R3 / 3 * p.x - 1 / 3 * p.z) / size, fr = flat ? (-1 / 3 * p.x + R3 / 3 * p.z) / size : (2 / 3 * p.z) / size, fs = -fq - fr;
+  const fq = flat ? (2 / 3 * p.x) / size : (R3 / 3 * p.x - 1 / 3 * p.z) / size, fr = flat ? (-1 / 3 * p.x + R3 / 3 * p.z) / size : (2 / 3 * p.z) / size;
+  return cubeRound(fq, fr);
+}
+function cubeRound(fq, fr) {
+  const fs = -fq - fr;
   let q = Math.round(fq), r = Math.round(fr), s = Math.round(fs);
   const dq = Math.abs(q - fq), dr = Math.abs(r - fr), ds = Math.abs(s - fs);
   if (dq > dr && dq > ds) q = -r - s; else if (dr > ds) r = -q - s;
   return { q: q || 0, r: r || 0 };
 }
-// contour d'un hexagone : 6 segments (paires de points)
-function hexOutline(out, x, z, size, y) {
-  const a0 = space.grid.orientation === "flat" ? 0 : 30;
+const parentHex = h => cubeRound((3 * h.q + h.r) / 7, (-h.q + 2 * h.r) / 7); // parent d'ouverture 7 (comme hex.ts)
+// contour d'un hexagone : 6 segments (paires de points) ; angle = rotation du niveau (degrés)
+function hexOutline(out, x, z, size, y, angle = 0) {
+  const a0 = (space.grid.orientation === "flat" ? 0 : 30) + angle;
   for (let i = 0; i < 6; i++) {
     const a = (a0 + 60 * i) * Math.PI / 180, b = (a0 + 60 * (i + 1)) * Math.PI / 180;
     out.push(x + size * Math.cos(a), y, z + size * Math.sin(a), x + size * Math.cos(b), y, z + size * Math.sin(b));
   }
 }
 const fmtSize = m => m >= 1000 ? `${+(m / 1000).toFixed(1)} km` : `${+m.toFixed(1)} m`;
+const kindsText = k => Object.entries(k ?? {}).map(([key, n]) => `${n} ${(shapeByKey(key)?.label ?? key).toLowerCase()}${n > 1 ? "s" : ""}`).join(", ");
+let tileGeo = null, tileMat = null;
 function buildGrid() {
   clear(gridGroup); tiles = new Map(); lodNodes = []; cellMap = new Map();
   const S = space.grid.hexSize, flat = space.grid.orientation === "flat", lv = space.levels ?? { top: 0, cells: [], radius: space.grid.radius };
-  const geo = new THREE.CylinderGeometry(S * 0.97, S * 0.97, S * 0.02, 6);
-  if (flat) geo.rotateY(Math.PI / 6);
-  const edges = new THREE.EdgesGeometry(geo);
+  tileGeo?.dispose(); tileMat?.dispose();
+  tileGeo = new THREE.CylinderGeometry(S * 0.97, S * 0.97, S * 0.02, 6);
+  if (flat) tileGeo.rotateY(Math.PI / 6);
+  tileMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
   const lineMat = new THREE.LineBasicMaterial({ color: css("--muted"), transparent: true, opacity: 0.6 });
   // groupes des sous-grilles, du haut vers le bas (le groupe d'un hexagone découpé est dans celui de son parent)
   const groups = new Map();
@@ -1141,26 +1341,38 @@ function buildGrid() {
     if (!c.split) continue;
     const g = new THREE.Group(), center = new THREE.Vector3(c.x, 0, c.z);
     (c.parent ? groups.get(c.parent) : gridGroup).add(g); groups.set(c.key, g);
-    const badge = new CSS2DObject(el("div", { className: "label cell-badge", textContent: c.count ? `${c.count} élément${c.count > 1 ? "s" : ""}` : "origine", title: `Hexagone de ${fmtSize(c.size)} : cliquer pour zoomer sur sa sous-grille`, onclick: () => zoomCell(c) }));
-    badge.position.copy(center); gridGroup.add(badge);
+    const origin = c.key === cellKeyOf(c.level, { q: 0, r: 0 });
+    // badge : hexagones qui contiennent des éléments, et celui de l'origine (le disque autour d'elle reste sans badge)
+    const badge = c.count || origin ? new CSS2DObject(el("div", { className: "label cell-badge", textContent: c.count ? `${c.count} élément${c.count > 1 ? "s" : ""}` : "origine",
+      title: `Hexagone de ${fmtSize(c.size)}${c.count ? ` : ${kindsText(c.kinds)}` : ""} · cliquer pour zoomer sur sa sous-grille`, onclick: () => zoomCell(c) })) : null;
+    if (badge) { badge.position.copy(center); gridGroup.add(badge); }
     lodNodes.push({ cell: c, group: g, center, badge });
   }
   const groupOf = parent => (parent && groups.get(parent)) || gridGroup;
-  // contours des grands hexagones, un tracé par groupe
-  const outlines = new Map();
-  for (const c of lv.cells) { const g = groupOf(c.parent), arr = outlines.get(g) ?? []; hexOutline(arr, c.x, c.z, c.size * 0.985, 0); outlines.set(g, arr); }
+  // contours des grands hexagones et des tuiles, un tracé par groupe
+  const outlines = new Map(), push = (g, f) => { const arr = outlines.get(g) ?? []; f(arr); outlines.set(g, arr); };
+  for (const c of lv.cells) push(groupOf(c.parent), arr => hexOutline(arr, c.x, c.z, c.size * 0.985, 0, c.angle ?? 0));
   const coarseMat = new THREE.LineBasicMaterial({ color: css("--muted"), transparent: true, opacity: 0.85 });
   for (const [g, arr] of outlines) { const geo2 = new THREE.BufferGeometry(); geo2.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3)); const l = new THREE.LineSegments(geo2, coarseMat); l.raycast = () => {}; g.add(l); }
-  for (const h of space.hexes) {
-    const t = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: tileColor(h), transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
-    t.position.set(h.x, -S * 0.01, h.z); // face supérieure à l'altitude 0
-    t.userData.hex = h;
-    t.add(new THREE.LineSegments(edges, lineMat));
-    groupOf(h.parent).add(t); tiles.set(keyOf(h), t);
+  // tuiles : un maillage instancié par sous-grille (couleur par instance : survol, menu, centre)
+  const byGroup = new Map();
+  for (const h of space.hexes) { const g = groupOf(h.parent); byGroup.set(g, [...(byGroup.get(g) ?? []), h]); }
+  const m = new THREE.Matrix4(), edges = [];
+  for (const [g, hs] of byGroup) {
+    const mesh = new THREE.InstancedMesh(tileGeo, tileMat, hs.length);
+    hs.forEach((h, i) => { mesh.setMatrixAt(i, m.makeTranslation(h.x, -S * 0.01, h.z)); mesh.setColorAt(i, new THREE.Color(tileColor(h))); tiles.set(keyOf(h), { mesh, i, hex: h }); });
+    mesh.userData.hexes = hs; mesh.computeBoundingSphere();
+    g.add(mesh);
+    const arr = []; for (const h of hs) hexOutline(arr, h.x, h.z, S * 0.97, 0.002);
+    const geo2 = new THREE.BufferGeometry(); geo2.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
+    const l = new THREE.LineSegments(geo2, lineMat); l.raycast = () => {}; g.add(l); edges.push(l);
   }
   homeExtent = S * (space.grid.radius + 1) * Math.sqrt(3);
-  const topSize = S * (lv.factor ?? 10) ** (lv.top ?? 0);
+  const topSize = S * Math.sqrt(lv.aperture ?? 7) ** (lv.top ?? 0);
   extent = Math.max(homeExtent, topSize * ((lv.radius ?? space.grid.radius) + 1) * Math.sqrt(3));
+  // fond : disque de l'emprise de la grille (paintBackground)
+  const disk = new THREE.CircleGeometry(extent, 96).rotateX(-Math.PI / 2);
+  for (const mat of [groundTop, groundBottom]) { const m = new THREE.Mesh(disk, mat); m.renderOrder = -10; m.raycast = () => {}; m.position.y = -S * 0.02; gridGroup.add(m); }
   // rose des vents : nord vers -z (latitude croissante)
   for (const [txt, x, z] of [["N", 0, -extent - S], ["S", 0, extent + S], ["E", extent + S, 0], ["O", -extent - S, 0]]) {
     const o = new CSS2DObject(el("div", { className: "label compass", textContent: txt })); o.position.set(x, 0, z); gridGroup.add(o);
@@ -1173,19 +1385,22 @@ const shown = o => { for (let x = o; x; x = x.parent) if (!x.visible) return fal
 function updateLod() {
   const k = space?.levels?.lod ?? 6;
   for (const n of lodNodes) n.group.visible = camera.position.distanceTo(n.center) < n.cell.size * k;
-  for (const n of lodNodes) n.badge.visible = !n.group.visible && shown(n.group.parent);
+  for (const n of lodNodes) if (n.badge) n.badge.visible = !n.empty && !n.group.visible && shown(n.group.parent);
 }
-// hexagone de niveau > 0 sous la souris : le plus fin dont la sous-grille est affichée
+// hexagone de niveau > 0 sous la souris : le plus fin dont la sous-grille est affichée (ancêtres de l'hexagone de base
+// du point, calculés comme dans H3, puis descente tant que la sous-grille est visible)
 function coarseAt(e) {
   const lv = space?.levels;
   if (!lv?.cells?.length) return null;
   const p = rayPoint(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
   if (!p) return null;
-  let level = lv.top, cell = cellMap.get(cellKeyOf(level, hexAt(space.grid.hexSize * lv.factor ** level, p)));
+  const chain = [hexAt(space.grid.hexSize, p)];
+  for (let l = 0; l < lv.top; l++) chain.push(parentHex(chain[l]));
+  let level = lv.top, cell = cellMap.get(cellKeyOf(level, chain[level]));
   while (cell?.split && level > 1) {
     const n = lodNodes.find(x => x.cell === cell);
     if (!n?.group.visible) break;
-    const child = cellMap.get(cellKeyOf(level - 1, hexAt(space.grid.hexSize * lv.factor ** (level - 1), p)));
+    const child = cellMap.get(cellKeyOf(level - 1, chain[level - 1]));
     if (!child) break;
     cell = child; level--;
   }
@@ -1231,17 +1446,19 @@ const fmtDate = (ms, span = 0) => {
 };
 const walk = (node, fn, parent = null) => { fn(node, parent); for (const c of node.children ?? []) walk(c, fn, node); };
 // étendue complète : de la plus ancienne date (création d'un physique ou position d'un élément) à maintenant
-const hasTime = () => !!space?.placements.some(p => p.tree || p.track?.some(x => x.lon != null));
+// éléments datés : éléments placés et pulsations (positions spatio-temporelles, hors grille)
+const datedItems = () => [...(space?.placements ?? []), ...(space?.pulsations ?? []).filter(pl => pl.track?.length).map(pl => ({ item: pl.item, shape: "pulsation", title: pl.title, track: pl.track }))];
+const hasTime = () => datedItems().some(p => p.tree || p.track?.some(x => x.lon != null));
 function fullTimeBounds() {
   const now = Date.parse(space.now) || Date.now();
   let oldest = Infinity;
-  for (const p of space.placements) {
+  for (const p of datedItems()) {
     if (p.tree) walk(p.tree, n => { const c = parseDate(n.created); if (c != null && c < oldest) oldest = c; });
     for (const x of p.track ?? []) { const t = Date.parse(x.at); if (t < oldest) oldest = t; }
   }
   return [Math.min(oldest, now - 864e5), now]; // au moins un jour d'amplitude
 }
-// fenêtre choisie par le brush de la frise (null : toute l'étendue), mémorisée par écosystème dans le navigateur
+// fenêtre choisie par le brush du streamgraph (null : toute l'étendue), mémorisée par écosystème dans le navigateur
 let timeWindow = null;
 const winKey = () => `ecospace-window-${state.eco}`;
 function updateTimeBounds() {
@@ -1273,63 +1490,128 @@ function initTimeControls() {
   timeInfo(); renderTimeline();
 }
 // ==========================================
-// Frise des positions temporelles : une ligne par élément suivi (positions datées, séjours, retraits) et une ligne des
-// créations des physiques ; brush (d3-brush) pour choisir les dates affichées dans l'échelle temporelle de l'espace
+// Streamgraph des éléments dans le temps (d3-shape, cf. d3-graph-gallery.com/graph/streamgraph_basic.html) : en abscisse
+// le temps, en épaisseur le nombre d'éléments de chaque type présents à cette date (physiques racines, sans leurs enfants : depuis leur création ;
+// actants, personnes : périodes de présence de leurs positions datées, jusqu'au retrait ; agents : ceux de leur actant ;
+// autres : depuis leur placement dans l'espace) ; brush (d3-brush) pour choisir les dates affichées dans l'échelle
+// temporelle de l'espace ; survol : effectifs par type à la date pointée
 // ==========================================
+const STREAM_SAMPLES = 160; // dates échantillonnées sur l'étendue
+function presence(p) {
+  const out = [];
+  // physique : la racine seule, depuis sa création (ses enfants ne sont pas comptés)
+  if (p.tree) { const c = parseDate(p.tree.created); if (c != null) out.push([c, Infinity]); return out; }
+  const track = p.track?.length ? p.track : p.actant ? space.placements.find(a => a.item === p.actant && a.shape === "actant")?.track : null;
+  if (track?.length) {
+    track.forEach((x, j) => { if (x.lon != null) out.push([Date.parse(x.at), j + 1 < track.length ? Date.parse(track[j + 1].at) : Infinity]); });
+    return out;
+  }
+  const t = Date.parse(p.placed ?? "");
+  return Number.isFinite(t) ? [[t, Infinity]] : out;
+}
+function streamData(times) {
+  const keys = [], spans = new Map();
+  for (const p of datedItems()) {
+    const iv = presence(p);
+    if (!iv.length) continue;
+    if (!spans.has(p.shape)) { spans.set(p.shape, []); keys.push(p.shape); }
+    spans.get(p.shape).push(...iv);
+  }
+  const order = space.shapes.map(x => x.key);
+  keys.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const rows = times.map(t => {
+    const row = { t };
+    for (const k of keys) row[k] = spans.get(k).filter(([a, e]) => a <= t && t <= e).length;
+    return row;
+  });
+  return { keys, rows };
+}
 function renderTimeline() {
   const box = $("#timeline");
   if (!space || !hasTime()) { box.classList.add("hidden"); box.replaceChildren(); return; }
-  const lanes = [], phys = [];
-  for (const p of space.placements) if (p.tree) walk(p.tree, n => { const c = parseDate(n.created); if (c != null) phys.push({ t: c, title: n.title }); });
-  if (phys.length) lanes.push({ label: "Physiques (créations)", color: shapeByKey("physique")?.color ?? "#2e7d5b", ticks: phys });
-  for (const p of space.placements) if (p.track?.some(x => x.lon != null)) {
-    const owner = p.actant ? space.placements.find(a => a.item === p.actant && a.shape === "actant") : null;
-    lanes.push({ label: `${p.title}${owner ? ` (${owner.title})` : ""}`, color: shapeByKey(p.shape)?.color ?? "#888", pts: p.track });
-  }
+  if (!$("#rub-time").open) return; // rubrique repliée : dessiné à son ouverture
   box.classList.remove("hidden");
-  const W = Math.max(320, box.clientWidth), L = Math.min(190, W * 0.3), R = 16, lh = 20, top = 8, axisH = 24, H = top + lanes.length * lh + axisH;
-  const [f0, f1] = fullTimeBounds(), x = d3.scaleUtc().domain([f0, f1]).range([L, W - R]);
-  const fmt = d => fmtDate(+d, (f1 - f0) / 6), cut = (t, n) => t.length > n ? t.slice(0, n - 1) + "…" : t;
-  const svg = d3.select(box).selectAll("svg").data([0]).join("svg").attr("width", W).attr("height", H)
-    .attr("role", "img").attr("aria-label", `Frise des positions temporelles de ${lanes.length} ligne(s), du ${fmt(f0)} à maintenant`);
+  const [f0, f1] = fullTimeBounds(), span = f1 - f0;
+  const W = Math.max(320, box.clientWidth), L = 34, R = 12, top = 38, H = 166, axisH = 22, legendH = 18; // ligne 1 : infobulle du survol ; ligne 2 : libellé de l'axe vertical
+  // abscisse : même mode que l'échelle temporelle de l'espace (logarithmique : intervalles récents dilatés) ; dates
+  // échantillonnées régulièrement à l'écran
+  const g = u => time.mode === "log" ? Math.log1p(99 * u) / Math.log(100) : u, gi = v => time.mode === "log" ? Math.expm1(v * Math.log(100)) / 99 : v;
+  const x = t => L + (W - R - L) * (1 - g(Math.min(1, Math.max(0, (f1 - t) / span))));
+  x.invert = px => f1 - gi(Math.min(1, Math.max(0, 1 - (px - L) / (W - R - L)))) * span;
+  const { keys, rows } = streamData(Array.from({ length: STREAM_SAMPLES + 1 }, (_, i) => x.invert(L + (W - R - L) * i / STREAM_SAMPLES)));
+  const stack = d3.stack().keys(keys).offset(d3.stackOffsetSilhouette).order(d3.stackOrderNone)(rows);
+  const ext = Math.max(1, d3.max(stack, l => d3.max(l, d => Math.max(Math.abs(d[0]), Math.abs(d[1])))));
+  const y = d3.scaleLinear().domain([-ext, ext]).range([H - axisH, top]);
+  const color = k => shapeByKey(k)?.color ?? "#888", label = k => shapeByKey(k)?.label ?? k;
+  const fmt = d => fmtDate(+d, span / 6);
+  const svg = d3.select(box).selectAll("svg").data([0]).join("svg").attr("width", W).attr("height", H + legendH)
+    .attr("role", "img").attr("aria-label", `Streamgraph du nombre d'éléments par type, du ${fmt(f0)} à maintenant : glisser pour choisir les dates affichées`);
   svg.selectAll("*").remove();
-  lanes.forEach((ln, i) => {
-    const y = top + i * lh + lh / 2, g = svg.append("g");
-    g.append("line").attr("class", "guide").attr("x1", L).attr("x2", W - R).attr("y1", y).attr("y2", y);
-    g.append("text").attr("x", L - 8).attr("y", y).attr("dy", "0.32em").attr("text-anchor", "end").text(cut(ln.label, Math.floor(L / 6.5))).append("title").text(ln.label);
-    for (const k of ln.ticks ?? [])
-      g.append("line").attr("x1", x(k.t)).attr("x2", x(k.t)).attr("y1", y - 6).attr("y2", y + 6).attr("stroke", ln.color).attr("stroke-width", 2)
-        .append("title").text(`${k.title} : créé le ${fmtDate(k.t)}`);
-    const pts = ln.pts ?? [];
-    pts.forEach((pt, j) => {
-      const t = Date.parse(pt.at), end = j + 1 < pts.length ? Date.parse(pts[j + 1].at) : f1;
-      const when = new Date(t).toLocaleString("fr-FR", { timeZone: "UTC" });
-      if (pt.lon == null) { // retrait de l'espace
-        g.append("path").attr("d", d3.symbol(d3.symbolCross, 40)()).attr("transform", `translate(${x(t)},${y}) rotate(45)`).attr("fill", "var(--muted)").append("title").text(`retiré le ${when}`);
-        return;
-      }
-      g.append("line").attr("x1", x(t)).attr("x2", x(end)).attr("y1", y).attr("y2", y).attr("stroke", ln.color).attr("stroke-width", 5).attr("stroke-opacity", 0.35);
-      g.append("circle").attr("cx", x(t)).attr("cy", y).attr("r", 4.5).attr("fill", ln.color).attr("stroke", "var(--panel)")
-        .append("title").text(`${pt.event} le ${when} (UTC)\n${pt.address ? pt.address + "\n" : ""}${pt.lat.toFixed(6)}, ${pt.lon.toFixed(6)}`);
-    });
-  });
-  svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - axisH})`)
-    .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((W - L) / 90))).tickFormat(fmt));
-  // brush : glisser pour choisir les dates affichées ; un clic hors de la sélection revient à toute l'étendue
+  // légende : types et effectif actuel
+  const now = rows.at(-1), lg = svg.append("g").attr("transform", `translate(${L},${H + 4})`);
+  let lx = 0;
+  for (const k of keys) {
+    const g = lg.append("g").attr("transform", `translate(${lx},0)`);
+    g.append("rect").attr("width", 10).attr("height", 10).attr("rx", 2).attr("fill", color(k));
+    const t = g.append("text").attr("x", 14).attr("y", 9).text(`${label(k)} (${now[k]})`);
+    lx += 14 + t.node().getComputedTextLength() + 14;
+  }
+  svg.append("g").selectAll("path").data(stack).join("path")
+    .attr("fill", d => color(d.key)).attr("fill-opacity", 0.85).attr("stroke", "var(--panel)").attr("stroke-width", 0.5)
+    .attr("d", d3.area().curve(d3.curveMonotoneX).x(d => x(d.data.t)).y0(d => y(d[0])).y1(d => y(d[1])))
+    .append("title").text(d => label(d.key));
+  // échelle verticale : nombre d'éléments (épaisseur du flux, de part et d'autre de l'axe central)
+  svg.append("g").attr("class", "axis").attr("transform", `translate(${L},0)`)
+    .call(d3.axisLeft(y).ticks(4).tickFormat(v => Number.isInteger(v * 2) ? String(Math.abs(v * 2)) : ""));
+  svg.append("text").attr("class", "muted").attr("x", 2).attr("y", 29).attr("fill", "var(--muted)").text("éléments");
+  // axe du temps : graduations calendaires gardées à 70 px au moins les unes des autres (le mode logarithmique les resserre
+  // vers le passé)
+  const ax = svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - axisH})`);
+  ax.append("path").attr("d", `M${L},0.5H${W - R}`);
+  let last = -Infinity;
+  for (const t of d3.utcTicks(new Date(f0), new Date(f1), 60)) {
+    const px = x(+t);
+    if (px - last < 70) continue;
+    last = px;
+    const tk = ax.append("g").attr("transform", `translate(${px},0)`);
+    tk.append("line").attr("y2", 5); tk.append("text").attr("y", 16).attr("text-anchor", "middle").text(fmtDate(+t, span / 6));
+  }
+  // survol : règle verticale et effectifs à la date pointée
+  const rule = svg.append("line").attr("class", "guide").attr("y1", top).attr("y2", H - axisH).style("display", "none");
+  const tip = svg.append("text").attr("y", 13).attr("text-anchor", "middle").attr("font-weight", 600).style("display", "none");
+  // brush : glisser pour choisir les dates affichées ; un clic hors de la sélection revient à toute l'étendue ; pendant
+  // le glissement seule l'indication des dates change (la scène est reconstruite au relâchement)
   const brush = d3.brushX().extent([[L, top - 4], [W - R, H - axisH]])
+    .on("brush", ({ selection, sourceEvent }) => { if (sourceEvent && selection) { const [a, b] = selection.map(v => +x.invert(v)); $("#time-info").textContent = `${fmtDate(a, b - a)} → ${fmtDate(b, b - a)} (relâcher pour appliquer)`; } })
     .on("end", ({ selection, sourceEvent }) => { if (sourceEvent) setTimeWindow(selection ? selection.map(v => +x.invert(v)) : null); });
   const bg = svg.append("g").attr("class", "brush").call(brush);
   if (time.windowed) bg.call(brush.move, [x(time.oldest), x(time.now)]);
+  bg.on("pointermove.tip", e => {
+    const [mx] = d3.pointer(e), i = Math.max(0, Math.min(rows.length - 1, Math.round((mx - L) / (W - R - L) * STREAM_SAMPLES))), row = rows[i];
+    rule.style("display", null).attr("x1", x(row.t)).attr("x2", x(row.t));
+    tip.style("display", null).attr("x", Math.min(W - 160, Math.max(L + 160, x(row.t))))
+      .text(`${fmtDate(row.t, span / 6)} : ${keys.map(k => `${row[k]} ${label(k).toLowerCase()}${row[k] > 1 ? "s" : ""}`).join(" · ")}`);
+  }).on("pointerleave.tip", () => { rule.style("display", "none"); tip.style("display", "none"); });
+}
+// rubriques au-dessus de l'espace : ouvertes ou repliées, mémorisé dans ce navigateur (le streamgraph n'est dessiné
+// que rubrique ouverte)
+for (const d of document.querySelectorAll("details.rubric")) {
+  try { const v = localStorage.getItem(`ecospace-${d.id}`); if (v != null) d.open = v === "1"; } catch {}
+  d.addEventListener("toggle", () => {
+    try { localStorage.setItem(`ecospace-${d.id}`, d.open ? "1" : "0"); } catch {}
+    if (d.id === "rub-time" && d.open) renderTimeline();
+  });
 }
 addEventListener("resize", () => { clearTimeout(renderTimeline.timer); renderTimeline.timer = setTimeout(renderTimeline, 150); });
 function timeInfo() {
+  $("#time-sum").textContent = !hasTime() ? "" : time.windowed ? `· ${fmtDate(time.oldest, time.now - time.oldest)} → ${fmtDate(time.now, time.now - time.oldest)}` : "· toutes les dates";
   $("#time-info").textContent = !hasTime() ? "aucun élément physique placé ni position datée"
-    : time.windowed ? `${Math.round(time.H)} m = ${fmtDate(time.oldest, time.now - time.oldest)} → surface = ${fmtDate(time.now, time.now - time.oldest)} (dates choisies sur la frise)`
+    : time.windowed ? `${Math.round(time.H)} m = ${fmtDate(time.oldest, time.now - time.oldest)} → surface = ${fmtDate(time.now, time.now - time.oldest)} (dates choisies sur le streamgraph ; éléments à leur position à cette date)`
     : `${Math.round(time.H)} m = ${fmtDate(time.oldest)} (plus ancienne date) → surface = maintenant`;
 }
 $("#time-height").oninput = () => { if (!space) return; time.H = sliderToH(+$("#time-height").value); timeInfo(); closeMenu(); buildItems(); };
 $("#time-reset").onclick = () => { setTimeWindow(null); renderTimeline(); };
-$("#time-mode").onchange = () => { if (!space) return; time.mode = $("#time-mode").value; timeInfo(); closeMenu(); buildItems(); };
+$("#time-mode").onchange = () => { if (!space) return; time.mode = $("#time-mode").value; timeInfo(); closeMenu(); buildItems(); renderTimeline(); };
 
 // ==========================================
 // Éléments placés
@@ -1419,17 +1701,78 @@ function buildTimeAxis() {
   }
 }
 
+// position d'un élément à une date : dernière position datée (avec coordonnées) jusqu'à cette date, sinon la première
+// connue ; null sans positions datées
+function positionAt(p, t) {
+  const pts = (p.track ?? []).filter(x => x.lon != null);
+  if (!pts.length) return null;
+  let cur = pts[0];
+  for (const x of pts) if (Date.parse(x.at) <= t) cur = x;
+  return cur;
+}
+// centre d'un hexagone de base dans la scène (comme hexToPlane du serveur) et sa géographie (inverse de geoToScene)
+function hexCenter(h) {
+  const S = space.grid.hexSize, R3 = Math.sqrt(3);
+  return space.grid.orientation === "flat" ? { x: S * 1.5 * h.q, z: S * (R3 / 2 * h.q + R3 * h.r) } : { x: S * (R3 * h.q + R3 / 2 * h.r), z: S * 1.5 * h.r };
+}
+// hexagone de base sous un point de la scène (pas forcément dans space.hexes)
+function hexOfScene(q) {
+  const h = hexAt(space.grid.hexSize, q), c = hexCenter(h);
+  return space.hexes.find(x => x.q === h.q && x.r === h.r) ?? { q: h.q, r: h.r, s: -h.q - h.r || 0, x: c.x, z: c.z, geo: sceneToGeo(c) };
+}
+function sceneToGeo(q) {
+  const o = space.grid.origin, M = 111320;
+  return { lon: o.lon + q.x / (M * Math.cos(o.lat * Math.PI / 180)), lat: o.lat - q.z / M, alt: o.alt ?? 0 };
+}
+// déplacement dans le temps : les éléments à positions datées (actants, physiques) sont posés sur l'hexagone de leur
+// position à la date de la surface (fin de la fenêtre choisie au streamgraph ; maintenant sans fenêtre), le libre le
+// plus proche sur leur couche si un autre élément l'occupe, dans l'ordre de placement (comme rehexPlacements) ; leurs
+// personnes et agents suivent leur actant ; p.shown = { hex, at, moved } (p.q, p.r restent la position de référence)
+function placeInTime() {
+  const t = time.now, layer = p => layerOf(shapeByKey(p.shape)), taken = new Map(), moving = [];
+  const take = (p, h) => { const l = layer(p); if (!taken.has(l)) taken.set(l, new Set()); taken.get(l).add(keyOf(h)); };
+  for (const p of space.placements) {
+    p.shown = null;
+    if (p.actant || shapeByKey(p.shape)?.free || p.shape === "concept") continue;
+    const at = positionAt(p, t), last = positionAt(p, Infinity);
+    const h = at && at !== last ? hexAt(space.grid.hexSize, geoToScene(at)) : null;
+    if (h && (h.q !== p.q || h.r !== p.r)) moving.push({ p, at, h }); else take(p, p);
+  }
+  moving.sort((a, b) => String(a.p.placed ?? "").localeCompare(String(b.p.placed ?? "")));
+  for (const { p, at, h } of moving) {
+    const set = taken.get(layer(p)) ?? new Set();
+    let free = h;
+    // anneaux autour de l'hexagone visé jusqu'au premier libre
+    for (let k = 1; set.has(keyOf(free)) && k < 50; k++) {
+      const ring = [];
+      for (let dq = -k; dq <= k; dq++) for (let dr = Math.max(-k, -dq - k); dr <= Math.min(k, -dq + k); dr++) if (Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)) === k) ring.push({ q: h.q + dq, r: h.r + dr });
+      free = ring.find(x => !set.has(keyOf(x))) ?? free;
+    }
+    take(p, free);
+    if (free.q === p.q && free.r === p.r) continue;
+    const c = hexCenter(free), s = -free.q - free.r || 0;
+    p.shown = { moved: true, at, hex: space.hexes.find(x => x.q === free.q && x.r === free.r) ?? { q: free.q, r: free.r, s, x: c.x, z: c.z, geo: sceneToGeo(c) } };
+  }
+}
 function buildItems() {
   clear(itemsGroup); targets = new Map();
   const S = space.grid.hexSize;
+  placeInTime();
   for (const p of space.placements) {
     const shape = shapeByKey(p.shape);
-    const hex = space.hexes.find(h => h.q === p.q && h.r === p.r);
+    const owner0 = p.actant ? space.placements.find(x => x.item === p.actant && x.shape === "actant") : null;
+    const hex = p.shown?.hex ?? (owner0?.shown?.hex ?? space.hexes.find(h => h.q === p.q && h.r === p.r));
     if (!shape || (!hex && p.shape !== "concept")) continue;
     if (p.shape === "concept") {
       // hexagone au-dessus du centre (le concept peut déborder de la grille)
       const h = hex ?? { q: p.q, r: p.r, s: p.s, x: p.x, z: p.z, geo: p.geo.center };
       const { group, mesh } = conceptShape(p, shape);
+      // concept dans la sphère d'actants déplacés dans le temps : décalage moyen de ses actants hôtes
+      const hosts = space.placements.filter(a => a.shape === "actant" && a.interior?.includes(p.item));
+      if (hosts.some(a => a.shown)) {
+        const d = hosts.reduce((s, a) => { const c = hexCenter(a), n = a.shown?.hex ?? c; return { x: s.x + (n.x - c.x) / hosts.length, z: s.z + (n.z - c.z) / hosts.length }; }, { x: 0, z: 0 });
+        group.position.x += d.x; group.position.z += d.z;
+      }
       // le plus petit concept l'emporte à la sélection (un enfant est dans son parent)
       const target = Object.assign(p, { hex: h, depth: 10 + 1e4 / (Math.PI * p.radius * p.radius * p.length), anchor: group.position.clone(), templateId: p.templateId });
       mesh.userData = { hex: h, target };
@@ -1449,7 +1792,9 @@ function buildItems() {
       const owner = space.placements.find(x => x.item === p.actant && x.shape === "actant");
       if (!hex || !owner) continue;
       const o = memberShape(p, shape), key = `m:${p.actant}:${p.item}`;
-      const target = Object.assign(p, { hex, key, owner, depth: 5, anchor: new THREE.Vector3(p.x, p.y, p.z) });
+      // actant déplacé dans le temps : même décalage que lui
+      if (owner.shown) { const c = hexCenter(owner); o.position.x += hex.x - c.x; o.position.z += hex.z - c.z; }
+      const target = Object.assign(p, { hex, key, owner, depth: 5, anchor: o.position.clone() });
       o.userData = { hex, target };
       itemsGroup.add(o); targets.set(key, target);
       continue;
@@ -1477,7 +1822,7 @@ function buildItems() {
 const geoToScene = g => { const o = space.grid.origin, M = 111320; return { x: (g.lon - o.lon) * M * Math.cos(o.lat * Math.PI / 180), z: -(g.lat - o.lat) * M }; };
 function buildTracks() {
   const S = space.grid.hexSize, lim = extent * 1.15;
-  for (const p of space.placements) {
+  for (const p of datedItems()) {
     const pts = p.track ?? [];
     if (!pts.some(x => x.lon != null)) continue;
     const col = new THREE.Color(shapeByKey(p.shape)?.color ?? "#888"), g = new THREE.Group(), segs = [];
@@ -1529,7 +1874,7 @@ async function loadLeaflet() {
 }
 // recherche de lieux : service de géocodage configuré (Nominatim), résultats en français
 async function geocode(q) {
-  const cfg = space.map ?? {}, url = new URL(cfg.geocoder ?? "https://nominatim.openstreetmap.org/search");
+  const cfg = space?.map ?? {}, url = new URL(cfg.geocoder ?? "https://nominatim.openstreetmap.org/search");
   Object.entries({ q, format: "jsonv2", limit: cfg.searchLimit ?? 6, "accept-language": "fr" }).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1611,7 +1956,8 @@ async function askPosition(t) {
   };
   const reset = () => {
     editing = null; save.textContent = "Ajouter la position";
-    const cur = space.placements.find(x => x.item === item && x.shape === t.shape)?.pos ?? p.pos ?? space.grid.origin;
+    const cur = space.placements.find(x => x.item === item && x.shape === t.shape)?.pos ?? p.pos
+      ?? (t.shape === "pulsation" ? positionAt(t.pulsation ?? t, Infinity) ?? sceneToGeo(t.anchor) : null) ?? space.grid.origin;
     setPoint(cur.lat, cur.lon, cur.alt, cfg.zoom ?? 18); at.value = toLocal(new Date().toISOString()); place.value = ""; $("#position-results").replaceChildren();
     status.textContent = `Position actuelle : ${fmtGeo(cur)}`; renderHist();
   };
@@ -1676,13 +2022,13 @@ async function askPosition(t) {
 }
 
 const SHAPE_TEXT = {
-  pulsation: "éclair lumineux qui parcourt, par l'intérieur des nanotubes, les éléments de ses pouvoirs dans l'ordre, depuis un foyer ⚡ ; couleur turbo selon l'intensité du pouvoir parcouru (bleu −100 → rouge +100) ; flux = arcs fléchés entre foyers ; ajout depuis un pouvoir",
+  pulsation: "éclair lumineux qui parcourt, par l'intérieur des tubes, les éléments de ses pouvoirs dans l'ordre, depuis un foyer ⚡ ; couleur turbo selon l'intensité du pouvoir parcouru (bleu −100 → rouge +100) ; flux = arcs fléchés entre foyers ; ajout depuis un pouvoir",
   actant: "fullerène C60 + sphère (pôle nord au centroïde), sous-grille pour ses personnes et agents",
   physique: "boîte de la date de modification (bas) à la date de création (haut), enfants imbriqués selon leur importance",
   concept: "bulle horizontale sous la grille, dimensionnée par son titre ou ses enfants (skos:narrower), position calculée",
   personne: "petit fullerène + sphère sur la sous-grille de l'hexagone de son actant (ajout depuis l'actant)",
   agent: "petit fullerène + sphère sur la sous-grille de l'hexagone de son actant (ajout depuis l'actant)",
-  pouvoir: "nanotube de carbone entre ses maillons, couleur par type (Discerner bleu, Raisonner violet, Résonner or, Agir rouge) ; crible = anneau ; ajout depuis le premier maillon",
+  pouvoir: "cylindre entre ses maillons, couleur par type (Discerner bleu, Raisonner violet, Résonner or, Agir rouge) ; crible = anneau ; ajout depuis l'un quelconque de ses maillons (actant, crible, physique, concept)",
 };
 function legend() {
   $("#legend").replaceChildren(...space.shapes.map(s => el("span", {}, el("i", { className: "sw", style: `background:${s.color}` }), `${s.label} : ${SHAPE_TEXT[s.key] ?? s.key}`)),
@@ -1742,11 +2088,13 @@ function pick(e) {
     let o = hit.object, shown = true;
     for (let x = o; x; x = x.parent) if (!x.visible) { shown = false; break; }
     if (!shown) continue; // élément caché depuis la liste
+    const tile = hit.object.userData.hexes?.[hit.instanceId]; // tuile de la grille (maillage instancié)
+    if (tile) { if (!best) best = { hex: tile, target: null }; continue; }
     while (o && !o.userData.hex) o = o.parent;
     if (!o) continue;
     // impacts du plus proche au plus lointain : un élément plus profond ne l'emporte que dans la même famille (concepts
     // emboîtés, boîtes imbriquées, actant et ses personnes et agents) ; sinon le plus proche de la caméra est retenu
-    const t = o.userData.target ?? null, cell = hit.object.userData.cells?.[hit.instanceId] ?? null; // hexagone d'un nanotube
+    const t = o.userData.target ?? null, cell = hit.object.userData.tube ? cellAt(hit.object, hit.object.worldToLocal(hit.point.clone()).multiply(hit.object.scale)) : null; // hexagone d'un tube
     if (t && (!best?.target || (family(t) === family(best.target) && t.depth > best.target.depth))) best = { hex: o.userData.hex, target: t, cell };
     else if (!best) best = { hex: o.userData.hex, target: null };
   }
@@ -1755,7 +2103,7 @@ function pick(e) {
 }
 function hud(hit) {
   if (!hit) return $("#hud").textContent = menuHex ? "" : "Survoler un hexagone : coordonnées cube et géographiques";
-  if (hit.coarse) { const c = hit.coarse; return $("#hud").textContent = `hexagone de ${fmtSize(c.size)} (niveau ${c.level}) · ${fmtGeo(c.geo)} · ${c.count ? `${c.count} élément(s)` : "vide"}${c.split ? " · cliquer pour zoomer sur sa sous-grille" : ""}`; }
+  if (hit.coarse) { const c = hit.coarse; return $("#hud").textContent = `hexagone de ${fmtSize(c.size)} (niveau ${c.level}, index ${c.id}) · ${fmtGeo(c.geo)} · ${c.count ? kindsText(c.kinds) : "vide"}${c.split ? " · cliquer pour zoomer sur sa sous-grille" : ""}`; }
   const { hex: h, target: t } = hit;
   let info = "";
   if (t?.node) {
@@ -1775,7 +2123,7 @@ renderer.domElement.addEventListener("pointermove", e => {
   const hit = pick(e), h = hit?.hex ?? null;
   if ((h && keyOf(h)) !== (hovered && keyOf(hovered)) || hit?.target !== hoveredTarget) {
     hovered = h; hoveredTarget = hit?.target ?? null; paintTiles(); hud(hit); renderer.domElement.style.cursor = h ? "pointer" : hit?.coarse?.split ? "zoom-in" : "";
-  } else if ((hit?.cell || hit?.coarse) && !menuHex) { hud(hit); if (hit.coarse) renderer.domElement.style.cursor = hit.coarse.split ? "zoom-in" : ""; } // hexagone survolé sur un même nanotube
+  } else if ((hit?.cell || hit?.coarse) && !menuHex) { hud(hit); if (hit.coarse) renderer.domElement.style.cursor = hit.coarse.split ? "zoom-in" : ""; } // hexagone survolé sur un même tube
 });
 // point du rayon de la souris sur un plan
 function rayPoint(e, plane) {
@@ -1832,9 +2180,12 @@ renderer.setAnimationLoop(() => {
     camera.position.lerpVectors(flight.p0, flight.pos, e); controls.target.lerpVectors(flight.t0, flight.target, e);
     if (k >= 1) flight = null;
   }
+  const tNow = performance.now() / 1000, fdt = Math.min(0.1, tNow - (followTick.t ?? tNow)); followTick.t = tNow;
   animatePulses();
+  followTick(fdt);
   controls.update();
   if (menuAnchor) { const [x, y, visible] = screenOf(menuAnchor); menuLayer.attr("transform", `translate(${x},${y})`).style("display", visible ? null : "none"); }
+  scene.background = camera.position.y >= 0 ? bgSky : bgUnder;
   renderer.render(scene, camera); labelRenderer.render(scene, camera);
 });
 
@@ -1854,10 +2205,10 @@ const ICONS = {
   position: ["M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z", "M12 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"],
 };
 // position spatio-temporelle modifiable : actant et physique placés sur un hexagone (une personne suit son actant)
-const positionable = t => !!t && !t.owner && (t.shape === "actant" || (t.shape === "physique" && !t.parent));
-const positionTitle = t => !t ? "Position : hexagone libre" : positionable(t) ? "Position : lieu et date sur une carte, historique des positions" : t.owner ? "Position : une personne ou un agent suit son actant" : "Position : seuls les actants et les physiques racines ont une position géographique";
+const positionable = t => !!t && !t.owner && (t.shape === "actant" || t.shape === "pulsation" || (t.shape === "physique" && !t.parent));
+const positionTitle = t => !t ? "Position : hexagone libre" : positionable(t) ? "Position : lieu et date sur une carte, historique des positions" : t.owner ? "Position : une personne ou un agent suit son actant" : "Position : seuls les actants, les physiques racines et les pulsations ont une position géographique";
 let menuOuter = 0;
-// hexagone de nanotube visé par le menu : contour mis en évidence
+// hexagone de tube visé par le menu : contour mis en évidence
 let cellMarker = null;
 function markCell(t) {
   const sh = shapeByKey("pouvoir"), S = space.grid.hexSize, r = sh.tubeRadius * S, n = sh.lattice ?? 8, f = tubeFrame(t.seg.A, t.seg.B);
@@ -1943,21 +2294,27 @@ function linkOptions(t) {
 const allows = (opts, term, templateId) => opts.some(o => o.term === term && o.types.some(x => x.templateId === templateId));
 // secteurs de « lier » sur un élément : seulement les liens que son modèle prévoit et qu'EcoSpace sait représenter
 function elementSectors(t, opts) {
-  if (t.shape === "actant") return memberSectors(t, opts);
+  if (t.shape === "actant") return [...memberSectors(t, opts), ...powerSectors(t)];
+  if (t.shape === "crible") return powerSectors(t);
   if (t.shape === "physique") return [...physSectors(t, opts), ...powerSectors(t)];
   if (t.shape === "concept") return [...conceptSectors(t, opts), ...powerSectors(t)];
   if (t.shape === "pulsation") return pulseSectors(t);
-  if (t.shape === "pouvoir") return [...(shapeByKey("pulsation") ? [{ label: "Pulsation", color: shapeByKey("pulsation").color, title: `Pulsation : créer une pulsation existentielle pour « ${t.title} » ou l'ajouter à une pulsation existante`, action: () => askPulsation(t.power) }] : []), ...(t.cell ? [{ label: "Connecter ici", color: t.power.color, title: `Connecter un élément à l'hexagone ${t.cell.j}, ${t.cell.k} de ce nanotube (relation multiple de « ${t.title} »)`,
+  if (t.shape === "pouvoir") return [...(shapeByKey("pulsation") ? [{ label: "Pulsation", color: shapeByKey("pulsation").color, title: `Pulsation : créer une pulsation existentielle pour « ${t.title} » ou l'ajouter à une pulsation existante`, action: () => askPulsation(t.power) }] : []), ...(t.cell ? [{ label: "Connecter ici", color: t.power.color, title: `Connecter un élément à l'hexagone ${t.cell.j}, ${t.cell.k} de ce tube (relation multiple de « ${t.title} »)`,
     action: () => askPowerLink(t) }] : []), { label: "Branche", color: t.power.color, title: `Branche : nouveau pouvoir « ${t.power.typeLabel} » qui reprend la chaîne de « ${t.title} » (à modifier à partir du maillon où il diverge)`,
     action: () => askPower(t.power.type, null, t.power) }];
   return [];
 }
-// pouvoirs dont l'élément est le premier maillon (physique → discerner ; concept → raisonner, résonner, agir)
+// pouvoirs dont l'élément peut être un maillon, quel qu'il soit (physique, crible, actant, concept) : un secteur par type
+// de pouvoir et par maillon de ce type (« Raisonner · source », « Raisonner · destination » si la forme y revient)
 function powerSectors(t) {
   const sh = shapeByKey("pouvoir");
-  if (!sh) return [];
-  return (space.powerTypes ?? []).filter(pt => pt.sequence[0]?.key === t.shape).map(pt => ({ label: pt.label, color: sh.colors?.[pt.id] ?? sh.color,
-    title: `${pt.longLabel} depuis « ${t.title} » : ${pt.sequence.map(x => x.name).join(" → ")}`, action: () => askPower(pt.id, t) }));
+  if (!sh || t.owner) return [];
+  return (space.powerTypes ?? []).flatMap(pt => {
+    const at = pt.sequence.map((st, i) => st.key === t.shape ? i : -1).filter(i => i >= 0);
+    return at.map(i => ({ label: at.length > 1 ? `${pt.label} · ${pt.sequence[i].name.split(" ").at(-1)}` : pt.label, color: sh.colors?.[pt.id] ?? sh.color,
+      title: `${pt.longLabel} avec « ${t.title} » comme maillon « ${pt.sequence[i].name} » (${i + 1}/${pt.sequence.length}) : ${pt.sequence.map((x, j) => j === i ? x.name.toUpperCase() : x.name).join(" → ")}`,
+      action: () => askPower(pt.id, t, null, i) }));
+  });
 }
 // listes de choix des maillons : physiques et actants placés, cribles et concepts du vocabulaire du template des pouvoirs
 let powerVocab = null;
@@ -1970,7 +2327,7 @@ async function powerChoices(key) {
   const placed = key === "concept" ? space.placements.filter(p => p.shape === "concept").map(p => ({ id: p.item, title: p.title })) : [];
   return [...new Map([...placed, ...opts.map(o => ({ id: o.id, title: o.title }))].map(x => [x.id, x])).values()];
 }
-// dialogue d'un pouvoir : first = élément de départ (premier maillon, fixé) ; from = pouvoir dont on fait une branche
+// dialogue d'un pouvoir : first = élément de départ (fixé au maillon at, le premier par défaut) ; from = pouvoir dont on fait une branche
 // champ d'un maillon : liste des éléments placés (physique, actant) ou saisie avec suggestions (crible, concept)
 function stepControl(st, list, pre, dlId) {
   if (st.key === "physique" || st.key === "actant") {
@@ -1999,12 +2356,12 @@ function stepControl(st, list, pre, dlId) {
 }
 // texte sans accents ni casse, pour comparer une saisie à des titres
 const fold = x => String(x ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-// connexion d'un élément à l'hexagone cliqué d'un nanotube : maillon (rôle) au choix, élément existant ou nouveau
+// connexion d'un élément à l'hexagone cliqué d'un tube : maillon (rôle) au choix, élément existant ou nouveau
 async function askPowerLink(t) {
   closeMenu();
   const pw = t.power, pt = space.powerTypes.find(x => x.id === pw.type), dlg = $("#dlg-power");
   $("#power-title").textContent = `Connecter à « ${pw.title} »`;
-  $("#power-help").textContent = `L'élément se branche sur l'hexagone ${t.cell.j}, ${t.cell.k} du nanotube : un nanotube enfant part de cet hexagone (un crible y pose son anneau). Il est ajouté au pouvoir comme relation multiple du maillon choisi.`;
+  $("#power-help").textContent = `L'élément se branche sur l'hexagone ${t.cell.j}, ${t.cell.k} du tube : un tube enfant part de cet hexagone (un crible y pose son anneau). Il est ajouté au pouvoir comme relation multiple du maillon choisi.`;
   const role = el("select", {}, pt.sequence.map(st => el("option", { value: st.name, textContent: st.name.replace(/^./, c => c.toUpperCase()) })));
   // maillon proposé : celui de l'extrémité du segment cliqué
   const endKey = space.placements.find(p => String(p.item) === String(t.seg.key.split("|").pop()))?.shape;
@@ -2085,19 +2442,19 @@ function askFlux(t, others) {
       } catch (e) { toast("Erreur : " + e.message); }
     });
 }
-async function askPower(typeId, first = null, from = null) {
+async function askPower(typeId, first = null, from = null, at = 0) {
   closeMenu();
   const pt = space.powerTypes.find(x => x.id === typeId), sh = shapeByKey("pouvoir"), dlg = $("#dlg-power");
   let lists;
   try { lists = await Promise.all(pt.sequence.map(st => powerChoices(st.key))); } catch (e) { return toast(e.message); }
-  $("#power-title").textContent = from ? `Branche de « ${from.title} »` : `${pt.longLabel} depuis « ${first.title} »`;
+  $("#power-title").textContent = from ? `Branche de « ${from.title} »` : at ? `${pt.longLabel} avec « ${first.title} » (${pt.sequence[at].name})` : `${pt.longLabel} depuis « ${first.title} »`;
   $("#power-help").textContent = `Maillons dans l'ordre : ${pt.sequence.map(x => x.name).join(" → ")}. Physiques et actants : parmi les éléments placés. Cribles et concepts : à choisir ou à saisir (créés s'ils n'existent pas).${sh.interior?.includes(pt.id) ? " Les concepts iront dans la sphère de l'actant, qui grandit pour les contenir." : ""}${from ? " Une branche est un nouveau pouvoir : modifier les maillons à partir de celui où elle diverge." : ""}`;
   // un maillon peut relier plusieurs éléments : « + » ajoute un champ pour ce maillon (relation multiple)
   const rows = pt.sequence.map((st, i) => {
-    const list = lists[i], pres = from ? from.steps[i].members : i === 0 ? [{ item: first.item, title: first.title }] : [null];
+    const list = lists[i], pres = from ? from.steps[i].members : first && i === at ? [{ item: first.item, title: first.title }] : [null];
     const box = el("div"), ctls = [];
     const add = (pre, locked) => { const c = stepControl(st, list, pre, `power-dl-${i}-${ctls.length}`); if (locked) c.el.querySelector("select,input").disabled = true; ctls.push(c); box.append(c.el); };
-    pres.forEach((pre, k) => add(pre, i === 0 && first && k === 0));
+    pres.forEach((pre, k) => add(pre, i === at && first && k === 0));
     const more = el("button", { type: "button", className: "btn small", textContent: "+", title: `Ajouter un autre élément pour « ${st.name} »`, onclick: () => add(null, false) });
     return { el: el("div", { style: "margin:6px 0" }, el("label", { textContent: st.name.replace(/^./, c => c.toUpperCase()) }), box, more),
       read: () => { const v = ctls.map(c => c.read()); return v.length > 1 ? v : v[0]; } };
@@ -2377,6 +2734,7 @@ function positionRows(t) {
     const pl = t.pulsation, pw = id => space.powers?.find(x => x.item === id), pt = id => space.pulsations?.find(x => x.item === id)?.title ?? `item ${id}`;
     const when = x => [x.relative?.title, x.order != null ? `ordre ${x.order}` : null].filter(Boolean).join(", ");
     return [["Hexagone sous le centre", fmtHex(t.hex)], ["Foyer de l'éclair", `${fmtGeo(t.hex.geo)} · y ${t.anchor.y.toFixed(2)} m`],
+      ["Position spatio-temporelle", t.at ? `${t.at.address ? t.at.address + " · " : ""}${fmtGeo({ alt: 0, ...t.at })} · depuis le ${new Date(t.at.at).toLocaleString("fr-FR")}${(t.track?.filter(x => x.lon != null).length ?? 0) > 1 ? ` · ${t.track.filter(x => x.lon != null).length} positions` : ""}` : "aucune : foyer au-dessus du premier élément (action « position »)"],
       ["Parcours de l'éclair", t.route?.length ? t.route.map(p => p.title ?? `item ${p.item}`).join(" → ") : "—"],
       ["Intensité moyenne", t.intensity == null ? "—" : String(Math.round(t.intensity))],
       ["Pouvoirs", pl.powers.length ? pl.powers.map(x => `${pw(x.item)?.title ?? `item ${x.item}`}${pw(x.item) ? ` (${pw(x.item).typeLabel}, ${pw(x.item).intensity ?? "—"})` : " (non dessiné)"}${when(x) ? ` [${when(x)}]` : ""}`).join(" · ") : "aucun"],
@@ -2390,7 +2748,7 @@ function positionRows(t) {
     ["Chaîne", pw.steps.map(x => `${x.name} : ${x.title ?? "—"}${x.item ? ` (${x.item})` : ""}`).join(" → ")],
     ["Segment", t.powers.length > 1 ? `partagé par ${t.powers.length} pouvoirs (branches) : ${t.powers.map(x => x.title).join(" · ")}` : "propre à ce pouvoir"],
     ...(pw.interior ? [["Intériorité", "concepts dans la sphère de l'actant"]] : [])]; }
-  if (t.shape === "crible") return [["Position", `anneau sur le nanotube · ${fmtGeo(t.hex.geo)}`], ["Pouvoirs", t.powers.map(x => x.title).join(" · ")]];
+  if (t.shape === "crible") return [["Position", `anneau sur le tube · ${fmtGeo(t.hex.geo)}`], ["Pouvoirs", t.powers.map(x => x.title).join(" · ")]];
   if (t.owner) return [["Actant", `${t.owner.title} (item ${t.owner.item}, hexagone ${fmtHex(t.owner)})`], ["Lien", t.anchorTerm],
     ["Sous-hexagone (q, r, s)", `${fmtHex(t.sub)} · ${t.subSize.toFixed(2)} m`], ["Centre du fullerène", fmtGeo(t.geo.center)], ["Centre de la sphère", fmtGeo(t.geo.sphereCenter)],
     ["Rayons", `fullerène ${t.radius.toFixed(2)} m · sphère ${(t.sphereRadius ?? t.radius).toFixed(2)} m`], ...geoRows(t)];
@@ -2512,7 +2870,7 @@ async function remove(t) {
 // Liste des éléments par type (à droite de l'espace) : afficher ou cacher (un élément, ou tout un type ; mémorisé par
 // écosystème dans ce navigateur), zoomer dessus, et les actions du menu circulaire : détails, modifier, dupliquer,
 // supprimer. Cacher un élément cache aussi ce qu'il contient (physiques et concepts enfants, personnes et agents d'un
-// actant, concepts d'une intériorité quand toutes ses sphères sont cachées) et les nanotubes qui y aboutissent
+// actant, concepts d'une intériorité quand toutes ses sphères sont cachées) et les tubes qui y aboutissent
 // ==========================================
 const LIST_TYPES = { crible: { label: "Crible", color: "#6b7c8f" } };
 const LIST_ICONS = {
@@ -2568,8 +2926,39 @@ function collectEntries() {
   });
 }
 
-// visibilité effective : cachée elle-même, par son type, par son contenant, ou par toutes ses sphères d'intériorité
+// période choisie au brush du streamgraph : un élément daté qui n'est présent à aucun moment de la fenêtre est masqué
+// (dans la scène et la liste, sans être mémorisé comme caché) ; physique : depuis sa création ; actant, personne, agent,
+// concept : périodes de presence() ; pulsation : ses positions datées s'il en a ; pouvoirs, cribles et pulsations sans position n'ont pas de date (leurs tubes suivent leurs extrémités)
+function timeOff(e) {
+  if (!time.windowed || !e.t) return false;
+  let iv;
+  if (e.type === "physique") { const c = parseDate(e.t.node?.created); iv = c == null ? [] : [[c, Infinity]]; }
+  else if (e.type === "pulsation") iv = e.t.track?.some(x => x.lon != null) ? presence(e.t) : [];
+  else if (["pouvoir", "crible"].includes(e.type)) iv = [];
+  else iv = presence(e.t);
+  return iv.length > 0 && !iv.some(([a, b]) => a <= time.now && b >= time.oldest);
+}
+// visibilité effective : cachée elle-même, par son type, par son contenant, par toutes ses sphères d'intériorité, ou hors
+// de la période choisie
 function applyVisibility() {
+  for (const e of entries.values()) e.timeOff = timeOff(e);
+  // sans date : un pouvoir est hors période quand tous ses éléments datés le sont, un crible ou une pulsation quand tous
+  // leurs pouvoirs le sont
+  if (time.windowed) {
+    const byItem = new Map();
+    for (const e of entries.values()) if (e.t?.item != null && !["pouvoir", "crible", "pulsation"].includes(e.type)) byItem.set(e.t.item, [...(byItem.get(e.t.item) ?? []), e]);
+    const pwOff = new Map();
+    for (const e of entries.values()) if (e.type === "pouvoir") {
+      const ms = e.power.steps.flatMap(st => st.members.map(m => m.item)).flatMap(i => byItem.get(i) ?? []);
+      e.timeOff = ms.length > 0 && ms.every(x => x.timeOff);
+      pwOff.set(e.power.item, e.timeOff);
+    }
+    const allOff = items => items.length > 0 && items.every(i => pwOff.get(i) !== false);
+    for (const e of entries.values()) {
+      if (e.type === "crible") e.timeOff = allOff((e.t.powers ?? []).map(pw => pw.item));
+      if (e.type === "pulsation" && !e.t.track?.some(x => x.lon != null)) e.timeOff = allOff((e.t.pulsation?.powers ?? []).map(x => x.item));
+    }
+  }
   const memo = new Map();
   const off = (key, path = new Set()) => {
     const e = entries.get(key);
@@ -2577,7 +2966,7 @@ function applyVisibility() {
     if (memo.has(key)) return memo.get(key);
     if (path.has(key)) return false;
     path.add(key);
-    const r = hiddenSet.has(key) || hiddenTypes.has(e.type) || (e.up != null && off(e.up, path)) || (e.hosts.length > 0 && e.hosts.every(h => off(h, path)));
+    const r = hiddenSet.has(key) || hiddenTypes.has(e.type) || e.timeOff || (e.up != null && off(e.up, path)) || (e.hosts.length > 0 && e.hosts.every(h => off(h, path)));
     path.delete(key); memo.set(key, r);
     return r;
   };
@@ -2586,7 +2975,7 @@ function applyVisibility() {
   itemsGroup.traverse(o => {
     const t = o.userData?.target;
     if (t?.shape === "pouvoir") {
-      // extrémité (élément ou point de départ) cachée : le nanotube l'est aussi
+      // extrémité (élément ou point de départ) cachée : le tube l'est aussi
       const [, from, to] = t.seg.key.split("|");
       o.visible = (t.powers ?? [t.power]).some(pwOn) && !off(String(to)) && (from.includes("@") || !off(String(from)));
     } else if (t?.shape === "crible") o.visible = !off(`cr:${t.item}`) && (t.powers ?? []).some(pwOn);
@@ -2595,12 +2984,36 @@ function applyVisibility() {
     else if (o.userData?.trackOf) o.visible = !off(o.userData.trackOf);
   });
   for (const e of entries.values()) e.off = off(e.key);
+  updateBadges();
+}
+// badges des grands hexagones : nombre d'éléments affichés (sans ceux cachés ou hors de la période), recalculé en
+// remontant les ancêtres de l'hexagone de chaque élément placé ; un hexagone dont tous les éléments sont masqués perd
+// son badge (sauf celui de l'origine)
+function updateBadges() {
+  const top = space?.levels?.top ?? 0, minus = new Map();
+  for (const p of space?.placements ?? []) {
+    if (p.actant || shapeByKey(p.shape)?.free) continue;
+    const off = !!entries.get(String(p.item))?.off;
+    if (!off && !p.shown) continue;
+    // compté (par le serveur) à sa position de référence : retiré si masqué ou déplacé dans le temps, ajouté là où il est
+    let h = { q: p.q, r: p.r };
+    for (let l = 1; l <= top; l++) { h = parentHex(h); const k = cellKeyOf(l, h); minus.set(k, (minus.get(k) ?? 0) + 1); }
+    if (off) continue;
+    h = p.shown.hex;
+    for (let l = 1; l <= top; l++) { h = parentHex(h); const k = cellKeyOf(l, h); minus.set(k, (minus.get(k) ?? 0) - 1); }
+  }
+  for (const n of lodNodes) {
+    if (!n.badge) continue;
+    const c = Math.max(0, n.cell.count - (minus.get(n.cell.key) ?? 0)), origin = n.cell.key === cellKeyOf(n.cell.level, { q: 0, r: 0 });
+    n.empty = !c && !origin;
+    n.badge.element.textContent = c ? `${c} élément${c > 1 ? "s" : ""}` : "origine";
+  }
 }
 
 function buildList() {
   if (!space) return $("#el-list").replaceChildren();
   if (buildList.eco !== state.eco) { expanded = new Set(); buildList.eco = state.eco; } // dépliage gardé pendant la session, par écosystème
-  loadHidden(); collectEntries(); applyVisibility(); renderList();
+  loadHidden(); collectEntries(); applyVisibility(); renderList(); renderRoute();
 }
 const listTypes = () => [...(space?.shapes ?? []).map(s => ({ key: s.key, label: s.label, color: s.color })),
   ...Object.entries(LIST_TYPES).filter(([k]) => !space.shapes.some(s => s.key === k)).map(([key, v]) => ({ key, ...v }))];
@@ -2609,7 +3022,7 @@ function renderList() {
   openTypes ??= new Set(listTypes().map(t => t.key));
   const byTitle = (a, b) => String(a.t.title ?? "").localeCompare(String(b.t.title ?? ""), "fr", { sensitivity: "base", numeric: true });
   const groups = listTypes().map(ty => {
-    const all = [...entries.values()].filter(e => e.type === ty.key);
+    const all = [...entries.values()].filter(e => e.type === ty.key && !e.timeOff); // hors de la période : absent de la liste
     if (!all.length) return null;
     // arbre (contenant → contenu) d'un même type ; filtre : liste à plat des titres qui correspondent
     let rows;
@@ -2631,7 +3044,10 @@ function renderList() {
       ...rows.map(([e, d, n]) => listRow(e, d, n)));
     return det;
   }).filter(Boolean);
-  list.replaceChildren(...(groups.length ? groups : [el("p", { className: "muted", style: "padding:8px 10px;margin:0", textContent: q ? "Aucun élément ne correspond." : "Aucun élément placé." })]));
+  const outside = [...entries.values()].filter(e => e.timeOff).length;
+  const note = outside ? [el("p", { className: "muted out-note", textContent: `${outside} élément(s) hors de la période ${fmtDate(time.oldest, time.now - time.oldest)} → ${fmtDate(time.now, time.now - time.oldest)} masqué(s) · `},
+    el("button", { className: "link", textContent: "toutes les dates", onclick: () => { setTimeWindow(null); renderTimeline(); } }))] : [];
+  list.replaceChildren(...note, ...(groups.length ? groups : [el("p", { className: "muted", style: "padding:8px 10px;margin:0", textContent: q ? "Aucun élément ne correspond." : outside ? "Aucun élément dans cette période." : "Aucun élément placé." })]));
 }
 function listRow(e, depth, nKids = 0) {
   const t = e.t, sh = shapeByKey(e.type), member = !!t.owner, floating = e.type === "pouvoir" || e.type === "crible";
@@ -2659,7 +3075,9 @@ function refreshVisibility() { saveHidden(); applyVisibility(); renderList(); }
 // zoom : cadrer la boîte englobante de l'élément en gardant la direction de vue actuelle (vol animé)
 function zoomTo(e) {
   const box = new THREE.Box3();
-  for (const o of e.objs) if (!o.isCSS2DObject) box.expandByObject(o);
+  // actant : cadrage du fullerène (sa sphère peut faire des kilomètres quand elle contient des concepts éloignés)
+  if (e.type === "actant" && e.t?.hex) { const R = (shapeByKey("actant")?.fullereneRadius ?? 1) * space.grid.hexSize; box.setFromCenterAndSize(new THREE.Vector3(e.t.hex.x, 0, e.t.hex.z), new THREE.Vector3(2 * R, 2 * R, 2 * R)); }
+  else for (const o of e.objs) if (!o.isCSS2DObject) box.expandByObject(o);
   if (e.t.route) for (const p of [e.t.anchor, ...e.t.route.map(x => x.at)]) box.expandByPoint(p); // pulsation : tout le parcours de l'éclair
   if (box.isEmpty()) return toast("Élément sans forme dans la scène");
   const c = box.getCenter(new THREE.Vector3()), r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, space.grid.hexSize * 0.4);
@@ -2689,7 +3107,7 @@ $("#space-pulse").onclick = () => setPulse(!pulseOn);
 $("#pulse-speed").oninput = e => setPulseSpeed(e.target.value);
 try { const v = localStorage.getItem("ecospace-pulse-speed"); if (v != null && Number.isFinite(+v)) setPulseSpeed(+v, false); } catch {}
 $("#turbo-bar").style.background = `linear-gradient(to right, ${d3.range(0, 1.01, 0.1).map(t => d3.interpolateTurbo(t)).join(", ")})`;
-try { if (localStorage.getItem("ecospace-pulse") === "0") setPulse(false); } catch {}
+setPulse(false); // animation arrêtée à l'ouverture : le bouton Animation (ou le suivi d'une pulsation) la lance
 $("#space-list").onclick = () => showList($("#space-wrap").classList.contains("no-list"));
 try { if (localStorage.getItem("ecospace-list") === "0") showList(false); } catch {}
 

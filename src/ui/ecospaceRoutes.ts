@@ -237,8 +237,26 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
   // que la relecture n'ajoute pas de point
   const editablePlacement = (s: Space, id: number) => {
     const p = s.placements.find(x => x.item === id && (x.shape === "actant" || x.shape === "physique"));
-    if (!p) throw new Error("Seuls un actant ou un physique placé dans cet espace ont une position modifiable (une personne suit son actant)");
+    if (!p) throw new Error("Seuls un actant ou un physique placé dans cet espace, ou une pulsation de cet écosystème, ont une position modifiable (une personne suit son actant)");
     return p;
+  };
+  // élément dont la position se modifie : actant ou physique placé, ou pulsation de l'écosystème (hors grille : son
+  // foyer est posé à sa position, sans hexagone de référence)
+  const positionTarget = async (s: Space, id: number): Promise<any> => {
+    const p = s.placements.find(x => x.item === id && (x.shape === "actant" || x.shape === "physique"));
+    if (p) return p;
+    const sh = pulseShape(), omk = await ctx.serverOmk();
+    const it = sh ? await omk.request(omk.url(`items/${id}`)).catch(() => null) : null;
+    if (sh && it?.["o:resource_template"]?.["o:id"] === sh.templateId && (it[ecoProp()] ?? []).some((v: any) => v.value_resource_id === s.eco))
+      return { item: id, shape: sh.key, title: it["o:title"], pulse: true };
+    return editablePlacement(s, id);
+  };
+  // historique d'une pulsation : trié par date, enregistré et copié (média, propriété des positions)
+  const pulseHistory = (p: any, h: PositionHistory) => {
+    h.features.sort((a, b) => Date.parse(a.properties.at) - Date.parse(b.properties.at));
+    h.title = p.title ?? h.title;
+    fs.mkdirSync(geoDir(), { recursive: true }); fs.writeFileSync(geoFile(p.item), JSON.stringify(h, null, 2)); scheduleGeoUpload(p.item);
+    return [] as number[];
   };
   const applyHistory = (s: Space, p: Placement, h: PositionHistory) => {
     h.features.sort((a, b) => Date.parse(a.properties.at) - Date.parse(b.properties.at));
@@ -380,15 +398,41 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     if (!sh) return [];
     const list = await omk.request(omk.url("items", { resource_template_id: sh.templateId, "property[0][property]": ecoProp(), "property[0][type]": "res",
       "property[0][text]": s.eco, per_page: 500 })).catch(() => []);
-    return (list as any[]).map(it => ({ item: it["o:id"] as number, title: String(it["o:title"] ?? `Pulsation ${it["o:id"]}`),
+    return (list as any[]).map(it => ({ item: it["o:id"] as number, title: String(it["o:title"] ?? `Pulsation ${it["o:id"]}`), track: positionTrack(it, s.eco),
       powers: (it[sh.powerTerm] ?? []).filter((v: any) => v.value_resource_id).map((v: any) => ({ item: v.value_resource_id, ...temporality(v, sh) })),
       flux: (it[sh.fluxTerm] ?? []).filter((v: any) => v.value_resource_id).map((v: any) => ({ to: v.value_resource_id, title: v.display_title ?? null, ...temporality(v, sh) })) }));
+  };
+  // positions spatio-temporelles d'un item hors grille (pulsation) dans un écosystème : points de son historique
+  // (geoHistory) et valeurs de la propriété des positions (jdc:hasPosition) saisies dans Omeka S, annotées par leurs
+  // coordonnées (« latitude,longitude ») et leur date, sans écosystème ou avec celui-ci ; doublons (même date, même
+  // lieu) fusionnés ; triées par date
+  const positionTrack = (it: any, eco: number) => {
+    const g = geoCfg(), an = g.annotation ?? {}, out: any[] = [];
+    const key = (x: any) => `${Math.floor(Date.parse(x.at) / 1000)}|${x.lon == null ? "-" : (+x.lon).toFixed(6)}|${x.lat == null ? "-" : (+x.lat).toFixed(6)}`;
+    for (const f of readHistory(it["o:id"]).features) if (f.properties.eco === eco)
+      out.push({ at: f.properties.at, event: f.properties.event, address: f.properties.address ?? null, ...(f.geometry ? { lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], alt: f.geometry.coordinates[2] ?? 0 } : {}) });
+    const first = (v: any, t?: string) => t ? v?.["@annotation"]?.[t]?.[0] : undefined;
+    for (const v of (g.property ? it[g.property] : null) ?? []) {
+      const ecos = (v?.["@annotation"]?.[ecoProp()] ?? []).map((x: any) => x.value_resource_id);
+      if (ecos.length && !ecos.includes(eco)) continue;
+      // coordonnées et date : annotation, sinon le texte de la valeur (« lat, lon · AAAA-MM-JJ HH:MM:SS · adresse »)
+      const txt = String(v?.["@value"] ?? ""), parts = txt.split("·").map(x => x.trim());
+      const geo = String(first(v, an.geo)?.["@value"] ?? parts[0] ?? "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+      const when = String(first(v, an.time)?.["@value"] ?? parts[1] ?? "").trim().replace(" ", "T");
+      const at = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(when) ? when : when + "Z");
+      if (!geo || !Number.isFinite(at)) continue;
+      const lat = +geo[1], lon = +geo[2];
+      if (Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+      out.push({ at: new Date(at).toISOString(), event: "position", address: first(v, an.place)?.["@value"] ?? (parts[2] || null), lon, lat, alt: 0, omeka: true });
+    }
+    const seen = new Set<string>();
+    return out.filter(x => !seen.has(key(x)) && !!seen.add(key(x))).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   };
   // temporalités relatives proposées (vocabulaire de l'annotation du flux)
   const relatives = async (omk: Omk) => {
     const sh = pulseShape();
     if (!sh) return [];
-    const form = await buildTemplateForm(omk, sh.templateId).catch(() => null);
+    const form = await templateForm(omk, sh.templateId).catch(() => null);
     const f: any = form?.fields.find(x => x.term === sh.fluxTerm), dt = f?.annotation?.find((x: any) => x.term === sh.relativeTerm)?.dataTypes?.find((d: any) => d.kind === "item");
     return (dt?.options ?? []).map((o: any) => ({ id: o.id, title: o.title, type: dt.type }));
   };
@@ -441,12 +485,16 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       created: firstValue(item, sh.createdTerm) ?? item["o:created"]?.["@value"] ?? null, createdFromRecord: !firstValue(item, sh.createdTerm),
       modified: item["o:modified"]?.["@value"] ?? item["o:created"]?.["@value"] ?? null,
       importance: Math.max(0, Number(firstValue(item, sh.importanceTerm) ?? 1) || 0), children: [],
-      image: await firstImage(omk, item),
+      image: null,
     };
-    if (depth >= sh.maxDepth) return node;
-    const kids = await omk.request(omk.url("items", { "property[0][property]": sh.parentTerm, "property[0][type]": "res", "property[0][text]": id,
-      resource_template_id: sh.templateId, sort_by: "title", per_page: 200 })).catch(() => []);
-    for (const k of kids as any[]) if (!seen.has(k["o:id"])) node.children.push(await physNode(omk, k, depth + 1, seen));
+    // image et enfants lus en parallèle, frères aussi (un arbre de 50 physiques : quelques allers-retours au lieu de 100)
+    const [image, kids] = await Promise.all([firstImage(omk, item),
+      depth >= sh.maxDepth ? [] : omk.request(omk.url("items", { "property[0][property]": sh.parentTerm, "property[0][type]": "res", "property[0][text]": id,
+        resource_template_id: sh.templateId, sort_by: "title", per_page: 200 })).catch(() => [])]);
+    node.image = image;
+    const fresh = (kids as any[]).filter(k => !seen.has(k["o:id"]));
+    fresh.forEach(k => seen.add(k["o:id"]));
+    node.children = await Promise.all(fresh.map(k => physNode(omk, k, depth + 1, seen)));
     return node;
   };
   // premier média image d'un item (texture du physique) : identifiant du média, servi par /api/ecospace/image
@@ -473,10 +521,24 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
     const opts = await linkableTypes(omk, item, ctx.config().econetwork as any);
     if (!opts.some(o => o.term === term && o.types.some(t => t.templateId === templateId))) throw new Error(`Le modèle de l'item ${item} ne prévoit pas ce lien (${term} vers ${what})`);
   };
+  // identifiants des propriétés (stables) et formulaires des resource templates (templateCacheTtl ms) gardés en mémoire :
+  // leur lecture coûte une requête par propriété du template, à chaque chargement de l'espace sinon
+  const propIds = new Map<string, number>();
   const propId = async (omk: Omk, term: string) => {
+    if (propIds.has(term)) return propIds.get(term)!;
     const p = (await omk.request(omk.url("properties", { term })))[0];
     if (!p) throw new Error(`Propriété ${term} absente de l'instance Omeka S`);
+    propIds.set(term, p["o:id"]);
     return p["o:id"] as number;
+  };
+  const forms_ = new Map<number, { at: number; form: ReturnType<typeof buildTemplateForm> }>();
+  const templateForm = (omk: Omk, id: number) => {
+    const c = forms_.get(id), ttl = Number(cfg().templateCacheTtl ?? 600000);
+    if (c && Date.now() - c.at < ttl) return c.form;
+    const form = buildTemplateForm(omk, id);
+    form.catch(() => forms_.delete(id));
+    forms_.set(id, { at: Date.now(), form });
+    return form;
   };
 
   // personnes et agents : membres des actants placés (anchorTerm de l'actant), sur la sous-grille de son hexagone ;
@@ -521,10 +583,10 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
   const view = async (omk: Omk, s: Space) => {
     // grille à niveaux : hexagones de base (niveau 0, cliquables) là où sont les éléments et l'origine, grands hexagones
     // ailleurs (levels.cells, niveau > 0)
-    const gc = cfg().grid, lv = adaptiveGrid(s.grid, s.placements.filter(p => !isFree(p.shape)).map(p => hexToPlane(s.grid, p)), Number(gc.levelFactor) || 10, Number(gc.maxRings) || 8);
-    const hexes = lv.cells.filter(c => c.level === 0).map(c => ({ q: c.q, r: c.r, s: c.s, x: c.x, z: c.z, parent: c.parent, geo: planeToGeo(s.grid, c) }));
-    const levels = { top: lv.top, factor: lv.factor, radius: lv.radius, lod: Number(gc.lod) || 6,
-      cells: lv.cells.filter(c => c.level > 0).map(c => ({ key: c.key, level: c.level, q: c.q, r: c.r, x: c.x, z: c.z, size: c.size, count: c.count, split: c.split, parent: c.parent, geo: planeToGeo(s.grid, c) })) };
+    const gc = cfg().grid, lv = adaptiveGrid(s.grid, s.placements.filter(p => !isFree(p.shape)).map(p => ({ ...hexToPlane(s.grid, p), kind: p.shape })), Number(gc.maxRings) || 8);
+    const hexes = lv.cells.filter(c => c.level === 0).map(c => ({ q: c.q, r: c.r, s: c.s, x: c.x, z: c.z, parent: c.parent, id: c.id, geo: planeToGeo(s.grid, c) }));
+    const levels = { top: lv.top, aperture: lv.aperture, radius: lv.radius, lod: Number(gc.lod) || 6,
+      cells: lv.cells.filter(c => c.level > 0).map(c => ({ key: c.key, id: c.id, level: c.level, q: c.q, r: c.r, x: c.x, z: c.z, size: c.size, angle: c.angle, count: c.count, kinds: c.kinds, split: c.split, parent: c.parent, geo: planeToGeo(s.grid, c) })) };
     const items = await Promise.all(s.placements.map(p => omk.request(omk.url(`items/${p.item}`)).catch(() => null)));
     const placements = s.placements.map((p, i) => {
       const it = items[i], plane = hexToPlane(s.grid, p), shape = cfg().shapes.find(x => x.key === p.shape);
@@ -616,7 +678,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       if (key !== "crible" && key !== "concept") throw new Error(`Maillon ${name} : choisir un élément placé`);
       item = (await omk.request(omk.url("items", { resource_template_id: tid, "property[0][property]": "dcterms:title", "property[0][type]": "eq", "property[0][text]": title })))[0];
       if (!item) {
-        const sf = await buildTemplateForm(omk, tid);
+        const sf = await templateForm(omk, tid);
         item = await omk.request(omk.url("items"), "POST", { ...itemPayload(sf, { [sf.titleTerm]: [{ type: "literal", value: title }] }),
           [ecoProp()]: [{ type: "resource:item", property_id: ecoPid, value_resource_id: eco }] });
         console.log(`📤 [OMEKA] EcoSpace : ${key} ${item["o:id"]} créé pour un pouvoir`);
@@ -683,14 +745,14 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const b = await ctx.readBody(req);
       const eco = itemId(b.eco), id = itemId(b.item), s = load(eco);
       if (!s) throw new Error("Espace inexistant");
-      const p = editablePlacement(s, id), h = readHistory(id), { pos, at } = geoInput(b, s), address = b.address == null ? undefined : text(b.address, 300);
+      const p = await positionTarget(s, id), h = readHistory(id), { pos, at } = geoInput(b, s), address = b.address == null ? undefined : text(b.address, 300);
       if (b.index != null && b.index !== "") {
         const f = h.features[int(b.index, "index")];
         if (!f || f.properties.eco !== eco || !f.geometry) throw new Error("Position introuvable dans l'historique de cet écosystème");
         f.geometry.coordinates = [pos.lon, pos.lat, pos.alt]; f.properties.at = at;
         if (address !== undefined) { if (address) f.properties.address = address; else delete f.properties.address; }
       } else h.features.push(pointFeature(pos, { eco, at, event: "déplacé", shape: p.shape, ...(address ? { address } : {}) }));
-      const moved = applyHistory(s, p, h);
+      const moved = p.pulse ? pulseHistory(p, h) : applyHistory(s, p, h);
       console.log(`🗺️ EcoSpace : position de l'item ${id} ${b.index != null && b.index !== "" ? "corrigée" : "ajoutée"} (${pos.lon}, ${pos.lat} le ${at}) dans l'écosystème ${eco}`);
       return { exists: true, moved, ...(await view(await ctx.serverOmk(), s)) };
     }),
@@ -699,10 +761,10 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const b = await ctx.readBody(req);
       const eco = itemId(b.eco), id = itemId(b.item), s = load(eco);
       if (!s) throw new Error("Espace inexistant");
-      const p = editablePlacement(s, id), h = readHistory(id), i = int(b.index, "index"), f = h.features[i];
+      const p = await positionTarget(s, id), h = readHistory(id), i = int(b.index, "index"), f = h.features[i];
       if (!f || f.properties.eco !== eco) throw new Error("Position introuvable dans l'historique de cet écosystème");
       h.features.splice(i, 1);
-      const moved = applyHistory(s, p, h);
+      const moved = p.pulse ? pulseHistory(p, h) : applyHistory(s, p, h);
       console.log(`🗺️ EcoSpace : position ${i} de l'item ${id} supprimée de l'historique`);
       return { exists: true, moved, ...(await view(await ctx.serverOmk(), s)) };
     }),
@@ -806,7 +868,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
         if (p["o:resource_template"]?.["o:id"] !== sh.templateId) throw new Error("Le parent n'est pas un élément physique");
         await requireLink(omk, parent, sh.parentTerm, sh.templateId, "un physique");
       }
-      const form = await buildTemplateForm(omk, sh.templateId);
+      const form = await templateForm(omk, sh.templateId);
       const parentType = form.fields.find(f => f.term === sh.parentTerm)?.dataTypes.find(d => d.kind === "item")?.type ?? "resource:item";
       const ecoType = form.fields.find(f => f.term === ecoProp)?.dataTypes.find(d => d.kind === "item")?.type ?? "resource:item";
       let child: any, created = false;
@@ -871,7 +933,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const steps: any[] = Array.isArray(b.steps) ? b.steps : [];
       if (steps.length !== type.sequence.length) throw new Error(`${type.label} : ${type.sequence.length} maillons attendus (${type.sequence.map(x => x.name).join(" → ")})`);
       const omk = await ctx.serverOmk();
-      const form = await buildTemplateForm(omk, f.powerTemplateId);
+      const form = await templateForm(omk, f.powerTemplateId);
       const chosen: { name: string; term: string; id: number; title: string }[] = [];
       for (const [i, st] of type.sequence.entries()) {
         const vs = (Array.isArray(steps[i]) ? steps[i] : [steps[i]]).filter(Boolean);
@@ -937,7 +999,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       if (!s) throw new Error("Espace inexistant");
       const omk = await ctx.serverOmk();
       if (!(await readPowers(omk, s)).some(p => p.item === powerId)) throw new Error("Ce pouvoir n'est pas dessiné dans cet espace");
-      const form = await buildTemplateForm(omk, sh.templateId);
+      const form = await templateForm(omk, sh.templateId);
       const itemType = (term: string) => form.fields.find(f => f.term === term)?.dataTypes.find(d => d.kind === "item" && !d.type.startsWith("customvocab"))?.type ?? "resource:item";
       let item: any, created = false;
       if (b.existing != null) {
@@ -971,7 +1033,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const rel = b.relative == null || b.relative === "" ? null : (await relatives(omk)).find((r: any) => r.id === Number(b.relative));
       if (b.relative != null && b.relative !== "" && !rel) throw new Error("Ordre relatif inconnu");
       const order = b.order == null || b.order === "" ? null : int(b.order, "ordre successif");
-      const form = await buildTemplateForm(omk, sh.templateId);
+      const form = await templateForm(omk, sh.templateId);
       const type = form.fields.find(f => f.term === sh.fluxTerm)?.dataTypes.find(d => d.kind === "item" && !d.type.startsWith("customvocab"))?.type ?? "resource:item";
       const item = await omk.request(omk.url(`items/${from}`)), vals: any[] = item[sh.fluxTerm] ?? [];
       await writeValues(omk, from, { [sh.fluxTerm]: [...vals.filter(v => v.value_resource_id !== to).map(toWritable), await timedValue(omk, sh.fluxTerm, type, to, rel, order)] });
@@ -990,7 +1052,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       if (!s?.placements.some(x => x.item === actantId && x.shape === "actant")) throw new Error("Actant non placé dans cet espace");
       const omk = await ctx.serverOmk();
       await requireLink(omk, actantId, sh.anchorTerm, sh.templateId, sh.label.toLowerCase());
-      const form = await buildTemplateForm(omk, sh.templateId);
+      const form = await templateForm(omk, sh.templateId);
       const ecoType = form.fields.find(f => f.term === ecoProp())?.dataTypes.find(d => d.kind === "item")?.type ?? "resource:item";
       let item: any, created = false;
       if (b.existing != null) {
@@ -1008,7 +1070,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const id = item["o:id"] as number, actant = await omk.request(omk.url(`items/${actantId}`));
       const vals: any[] = actant[sh.anchorTerm] ?? [];
       if (!vals.some(v => v.value_resource_id === id)) {
-        const aForm = await buildTemplateForm(omk, actant["o:resource_template"]?.["o:id"]).catch(() => null);
+        const aForm = await templateForm(omk, actant["o:resource_template"]?.["o:id"]).catch(() => null);
         const type = aForm?.fields.find(f => f.term === sh.anchorTerm)?.dataTypes.find(d => d.kind === "item")?.type ?? "resource:item";
         await writeValues(omk, actantId, { [sh.anchorTerm]: [...vals.map(toWritable), { type, property_id: await propId(omk, sh.anchorTerm), value_resource_id: id }] });
       }
@@ -1032,7 +1094,7 @@ export function ecospaceRoutes(ctx: Ctx): Record<string, Handler> {
       const omk = await ctx.serverOmk();
       // parent : broaderTerm du concept ; enfant : narrowerTerm du concept
       await requireLink(omk, targetId, b.as === "parent" ? sh.broaderTerm : sh.narrowerTerm, sh.templateId, "un concept");
-      const form = await buildTemplateForm(omk, sh.templateId);
+      const form = await templateForm(omk, sh.templateId);
       const ecoType = form.fields.find(f => f.term === ecoProp())?.dataTypes.find(d => d.kind === "item")?.type ?? "resource:item";
       let other: any, created = false;
       if (b.existing != null) {

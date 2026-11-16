@@ -111,44 +111,74 @@ export function rehexPlacements<P extends { item: number; q: number; r: number; 
   return moved;
 }
 
-// grille à niveaux : hexagones de taille hexSize × factor^niveau ; le parent d'un hexagone est l'hexagone du niveau
-// supérieur qui contient son centre (partition exacte : les hexagones ne s'emboîtent pas, on suit donc les centres de
-// proche en proche depuis l'hexagone de base de chaque point) ; le niveau du haut est le plus petit dont maxRings
-// anneaux autour de l'origine contiennent tous les points (au niveau 0 : au moins le rayon de la grille) ; un hexagone
-// de niveau > 0 qui contient au moins un point (élément placé ou origine) est découpé en ses enfants, jusqu'au niveau 0
-// où sont posés les éléments ; count = nombre d'éléments (sans l'origine)
-export interface GridCell extends Hex { level: number; size: number; x: number; z: number; count: number; split: boolean; parent: string | null; key: string }
+// grille à niveaux, sur le modèle de H3 (Uber ; API H3 de TravelTime) : hiérarchie d'ouverture 7, chaque hexagone a
+// exactement 7 enfants (son enfant central et les 6 voisins de celui-ci), de côté √7 fois plus petit et tournés de
+// atan(√3/5) ≈ 19,1° ; parent et enfants se calculent sur les coordonnées (multiplication par 2 + ω dans le réseau
+// hexagonal, ω = rotation de 60°), sans recherche géométrique, et chaque hexagone de base a un seul ancêtre par niveau
+// (partition exacte). Coordonnées d'un niveau L : axiales dans le réseau de ce niveau ; centre = celui de son
+// descendant central au niveau 0
+const cubeRound = (fq: number, fr: number): Hex => {
+  const fs = -fq - fr;
+  let q = Math.round(fq), r = Math.round(fr), s = Math.round(fs);
+  const dq = Math.abs(q - fq), dr = Math.abs(r - fr), ds = Math.abs(s - fs);
+  if (dq > dr && dq > ds) q = -r - s; else if (dr > ds) r = -q - s; else s = -q - r;
+  return { q: q || 0, r: r || 0, s: -q - r || 0 };
+};
+export const APERTURE = 7;
+// enfant central (niveau L - 1) d'un hexagone du niveau L, et parent (niveau L + 1) d'un hexagone du niveau L
+export const centerChild = (h: { q: number; r: number }): Hex => ({ q: 2 * h.q - h.r, r: h.q + 3 * h.r, s: -(2 * h.q - h.r) - (h.q + 3 * h.r) || 0 });
+export const parentHex = (h: { q: number; r: number }): Hex => cubeRound((3 * h.q + h.r) / 7, (-h.q + 2 * h.r) / 7);
+export const childHexes = (h: { q: number; r: number }): Hex[] => {
+  const c = centerChild(h);
+  return [c, ...CUBE_DIRS.map(([dq, dr]) => ({ q: c.q + dq!, r: c.r + dr!, s: -(c.q + dq!) - (c.r + dr!) || 0 }))];
+};
+// rang d'un enfant chez son parent (0 = central, 1 à 6 = direction), chiffre de l'index hiérarchique
+const childDigit = (h: { q: number; r: number }) => {
+  const c = centerChild(parentHex(h)), d = [h.q - c.q, h.r - c.r];
+  return d[0] === 0 && d[1] === 0 ? 0 : CUBE_DIRS.findIndex(([a, b]) => a === d[0] && b === d[1]) + 1;
+};
+// descendant central au niveau 0 d'un hexagone du niveau level (centre de l'hexagone)
+const baseOf = (level: number, h: { q: number; r: number }) => { let x: { q: number; r: number } = h; for (let l = 0; l < level; l++) x = centerChild(x); return x; };
+export const levelCenter = (g: GridSpec, level: number, h: { q: number; r: number }) => hexToPlane(g, baseOf(level, h));
+// taille (centre → sommet) et rotation (degrés, sens du plan) des hexagones d'un niveau
+export const levelSize = (g: GridSpec, level: number) => g.hexSize * Math.sqrt(APERTURE) ** level;
+export function levelAngle(g: GridSpec, level: number) {
+  const a = hexToPlane(g, { q: 1, r: 0 }), b = levelCenter(g, level, { q: 1, r: 0 });
+  return (Math.atan2(b.z, b.x) - Math.atan2(a.z, a.x)) * 180 / Math.PI;
+}
+// le niveau du haut est le plus petit dont maxRings anneaux autour de l'origine contiennent tous les points ; un hexagone
+// de niveau > 0 qui contient un point (élément placé, origine ou hexagone du disque de rayon g.radius autour d'elle) est
+// découpé en ses 7 enfants, jusqu'au niveau 0 où sont posés les éléments ; count = nombre d'éléments, kinds = nombre par
+// type (comme les propriétés agrégées par cellule de l'API H3 de TravelTime) ; id = index hiérarchique (hexagone du
+// haut puis chiffres des enfants, à la façon d'un index H3)
+export interface GridCell extends Hex { level: number; size: number; angle: number; x: number; z: number; count: number; kinds: Record<string, number>; split: boolean; parent: string | null; key: string; id: string }
 export const cellKey = (level: number, h: { q: number; r: number }) => `${level}:${h.q},${h.r}`;
-export function adaptiveGrid(g: GridSpec, points: { x: number; z: number }[], factor = 10, maxRings = 8, maxLevels = 8) {
-  const spec = (level: number): GridSpec => ({ ...g, hexSize: g.hexSize * factor ** level });
+export function adaptiveGrid(g: GridSpec, points: { x: number; z: number; kind?: string }[], maxRings = 8, maxLevels = 16) {
   const O = { q: 0, r: 0, s: 0 };
-  const up = (level: number, h: Hex) => planeToHex(spec(level + 1), hexToPlane(spec(level), h)); // parent de h (niveau level)
-  // chaîne des ancêtres de chaque point (origine comprise), du niveau 0 à maxLevels
-  const chains = [{ x: 0, z: 0, origin: true }, ...points.map(p => ({ ...p, origin: false }))].map(p => {
-    const chain = [planeToHex(spec(0), p)];
-    for (let l = 0; l < maxLevels; l++) chain.push(up(l, chain[l]!));
-    return { origin: p.origin, chain };
+  const home = gridHexes(g).map(h => ({ ...hexToPlane(g, h), kind: undefined, home: true }));
+  const chains = [...home, ...points.map(p => ({ ...p, home: false }))].map(p => {
+    const chain: Hex[] = [planeToHex(g, p)];
+    for (let l = 0; l < maxLevels; l++) chain.push(parentHex(chain[l]!));
+    return { kind: p.kind, home: p.home, chain };
   });
-  let top = 0;
   const ringsAt = (l: number) => Math.max(0, ...chains.map(c => cubeDistance(O, c.chain[l]!)));
+  let top = 0;
   while (top < maxLevels && ringsAt(top) > (top === 0 ? Math.max(maxRings, g.radius) : maxRings)) top++;
-  const counts = new Map<string, { all: number; items: number }>();
-  for (const c of chains) c.chain.forEach((h, l) => { const k = cellKey(l, h), v = counts.get(k) ?? { all: 0, items: 0 }; v.all++; if (!c.origin) v.items++; counts.set(k, v); });
-  const cells: GridCell[] = [];
-  const childrenOf = (level: number, h: Hex) => {
-    const P = spec(level), C = spec(level - 1), c = planeToHex(C, hexToPlane(P, h)), out: Hex[] = [];
-    for (const k of gridHexes({ ...C, radius: Math.ceil(factor) + 1 })) {
-      const cand = { q: c.q + k.q, r: c.r + k.r, s: -(c.q + k.q) - (c.r + k.r) || 0 }, back = up(level - 1, cand);
-      if (back.q === h.q && back.r === h.r) out.push(cand);
-    }
-    return out;
-  };
-  const add = (level: number, h: Hex, parent: string | null) => {
-    const key = cellKey(level, h), n = counts.get(key) ?? { all: 0, items: 0 }, split = level > 0 && n.all > 0;
-    cells.push({ ...h, level, size: spec(level).hexSize, ...hexToPlane(spec(level), h), count: n.items, split, parent, key });
-    if (split) for (const ch of childrenOf(level, h)) add(level - 1, ch, key);
+  const counts = new Map<string, { all: number; kinds: Record<string, number> }>();
+  for (const c of chains) c.chain.forEach((h, l) => {
+    const k = cellKey(l, h), v = counts.get(k) ?? { all: 0, kinds: {} };
+    v.all++;
+    if (!c.home) v.kinds[c.kind ?? "élément"] = (v.kinds[c.kind ?? "élément"] ?? 0) + 1;
+    counts.set(k, v);
+  });
+  const cells: GridCell[] = [], angles = Array.from({ length: top + 1 }, (_, l) => levelAngle(g, l));
+  const add = (level: number, h: Hex, parent: string | null, id: string) => {
+    const key = cellKey(level, h), n = counts.get(key) ?? { all: 0, kinds: {} }, split = level > 0 && n.all > 0;
+    const count = Object.values(n.kinds).reduce((t, x) => t + x, 0);
+    cells.push({ ...h, level, size: levelSize(g, level), angle: angles[level]!, ...levelCenter(g, level, h), count, kinds: n.kinds, split, parent, key, id });
+    if (split) for (const ch of childHexes(h)) add(level - 1, ch, key, `${id}${childDigit(ch)}`);
   };
   const radius = top === 0 ? Math.max(g.radius, ringsAt(0)) : ringsAt(top) + 1;
-  for (const h of gridHexes({ ...spec(top), radius })) add(top, h, null);
-  return { top, factor, radius, cells };
+  for (const h of gridHexes({ ...g, radius })) add(top, h, null, `${top}:${h.q},${h.r}/`);
+  return { top, aperture: APERTURE, radius, cells };
 }

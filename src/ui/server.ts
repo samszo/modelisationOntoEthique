@@ -11,6 +11,7 @@ import { defaultOntoEthiqueConfig, ONTOETHIQUE_CONFIG_FILE } from "../config/ont
 import { ontoEthiqueRoutes } from "./ontoethiqueRoutes";
 import { econetworkRoutes } from "./econetworkRoutes";
 import { ecospaceRoutes } from "./ecospaceRoutes";
+import { ecotextRoutes } from "./ecotextRoutes";
 import { AGENTS, DIAGRAMS, type AgentInfo } from "../workflow/diagrams";
 import { readAgentOverrides, writeAgentOverride, AGENTS_CONFIG_FILE } from "../agents/overrides";
 import { agentEstimate, otherUsage, usageMatcher, usageRuns } from "../lib/metrics/usageHistory";
@@ -363,6 +364,11 @@ const routes: Record<string, (req: http.IncomingMessage, res: http.ServerRespons
     res.end(fs.readFileSync(path.join(PUBLIC_DIR, "workflowDiagram.js")));
   },
 
+  // module de la description textuelle d'un écosystème (EcoSpace)
+  "GET /ecotext.js": (_req, res) => {
+    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+    res.end(fs.readFileSync(path.join(PUBLIC_DIR, "ecotext.js")));
+  },
   // module des formulaires générés depuis les resource templates
   "GET /templateForm.js": (_req, res) => {
     res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
@@ -491,10 +497,13 @@ Object.assign(routes, ECONETWORK_ROUTES);
 // IHM EcoSpace : écosystème de connaissances dans un espace 3D (grille hexagonale), servie par le serveur ontoÉthique
 const ECOSPACE_ROUTES = ecospaceRoutes({ root: ROOT, publicDir: PUBLIC_DIR, readEnv, config: currentOntoEthiqueConfig, serverOmk, sendJson, readBody });
 Object.assign(routes, ECOSPACE_ROUTES);
+// EcoSpace : nouvel écosystème depuis une description textuelle (autocomplétion, agents de suggestion et de modélisation)
+const ECOTEXT_ROUTES = ecotextRoutes({ config: currentOntoEthiqueConfig, costs: () => currentConfig().costs, serverOmk, sendJson, readBody });
+Object.assign(routes, ECOTEXT_ROUTES);
 
 // routes propres à une application (les autres sont communes à tous les serveurs)
 const APP_ONLY: Record<string, AppName> = {
-  ...Object.fromEntries([...Object.keys(ONTOETHIQUE_ROUTES), ...Object.keys(ECONETWORK_ROUTES), ...Object.keys(ECOSPACE_ROUTES)].map(k => [k, "ontoethique" as AppName])),
+  ...Object.fromEntries([...Object.keys(ONTOETHIQUE_ROUTES), ...Object.keys(ECONETWORK_ROUTES), ...Object.keys(ECOSPACE_ROUTES), ...Object.keys(ECOTEXT_ROUTES)].map(k => [k, "ontoethique" as AppName])),
 };
 
 // documentation HTML générée par npm run docs (docs/html)

@@ -210,11 +210,12 @@ export const defaultOntoEthiqueConfig = {
       orientation: "pointy",
       // position géographique de l'hexagone (0, 0, 0) : Université Paris 8, Saint-Denis
       origin: { lon: 2.3637, lat: 48.9447, alt: 0 },
-      // grille à niveaux : quand les éléments sont loin de l'origine (ils gardent leur longitude/latitude), les hexagones
-      // du haut grandissent par paliers de levelFactor (10 m, 100 m, 1 km…) pour tenir en maxRings anneaux ; un hexagone
-      // qui contient des éléments est découpé en hexagones levelFactor fois plus petits, jusqu'à hexSize ; une sous-grille
-      // n'est affichée que si la caméra est à moins de lod × la taille de son hexagone
-      levelFactor: 10, maxRings: 8, lod: 6,
+      // grille à niveaux, hiérarchie d'ouverture 7 sur le modèle de H3 : quand les éléments sont loin de l'origine (ils
+      // gardent leur longitude/latitude), les hexagones du haut grandissent de √7 par niveau (10 m, 26 m, 70 m… tournés de
+      // 19,1° à chaque niveau) pour tenir en maxRings anneaux ; un hexagone qui contient des éléments (ou le disque de rayon
+      // `radius` autour de l'origine) est découpé en ses 7 enfants, jusqu'à hexSize ; une sous-grille n'est affichée que si
+      // la caméra est à moins de lod × la taille de son hexagone
+      maxRings: 8, lod: 6,
     },
     // formes des éléments ontologiques, par resource template ; dimensions en fraction de hexSize (1 = rayon de l'hexagone)
     // layer : couche occupée sur l'hexagone (un élément par couche et par hexagone ; défaut : la clé de la forme)
@@ -230,35 +231,37 @@ export const defaultOntoEthiqueConfig = {
       // sous la grille (rayon sphereRatio × rayon du fullerène) dont le pôle nord touche le centroïde du fullerène
       { key: "personne", label: "Personne", templateId: 8, anchor: "actant", anchorTerm: "jdc:hasPerson", color: "#2f6fb0", memberRatio: 0.8, sphereRatio: 1 },
       { key: "agent", label: "Agent", templateId: 6, anchor: "actant", anchorTerm: "jdc:hasAgent", color: "#c08a1e", memberRatio: 0.8, sphereRatio: 1 },
-      // pouvoir : nanotube de carbone fait d'hexagones indépendants (nœuds = atomes, liens = liaisons, surfaces = faces
-      // cliquables ; lattice hexagones par tour, rayon tubeRadius) reliant les maillons de sa séquence
-      // (omekaForms.powerTypes) dans l'ordre ; un nanotube par segment droit, les segments suivants (changement de
+      // pouvoir : cylindre translucide (rayon tubeRadius ; une géométrie par segment, quelle que soit sa longueur) dont
+      // les hexagones, calculés et non dessinés (lattice hexagones par tour), restent cliquables ; il relie les maillons de sa séquence
+      // (omekaForms.powerTypes) dans l'ordre ; un tube par segment droit, les segments suivants (changement de
       // direction), les relations multiples (plusieurs éléments pour un maillon) et les branches (pouvoirs de même type qui
-      // partagent un début de chaîne, dessiné une fois) sont des nanotubes enfants, joints par une sphère (jointRatio) ;
+      // partagent un début de chaîne, dessiné une fois) sont des tubes enfants, joints par une sphère (jointRatio) ;
       // un élément connecté sur un hexagone part de cet hexagone ; crible : anneau (cribleRatio, cribleColor) traversé par
-      // le nanotube ; roleTerm : propriété de l'annotation de valeur qui donne le maillon d'un lien (« concept source »…).
+      // le tube ; roleTerm : propriété de l'annotation de valeur qui donne le maillon d'un lien (« concept source »…).
       // Les concepts des pouvoirs sont déplacés dans la sphère de leur(s) actant(s) — à l'intersection des sphères s'ils
       // relèvent de plusieurs actants — qui grandissent pour les contenir (marge interiorPadding) ; types interior : le
-      // nanotube relie directement les concepts (l'actant les héberge). Couleurs par type ; ajout depuis le premier maillon
+      // tube relie directement les concepts (l'actant les héberge). Couleurs par type ; ajout depuis le premier maillon
       { key: "pouvoir", label: "Pouvoir", templateId: 7, power: true, color: "#1e88e5", tubeRadius: 0.05, lattice: 8, jointRatio: 1.8, cribleRatio: 4,
         cribleColor: "#6b7c8f", interior: ["raisonner", "resonner"], interiorPadding: 0.08, roleTerm: "dcterms:type",
         colors: { discerner: "#1e88e5", raisonner: "#8e24aa", resonner: "#e6a817", agir: "#d64541" } },
       // pulsation existentielle : éclair lumineux qui parcourt les éléments des pouvoirs qu'elle désigne (powerTerm), dans
       // l'ordre des pouvoirs (ordre successif de leur annotation, sinon ordre d'ajout) puis des maillons de chaque séquence,
-      // en passant par l'intérieur des nanotubes (plus court chemin le long de leurs axes) ; il part d'un foyer cliquable
+      // en passant par l'intérieur des tubes (plus court chemin le long de leurs axes) ; il part d'un foyer cliquable
       // (octaèdre de rayon markerRadius, à markerLift au-dessus du premier élément, ou de la grille si cet élément est
-      // dessous), avance à speed hexagones par seconde (valeur initiale du curseur « Vitesse »), zigzague tous les boltStep
-      // (écart boltJitter × longueur, borné par le rayon du nanotube), s'éteint en fade s sur l'élément atteint (éclat
+      // dessous), avance à speed hexagones par seconde (valeur initiale du curseur « Vitesse » ; un saut dure au plus
+      // maxHop s, pour les éléments à des kilomètres ; au-delà de hopEase s, la durée croît comme le logarithme de la
+      // longueur : la vitesse augmente avec la distance ; départ et arrivée ralentis), zigzague tous les boltStep
+      // (écart boltJitter × longueur, borné par le rayon du tube), s'éteint en fade s sur l'élément atteint (éclat
       // burstSize), puis repart après pause s. Tube de rayon boltRadius dans une gaine 2,5 fois plus large ; tête : sphère
       // headRadius, halo haloSize, lumière ponctuelle lightIntensity de portée lightDistance ; couleur : échelle turbo
       // (d3-scale-chromatic) de l'intensité du pouvoir parcouru, de −100 (bleu) à +100 (rouge) ; foyer : intensité moyenne.
-      // Tailles en fractions d'hexagone. Flux (fluxTerm) vers d'autres pulsations : arcs fléchés d'un foyer à l'autre
+      // Tailles en fractions d'hexagone, agrandies au-delà de sizeRef hexagones de la caméra (taille apparente minimale). Flux (fluxTerm) vers d'autres pulsations : arcs fléchés d'un foyer à l'autre
       // (fluxColor, rayon fluxRadius, hauteur fluxLift × longueur), sens d'après l'ordre relatif de l'annotation
       // (relativeTerm : « Avant » inverse la flèche, « Pendant » : trait double sans flèche), ordre successif
-      // (successiveTerm) dans l'étiquette, particules qui circulent (particles). Ajout depuis un pouvoir (menu lier) ; le
-      // bouton « Pulsations » arrête ou relance l'animation
+      // (successiveTerm) dans l'étiquette, particules qui circulent (particles). Ajout depuis un pouvoir (menu lier) ; la
+      // rubrique « Pulsations » arrête ou relance l'animation, règle la vitesse et suit une pulsation avec la caméra
       { key: "pulsation", label: "Pulsation", templateId: 12, pulse: true, color: "#2e9d5b", powerTerm: "jdc:hasPouvoir", fluxTerm: "jdc:flux",
-        relativeTerm: "jdc:ordreRelatif", successiveTerm: "jdc:ordreSuccessif", speed: 4, pause: 0.8, fade: 0.15, boltStep: 0.4, boltJitter: 0.08,
+        relativeTerm: "jdc:ordreRelatif", successiveTerm: "jdc:ordreSuccessif", speed: 4, maxHop: 4, hopEase: 1.5, sizeRef: 12, pause: 0.8, fade: 0.15, boltStep: 0.4, boltJitter: 0.08,
         boltRadius: 0.012, markerLift: 0.8, markerRadius: 0.16, headRadius: 0.035, haloSize: 0.6, burstSize: 1.4, lightIntensity: 1.5, lightDistance: 3,
         fluxColor: "#5d6d7e", fluxRadius: 0.06, fluxLift: 0.3, particles: 4 },
       // physique : boîte au-dessus de la grille, à base carrée inscrite dans l'hexagone (baseRatio × le plus grand carré
@@ -284,6 +287,8 @@ export const defaultOntoEthiqueConfig = {
     timeScale: { height: 60, minHeight: 5, maxHeight: 1000, mode: "linear" },
     // nombre maximal de copies demandées en une fois par « dupliquer »
     maxDuplicates: 100,
+    // durée (ms) pendant laquelle les formulaires des resource templates lus dans Omeka S restent en mémoire
+    templateCacheTtl: 600000,
     // copie du fichier de l'espace (positions) dans Omeka S, comme média de l'item écosystème : envoyée delay ms après le
     // dernier enregistrement (les modifications rapprochées n'en font qu'un), seulement si le contenu a changé (sha256) ;
     // identifiée par dcterms:identifier = identifierPrefix + écosystème ; sert à restaurer un espace absent en local
@@ -306,6 +311,41 @@ export const defaultOntoEthiqueConfig = {
     // recherche de lieux (Nominatim, appelé par le navigateur, résultats en français), zoom sur un lieu, nombre de résultats
     map: { tiles: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: "© contributeurs OpenStreetMap",
       geocoder: "https://nominatim.openstreetmap.org/search", zoom: 17, searchLimit: 6 },
+  },
+
+  // description textuelle d'un nouvel écosystème (EcoSpace, étape 1.1 « Nouvel écosystème depuis un texte ») : saisie
+  // guidée par étapes (stages : id, libellé, aide, phrases modèles insérables — {{…}} = à compléter), suggestions locales
+  // (titres des items existants des templates des formes, vocabulaires des maillons, noms déjà cités entre « ») et
+  // suite proposée par l'agent eco-suggest-agent (au plus suggestMaxWords mots) ; l'agent eco-model-agent transforme
+  // la description en modélisation (au plus maxElements éléments par type), relue dans un aperçu modifiable avant la
+  // création dans Omeka S et dans l'espace ; vocabCacheTtl : durée (ms) du cache des titres existants
+  ecotext: {
+    suggestMaxWords: 60, maxElements: 30, vocabCacheTtl: 600000, minChars: 2, maxSuggestions: 12,
+    // journal de la génération conservé dans l'item de l'écosystème : une valeur de property par étape (saisie de chaque
+    // rubrique, suite proposée et ajoutée ou ignorée, modélisation de l'agent, modélisation validée), annotée selon le
+    // modèle d'annotation de la propriété (template 17 « Incitation ») : title (étape), description (texte saisi, date,
+    // bilan), prompt (demande envoyée), response (réponse), model (modèle), cost (tokens, coût, énergie, carbone) ;
+    // valeurs préfixées par la date de la génération (une nouvelle génération ajoute les siennes) ; maxChars : longueur
+    // maximale d'un texte
+    pipeline: { property: "jdc:pipeline", maxChars: 60000,
+      annotation: { title: "dcterms:title", description: "dcterms:description", prompt: "jdc:prompt", response: "jdc:reponse", model: "jdc:iaModel", cost: "jdc:cost" } },
+    stages: [
+      { id: "ecosysteme", label: "Écosystème", help: "Son titre, ce qu'il réunit, son lieu de référence (origine de la grille).",
+        patterns: ["L'écosystème « {{titre}} » réunit {{qui}} autour de {{quoi}}.", "Il se situe à {{lieu}}."] },
+      { id: "actants", label: "Actants, personnes et agents", help: "Les actants (collectifs, institutions, dispositifs), leurs personnes et leurs agents numériques, leur lieu et leur date.",
+        patterns: ["L'actant « {{actant}} » réunit les personnes « {{personne}} » et « {{personne}} ».", "L'actant « {{actant}} » utilise l'agent « {{agent}} ».", "« {{actant}} » est à {{lieu}} depuis {{AAAA}}."] },
+      { id: "physiques", label: "Physiques", help: "Les supports matériels et documentaires, leur date de création, leur importance, ce qu'ils contiennent, leur lieu.",
+        patterns: ["Le physique « {{physique}} », créé en {{AAAA}}, se trouve à {{lieu}}.", "« {{physique}} » contient « {{physique enfant}} » (importance {{1 à 10}})."] },
+      { id: "concepts", label: "Concepts", help: "Les concepts et leur hiérarchie (un concept en englobe d'autres).",
+        patterns: ["Le concept « {{concept}} » englobe « {{concept}} » et « {{concept}} »."] },
+      { id: "pouvoirs", label: "Pouvoirs", help: "Les pouvoirs existentiels : discerner (physique → crible → actant → concept), raisonner et résonner (concept → actant → concept), agir (concept → actant → crible → physique), avec leur intensité (−100 à +100).",
+        patterns: ["Discerner : à partir de « {{physique}} », à travers le crible « {{crible}} », « {{actant}} » discerne « {{concept}} » (intensité {{+40}}).",
+          "Raisonner : « {{actant}} » raisonne de « {{concept source}} » vers « {{concept destination}} » (intensité {{+20}}).",
+          "Résonner : « {{actant}} » fait résonner « {{concept source}} » avec « {{concept destination}} » (intensité {{+10}}).",
+          "Agir : à partir de « {{concept}} », « {{actant}} » agit avec le crible « {{crible}} » sur « {{physique}} » (intensité {{+30}})."] },
+      { id: "pulsations", label: "Pulsations", help: "Les pulsations existentielles : les pouvoirs qu'elles enchaînent, leur lieu, leur date et leur ordre par rapport aux autres.",
+        patterns: ["La pulsation « {{pulsation}} » enchaîne les pouvoirs {{pouvoirs cités}} ; elle a lieu à {{lieu}} le {{AAAA-MM-JJ}}.", "« {{pulsation}} » a lieu avant « {{autre pulsation}} »."] },
+    ],
   },
 
   // dossier des fichiers produits (dans le répertoire de données)
