@@ -56,14 +56,32 @@ function valueEditor(field, ctx, onRemove, initial) {
       const q = h("input", { placeholder: "Rechercher un item…" });
       const sel = h("select", {}, h("option", { value: "", textContent: "— résultats —" }));
       if (init) { sel.append(h("option", { value: init.id, textContent: `${init.label ?? "item"} (${init.id})` })); sel.value = String(init.id); }
+      // aucun résultat : créer un item de ce titre (template au choix parmi ceux que le champ accepte) et le lier
+      const targets = targetTemplates(d, ctx), tsel = h("select", { title: "Type de l'élément à créer" }, targets.map(x => h("option", { value: x.templateId, textContent: x.label })));
+      const make = h("button", { type: "button", className: "btn small", title: "Créer un nouvel élément de ce titre dans Omeka S (rattaché à l'écosystème) et le lier" });
+      const create = h("span", { style: "display:none;gap:6px;align-items:center;flex:0 0 auto" }, targets.length > 1 ? tsel : null, make);
+      make.onclick = async () => {
+        const title = q.value.trim(), tpl = Number(tsel.value || targets[0]?.templateId);
+        if (!title || !tpl) return;
+        make.disabled = true;
+        try {
+          const r = await ctx.api("/api/ontoethique/form/item", { method: "POST", body: { template: tpl, values: { "dcterms:title": [{ type: "literal", value: title }] }, ...(ctx.eco ? { eco: ctx.eco } : {}) } });
+          sel.replaceChildren(h("option", { value: r.id, textContent: `${r.title} (${r.id})` })); sel.value = String(r.id);
+          create.style.display = "none";
+          ctx.toast(`${r.created ? "Élément créé" : "Élément existant repris"} : ${r.title} (${r.id}), lié à l'enregistrement`);
+        } catch (e) { ctx.toast("Création : " + e.message); }
+        finally { make.disabled = false; }
+      };
       let timer = null;
-      q.oninput = () => { clearTimeout(timer); timer = setTimeout(async () => {
+      q.oninput = () => { clearTimeout(timer); create.style.display = "none"; timer = setTimeout(async () => {
         try {
           const rs = await ctx.api(`/api/ontoethique/form/search?template=${ctx.templateId}&term=${encodeURIComponent(field.term)}&q=${encodeURIComponent(q.value)}`);
           sel.replaceChildren(h("option", { value: "", textContent: `— ${rs.length} résultat(s) —` }), ...rs.map(r => h("option", { value: r.id, textContent: `${r.title} (${r.id})` })));
+          const exact = rs.some(r => r.title.trim().toLowerCase() === q.value.trim().toLowerCase());
+          if (q.value.trim().length >= 2 && !exact && targets.length) { make.textContent = `${rs.length ? "Créer" : "Aucun résultat : créer"} « ${q.value.trim()} » et le lier`; create.style.display = "flex"; }
         } catch (e) { ctx.toast("Recherche : " + e.message); }
       }, 250); };
-      slot.replaceChildren(q, sel);
+      slot.replaceChildren(q, sel, create);
       read = () => sel.value ? { type: d.type, id: Number(sel.value) } : null;
     } else if (d.kind === "uri") {
       const uri = h("input", { type: "url", placeholder: "https://…", value: init?.uri ?? "" }), label = h("input", { placeholder: "libellé", value: init?.label ?? "" });
@@ -90,6 +108,14 @@ function valueEditor(field, ctx, onRemove, initial) {
     ann ? h("div", { className: "tf-ann" }, h("div", { className: "help", textContent: "Temporalité de cette relation" }), ann.el) : null].filter(Boolean));
   box._read = () => { const v = read(); if (v && ann) { const a = ann.read(); if (Object.keys(a).length) v.annotation = a; } return v; };
   return box;
+}
+
+// templates qu'un champ d'item lié peut créer : ceux de son resource_query (resource_template_id), sinon tous ceux des
+// formulaires
+function targetTemplates(d, ctx) {
+  const all = ctx.templates ?? [], p = new URLSearchParams(d.query ?? "");
+  const ids = [...p.entries()].filter(([k]) => /^resource_template_id(\[\d*\])?$/.test(k)).flatMap(([, v]) => v.split(",")).map(Number).filter(Boolean);
+  return ids.length ? ids.map(id => all.find(t => t.templateId === id) ?? { templateId: id, label: `template ${id}` }) : all;
 }
 
 function fieldEditor(field, ctx, initial = []) {
@@ -140,12 +166,14 @@ function powerControls(form, ctx, initial = {}) {
 }
 
 // formulaire d'un template dessiné dans box ; values : valeurs existantes ; onSubmit(values) enregistre
-export async function templateForm(box, { api, toast, templateId, values = {}, submitLabel = "Enregistrer", onSubmit }) {
+export async function templateForm(box, { api, toast, templateId, values = {}, submitLabel = "Enregistrer", onSubmit, eco = null }) {
   if (!document.getElementById("tf-css")) document.head.append(h("style", { id: "tf-css", textContent: CSS }));
   box.replaceChildren(h("p", { className: "muted", textContent: "Chargement du modèle…" }));
   const form = await api(`/api/ontoethique/form?template=${templateId}`);
-  const c = { api, toast, templateId };
-  const skip = form.power ? new Set([form.power.intensity.term, form.power.typeTerm]) : new Set();
+  const c = { api, toast, templateId, templates: form.templates, eco };
+  // champs gérés ailleurs (positions : dialogue « position » d'EcoSpace ; journal de génération) : non affichés,
+  // conservés par le serveur à l'enregistrement
+  const skip = new Set([...(form.managed ?? []), ...(form.power ? [form.power.intensity.term, form.power.typeTerm] : [])]);
   const fields = fieldsEditor(form.fields.filter(f => !skip.has(f.term)), c, values);
   const power = form.power ? powerControls(form, c, values) : null;
   const status = h("span", { className: "muted", style: "font-size:13px" });
@@ -173,8 +201,8 @@ async function renderForm(box, listBox, t, ctx, admin) {
   try { form = await ctx.api(`/api/ontoethique/form?template=${t.templateId}`); }
   catch (e) { if (request === formRequest) box.replaceChildren(h("p", { className: "ko", textContent: e.message })); return; }
   if (request !== formRequest) return;
-  const c = { ...ctx, templateId: t.templateId };
-  const skip = form.power ? new Set([form.power.intensity.term, form.power.typeTerm]) : new Set();
+  const c = { ...ctx, templateId: t.templateId, templates: form.templates };
+  const skip = new Set([...(form.managed ?? []), ...(form.power ? [form.power.intensity.term, form.power.typeTerm] : [])]);
   const fields = fieldsEditor(form.fields.filter(f => !skip.has(f.term)), c);
   const power = form.power ? powerControls(form, c) : null;
   const status = h("span", { className: "muted", style: "font-size:13px" });

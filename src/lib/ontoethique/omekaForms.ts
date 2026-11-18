@@ -44,3 +44,9 @@ export function checkPower(values: Record<string, FormValue[]>, config: OntoEthi
   const extra = f.powerTypes.flatMap(t => t.sequence.map(s => s.term)).filter(t => !allowed.has(t) && values[t]?.length);
   if (extra.length) throw new Error(`${type.label} : ${[...new Set(extra)].join(", ")} hors de la séquence`);
 }
+
+// propriétés gérées par leurs propres formulaires et non par l'édition d'un item : positions spatio-temporelles
+// (dialogue « position » d'EcoSpace, geoHistory.property) et journal de génération d'un écosystème (ecotext.pipeline)
+// ; absentes des formulaires, conservées telles quelles à l'enregistrement
+export const managedTerms = (config: OntoEthiqueConfig) =>
+  [config.ecospace?.geoHistory?.property, config.ecotext?.pipeline?.property].filter((t): t is string => !!t);

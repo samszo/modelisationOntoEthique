@@ -97,6 +97,29 @@ export function ecotextRoutes(ctx: Ctx): Record<string, Handler> {
       return { text: cleanSuggestion(text), prompt, model: agentModelId("eco-suggest-agent", model), cost: usageOf(source, "eco-suggest-agent", model, usage, "ecotexte") };
     }),
 
+    // journal de la génération d'un item (?item=) : valeurs de pipeline.property regroupées par génération (préfixe
+    // [date]), annotations lues selon pipeline.annotation (title, description, prompt, response, model, cost)
+    "GET /api/ecotext/pipeline": json(async (_req, url) => {
+      const id = Number(url.searchParams.get("item"));
+      if (!Number.isInteger(id) || id <= 0) throw new Error("Identifiant d'item invalide");
+      const pc = cfg().pipeline, an = pc.annotation as Record<string, string>;
+      const omk = await ctx.serverOmk(), item = await omk.request(omk.url(`items/${id}`));
+      const runs: { at: string; steps: any[] }[] = [];
+      for (const v of item[pc.property] ?? []) {
+        const m = /^\[([^\]]+)\]\s*(.*)$/s.exec(String(v["@value"] ?? "")), at = m?.[1] ?? "", label = m?.[2] ?? String(v["@value"] ?? "");
+        const step: any = { label };
+        for (const [k, term] of Object.entries(an)) {
+          const xs = v["@annotation"]?.[term] ?? [];
+          if (xs.length) step[k] = xs.map((x: any) => x["@value"] ?? x.display_title ?? x["@id"] ?? "").join("\n");
+        }
+        let r = runs.find(x => x.at === at);
+        if (!r) runs.push(r = { at, steps: [] });
+        r.steps.push(step);
+      }
+      runs.sort((a, b) => b.at.localeCompare(a.at));
+      return { item: id, property: pc.property, runs };
+    }),
+
     // journal de la génération conservé dans l'item de l'écosystème ({ eco, run, sections, steps, validated, report }) :
     // une valeur de pipeline.property par étape, annotée selon le modèle de la propriété (template 17) ; les valeurs
     // d'une même génération (préfixe [run]) sont remplacées, les autres conservées

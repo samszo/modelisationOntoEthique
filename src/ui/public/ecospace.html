@@ -197,7 +197,7 @@
   <div class="bar">
     <h1>EcoSpace <small>écosystème de connaissances en trois dimensions</small></h1>
     <div class="spacer"></div>
-    <span id="eco-label" class="chip hidden"></span>
+    <span id="eco-label" class="chip hidden" role="button" tabindex="0" style="cursor:pointer" title="Détails de l'écosystème (fiche, journal de génération)"></span>
     <a href="/">ontoÉthique</a>
     <a href="/econetwork">EcoNetwork</a>
     <a href="/parametres" title="Connexions Albert, Zotero, Omeka S">⚙ Paramètres</a>
@@ -236,7 +236,7 @@
         <p class="lead">Cliquer sur un hexagone ouvre son menu (libellé au survol) : <strong>lier</strong> crée ou place un élément ontologique sur l'hexagone, avec sa forme (sur un physique : un physique enfant) ; sur un élément placé : <strong>dupliquer</strong>, <strong>détails</strong>, <strong>supprimer</strong>, <strong>modifier</strong>. Glisser pour tourner, clic droit ou Maj + glisser pour déplacer, molette pour zoomer, double-clic pour s'approcher d'un hexagone.</p>
         </details>
         <details class="rubric" id="rub-view" open><summary>Vues et affichage</summary>
-        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small toggle" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small toggle" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button></div>
+        <div class="toolbar"><button id="space-refresh" class="btn small">Actualiser</button><button id="space-fit" class="btn small">Vue d'ensemble</button><button id="space-top" class="btn small">Vue de dessus</button><button id="space-below" class="btn small">Vue de dessous</button><button id="space-list" class="btn small toggle" aria-pressed="true" title="Afficher ou masquer la liste des éléments par type">Éléments</button><button id="space-legend" class="btn small toggle" aria-pressed="false" title="Afficher ou cacher la légende des formes et la description de la grille">Légende</button><button id="space-origin" class="btn small" title="Choisir sur une carte le lieu du centre de la grille">Origine géographique</button><button id="space-eco" class="btn small" title="Détails de l'écosystème : fiche Omeka S et journal de sa génération depuis un texte">Écosystème</button></div>
         </details>
         <details class="rubric" id="rub-pulse"><summary>Pulsations <span id="pulse-sum" class="muted"></span></summary>
         <div class="toolbar"><button id="space-pulse" class="btn small toggle" aria-pressed="false" title="Arrêter ou relancer l'animation des pulsations et des flux">Animation</button><label class="speed" title="Vitesse de propagation des éclairs des pulsations (hexagones par seconde ; un saut dure au plus maxHop secondes)">Vitesse <input id="pulse-speed" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Vitesse de propagation des pulsations"><output id="pulse-speed-val">4 hex/s</output></label><span class="turbo" title="Couleur de l'éclair selon l'intensité du pouvoir parcouru (échelle turbo)">−100<span id="turbo-bar"></span>+100</span></div>
@@ -390,11 +390,12 @@
 <!-- détails -->
 <dialog id="dlg-details" class="wide">
   <div class="toolbar"><h2 id="details-title" style="margin:0">Détails</h2><div class="spacer"></div>
-    <button id="details-tab-omeka" class="btn small primary">Omeka S</button><button id="details-tab-sheet" class="btn small">Fiche</button>
+    <button id="details-tab-omeka" class="btn small primary">Omeka S</button><button id="details-tab-sheet" class="btn small">Fiche</button><button id="details-tab-journal" class="btn small hidden" title="Journal de la génération depuis un texte (jdc:pipeline) : saisies, suites proposées, modélisations, avec demande, réponse, modèle et coût">Journal</button>
     <a id="details-open" target="_blank" rel="noopener" style="color:var(--accent)">Nouvel onglet ↗</a><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
   <p class="help" id="details-help"></p>
   <iframe id="details-frame" title="Item dans Omeka S"></iframe>
   <div id="details-body" class="hidden"></div>
+  <div id="details-journal" class="hidden"></div>
 </dialog>
 
 <!-- modification -->
@@ -424,6 +425,7 @@ import { ConvexGeometry } from "three/addons/geometries/ConvexGeometry.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { templateForm } from "/templateForm.js";
 import { openEcoText } from "/ecotext.js";
+import { renderPipeline } from "/pipelineJournal.js";
 
 const $ = s => document.querySelector(s);
 const el = (tag, props = {}, ...children) => {
@@ -2261,7 +2263,7 @@ function openMenu(h, t) {
         : sectors ? (sectors.length ? `Lier, selon le modèle de « ${t.title} » : ${sectors.map(x => x.label).join(", ")}` : `Lier : le modèle de « ${t.title} » ne prévoit aucun lien représentable ici`)
         : `Lier : éléments prévus par le modèle de « ${t.title} »`,
       action: () => t ? elementLinkMenu(t, r) : linkMenu(h, r) },
-    { label: "dupliquer", icon: "dupliquer", color: "#2e7d5b", disabled: !t || isMember || isLink, title: !t ? "Dupliquer : hexagone libre" : isLink ? (t.shape === "pulsation" ? "Dupliquer : créer plutôt une pulsation depuis un pouvoir" : "Dupliquer : pour un pouvoir, utiliser lier → Branche") : isMember ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : isChild ? "Dupliquer n fois (frères dans le même parent, titres incrémentés)" : "Dupliquer n fois (titres incrémentés, hexagones libres les plus proches)", action: () => duplicate(t) },
+    { label: "dupliquer", icon: "dupliquer", color: "#2e7d5b", disabled: !t, title: t ? `Dupliquer n fois : ${dupText(t)}` : "Dupliquer : hexagone libre", action: () => duplicate(t) },
     { label: "détails", icon: "détails", color: "#8a4fb8", title: t ? "Détails" : "Détails de l'hexagone", action: () => t ? details(t) : hexDetails(h) },
     { label: "supprimer", icon: "supprimer", color: "#c0392b", disabled: !t, title: t ? "Supprimer (conséquences affichées avant)" : "Supprimer : hexagone libre", action: () => remove(t) },
     { label: "modifier", icon: "modifier", color: "#b8860b", disabled: !t?.templateId, title: t ? "Modifier" : "Modifier : hexagone libre", action: () => edit(t) },
@@ -2682,14 +2684,25 @@ function hexDetails(h) {
   $("#dlg-hex").showModal();
 }
 
+// pouvoirs dont le maillon crible contient ce crible (tous, pas seulement l'anneau cliqué)
+const criblePowers = t => (space.powers ?? []).filter(pw => pw.steps.some(st => /^crible/.test(st.name) && st.members.some(m => m.item === t.item)));
+// où va la copie d'un élément, selon son type (titres incrémentés, valeurs de l'original copiées)
+function dupText(t) {
+  if (t.owner) return `${shapeByKey(t.shape)?.label ?? "membre"} ajouté(e) au même actant « ${t.owner.title} »`;
+  if (t.shape === "pouvoir") return "nouveau pouvoir de même type, même intensité et même chaîne (tube partagé, à modifier ensuite)";
+  if (t.shape === "crible") return `nouveau crible ajouté au maillon crible des mêmes pouvoirs (${criblePowers(t).length})`;
+  if (t.shape === "pulsation") return "nouvelle pulsation avec les mêmes pouvoirs, flux et positions";
+  if (t.shape === "concept") return "concept frère (même parent, sans les enfants), ajouté à l'espace";
+  if (t.parent) return `physiques frères dans « ${t.parent.title} »`;
+  return `chaque copie sur l'hexagone libre le plus proche de ${fmtHex(t.hex)}`;
+}
 // dupliquer n fois : titres incrémentés ; un physique enfant donne des frères, sinon chaque copie va sur l'hexagone
 // libre le plus proche (dans sa couche) ; les enfants de l'original ne sont pas copiés
 function duplicate(t) {
   closeMenu();
   const dlg = $("#dlg-dup"), input = $("#dup-count"), max = space.maxDuplicates ?? 20;
   $("#dup-title").textContent = `Dupliquer « ${t.title} »`;
-  $("#dup-help").textContent = t.parent ? `Les copies sont des frères dans « ${t.parent.title} » (titres incrémentés). Au plus ${max}.`
-    : `Chaque copie est placée sur l'hexagone libre le plus proche de ${fmtHex(t.hex)} (titres incrémentés). Au plus ${max}.`;
+  $("#dup-help").textContent = `${dupText(t).replace(/^./, c => c.toUpperCase())} ; titres incrémentés. Au plus ${max}.`;
   input.max = max; input.value = 1;
   dlg.onclose = async () => {
     if (dlg.returnValue !== "confirm") return;
@@ -2699,11 +2712,15 @@ function duplicate(t) {
       for (let i = 0; i < n; i++) {
         busyStep(`Copie ${i + 1} sur ${n}`);
         const r = await api("/api/econetwork/duplicate", { method: "POST", body: { item: t.item, eco: state.eco } });
-        if (!t.parent) {
-          const s = await api("/api/ecospace/place", { method: "POST", body: { eco: state.eco, item: r.id, near: { q: t.q, r: t.r } } });
-          const np = s.placements.find(x => x.item === r.id);
-          done.push(`${r.title} ${np ? fmtHex(np) : ""}`.trim());
-        } else done.push(r.title);
+        // rattachement de la copie selon le type : membre de l'actant, crible des mêmes pouvoirs, placement (actant,
+        // physique racine, concept) ; pouvoir, pulsation, physique enfant : par leurs valeurs copiées
+        if (t.owner) await api("/api/ecospace/member", { method: "POST", body: { eco: state.eco, actant: t.owner.item, shape: t.shape, existing: r.id } });
+        else if (t.shape === "crible") for (const pw of criblePowers(t)) await api("/api/ecospace/power/link", { method: "POST", body: { eco: state.eco, power: pw.item, step: pw.steps.find(st => /^crible/.test(st.name)).name, existing: r.id } });
+        if (t.owner || t.parent || ["pouvoir", "crible", "pulsation"].includes(t.shape)) { done.push(r.title); continue; }
+        const near = t.shape === "concept" ? { q: t.q ?? 0, r: t.r ?? 0 } : { q: t.q, r: t.r };
+        const s = await api("/api/ecospace/place", { method: "POST", body: { eco: state.eco, item: r.id, near } });
+        const np = s.placements?.find(x => x.item === r.id);
+        done.push(`${r.title}${np && t.shape !== "concept" ? ` ${fmtHex(np)}` : ""}`);
       }
       toast(`${n} copie(s) de « ${t.title} » : ${done.join(" · ")}`);
     } catch (e) { toast(`Erreur après ${done.length} copie(s) : ${e.message}`); }
@@ -2719,17 +2736,34 @@ function detailsTab(tab) {
   $("#details-frame").classList.toggle("hidden", tab !== "omeka");
   $("#details-help").classList.toggle("hidden", tab !== "omeka");
   $("#details-body").classList.toggle("hidden", tab !== "sheet");
+  $("#details-journal").classList.toggle("hidden", tab !== "journal");
   $("#details-tab-omeka").classList.toggle("primary", tab === "omeka");
   $("#details-tab-sheet").classList.toggle("primary", tab === "sheet");
+  $("#details-tab-journal").classList.toggle("primary", tab === "journal");
 }
 $("#details-tab-omeka").onclick = () => detailsTab("omeka");
 $("#details-tab-sheet").onclick = () => detailsTab("sheet");
+$("#details-tab-journal").onclick = () => detailsTab("journal");
+// onglet « Journal » : seulement pour un item qui a un journal de génération (écosystème créé depuis un texte)
+async function detailsJournal(item, prefer = false) {
+  $("#details-tab-journal").classList.add("hidden"); $("#details-journal").replaceChildren();
+  const n = await renderPipeline($("#details-journal"), api, item);
+  if (n && $("#dlg-details").open) { $("#details-tab-journal").classList.remove("hidden"); if (prefer) detailsTab("journal"); }
+}
+// détails de l'écosystème (puce de l'en-tête, rubrique Vues et affichage) : fiche, et son journal de génération s'il en a un
+function ecoDetails() {
+  if (!state.eco) return toast("Choisir d'abord un écosystème");
+  details({ item: state.eco, title: state.ecoTitle || `Écosystème ${state.eco}`, eco: true }, "sheet", true);
+}
+$("#eco-label").onclick = ecoDetails;
+$("#space-eco").onclick = ecoDetails;
 $("#dlg-details").addEventListener("close", () => { $("#details-frame").src = "about:blank"; });
 // position d'un élément pour la fiche : [libellé, valeur]
 // position géographique de référence et historique GeoJSON (actants, physiques, personnes)
 const geoRows = t => { const p = t.placement ?? t; return [...(p.pos ? [["Position géographique de référence", fmtGeo(p.pos)]] : []),
   ...(p.history != null ? [["Historique des positions", el("a", { href: `/api/ecospace/geo?item=${t.item}`, target: "_blank", rel: "noopener", textContent: `${p.history} position(s) · GeoJSON` })]] : [])]; };
 function positionRows(t) {
+  if (t.eco) return space && space.eco === t.item ? [["Espace", `grille de ${space.hexes.length} hexagones de ${space.grid.hexSize} m · origine ${fmtGeo(space.grid.origin)} · ${space.placements.length} élément(s) placé(s), ${space.powers?.length ?? 0} pouvoir(s), ${space.pulsations?.length ?? 0} pulsation(s)`]] : [];
   if (t.shape === "pulsation") {
     const pl = t.pulsation, pw = id => space.powers?.find(x => x.item === id), pt = id => space.pulsations?.find(x => x.item === id)?.title ?? `item ${id}`;
     const when = x => [x.relative?.title, x.order != null ? `ordre ${x.order}` : null].filter(Boolean).join(", ");
@@ -2766,7 +2800,7 @@ function positionRows(t) {
     ["Enfants", n.children.length ? n.children.map(k => `${k.title} (${k.importance})`).join(" · ") : "aucun"],
     ["Hauteur (échelle actuelle)", `${t.y[0].toFixed(2)} → ${t.y[1].toFixed(2)} m au-dessus de la grille`]];
 }
-async function details(t, tab = "omeka") {
+async function details(t, tab = "omeka", preferJournal = false) {
   closeMenu();
   const frame = `${space.omekaFrame ?? space.omekaBase}/admin/item/${t.item}`;
   $("#details-title").textContent = t.title;
@@ -2776,6 +2810,7 @@ async function details(t, tab = "omeka") {
   detailsTab(tab);
   $("#details-body").replaceChildren(el("p", { className: "muted", textContent: "Chargement…" }));
   if (!$("#dlg-details").open) $("#dlg-details").showModal();
+  detailsJournal(t.item, preferJournal);
   let item;
   try { item = await api(`/api/econetwork/item?id=${t.item}`); }
   catch (e) { return $("#details-body").replaceChildren(el("p", { className: "ko", textContent: e.message })); }
@@ -2808,7 +2843,7 @@ async function edit(t) {
   dlg.showModal();
   try {
     const item = await api(`/api/econetwork/item?id=${t.item}`);
-    await templateForm($("#edit-form"), { api, toast, templateId: item.templateId, values: item.values, submitLabel: "Enregistrer dans Omeka S", onSubmit: async values => {
+    await templateForm($("#edit-form"), { api, toast, templateId: item.templateId, values: item.values, eco: state.eco, submitLabel: "Enregistrer dans Omeka S", onSubmit: async values => {
       dlg.close();
       await withBusy(`Modifier « ${t.title} »`, async () => { await api("/api/econetwork/item", { method: "POST", body: { id: t.item, values } }); await loadSpace(); });
       toast("Élément enregistré");
@@ -3066,7 +3101,7 @@ function listRow(e, depth, nKids = 0) {
     btn("détails", "Détails", () => details(t)),
     btn("modifier", "Modifier", () => edit(t), !t.templateId),
     btn("position", positionTitle(t), () => askPosition(t), !positionable(t)),
-    btn("dupliquer", e.type === "pulsation" ? "Dupliquer : créer plutôt une pulsation depuis un pouvoir" : floating ? "Dupliquer : pour un pouvoir, utiliser lier → Branche" : member ? "Dupliquer : ajouter plutôt une personne ou un agent depuis l'actant" : "Dupliquer", () => duplicate(t), floating || member || e.type === "pulsation"),
+    btn("dupliquer", `Dupliquer : ${dupText(t)}`, () => duplicate(t)),
     btn("supprimer", "Supprimer (conséquences affichées avant)", () => remove(t)));
   return row;
 }

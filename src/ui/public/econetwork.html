@@ -176,11 +176,12 @@
 <!-- détails dans Omeka S -->
 <dialog id="dlg-details" class="wide">
   <div class="toolbar"><h2 id="details-title" style="margin:0">Détails</h2><div class="spacer"></div>
-    <button id="details-tab-omeka" class="btn small primary">Omeka S</button><button id="details-tab-sheet" class="btn small">Fiche</button>
+    <button id="details-tab-omeka" class="btn small primary">Omeka S</button><button id="details-tab-sheet" class="btn small">Fiche</button><button id="details-tab-journal" class="btn small hidden" title="Journal de la génération depuis un texte (jdc:pipeline) : saisies, suites proposées, modélisations, avec demande, réponse, modèle et coût">Journal</button>
     <a id="details-open" target="_blank" rel="noopener" style="color:var(--accent)">Nouvel onglet ↗</a><button class="btn small" onclick="this.closest('dialog').close()">Fermer</button></div>
   <p class="help" id="details-help">Page d'administration d'Omeka S, relayée par ce serveur : se connecter une fois à Omeka S dans le cadre ci-dessous.</p>
   <iframe id="details-frame" title="Item dans Omeka S"></iframe>
   <div id="details-body" class="hidden"></div>
+  <div id="details-journal" class="hidden"></div>
 </dialog>
 
 <!-- modification -->
@@ -203,6 +204,7 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script type="module">
 import { templateForm } from "/templateForm.js";
+import { renderPipeline } from "/pipelineJournal.js";
 
 const $ = s => document.querySelector(s);
 const el = (tag, props = {}, ...children) => {
@@ -562,11 +564,20 @@ function detailsTab(tab) {
   $("#details-frame").classList.toggle("hidden", tab !== "omeka");
   $("#details-help").classList.toggle("hidden", tab !== "omeka");
   $("#details-body").classList.toggle("hidden", tab !== "sheet");
+  $("#details-journal").classList.toggle("hidden", tab !== "journal");
   $("#details-tab-omeka").classList.toggle("primary", tab === "omeka");
   $("#details-tab-sheet").classList.toggle("primary", tab === "sheet");
+  $("#details-tab-journal").classList.toggle("primary", tab === "journal");
 }
 $("#details-tab-omeka").onclick = () => detailsTab("omeka");
 $("#details-tab-sheet").onclick = () => detailsTab("sheet");
+$("#details-tab-journal").onclick = () => detailsTab("journal");
+// onglet « Journal » : seulement pour un item qui a un journal de génération (écosystème créé depuis un texte)
+async function detailsJournal(item) {
+  $("#details-tab-journal").classList.add("hidden"); $("#details-journal").replaceChildren();
+  const n = await renderPipeline($("#details-journal"), api, item);
+  if (n && $("#dlg-details").open) $("#details-tab-journal").classList.remove("hidden");
+}
 $("#dlg-details").addEventListener("close", () => { $("#details-frame").src = "about:blank"; });
 
 async function details(d, tab = "omeka") {
@@ -579,6 +590,7 @@ async function details(d, tab = "omeka") {
   detailsTab(tab);
   $("#details-body").replaceChildren(el("p", { className: "muted", textContent: "Chargement…" }));
   if (!$("#dlg-details").open) $("#dlg-details").showModal();
+  detailsJournal(d.id);
   let item;
   try { item = await api(`/api/econetwork/item?id=${d.id}`); }
   catch (e) { return $("#details-body").replaceChildren(el("p", { className: "ko", textContent: e.message })); }
@@ -603,7 +615,7 @@ async function edit(d) {
   dlg.showModal();
   try {
     const item = await api(`/api/econetwork/item?id=${d.id}`);
-    await templateForm($("#edit-form"), { api, toast, templateId: item.templateId, values: item.values, submitLabel: "Enregistrer dans Omeka S", onSubmit: async values => {
+    await templateForm($("#edit-form"), { api, toast, templateId: item.templateId, values: item.values, eco: state.eco, submitLabel: "Enregistrer dans Omeka S", onSubmit: async values => {
       await api("/api/econetwork/item", { method: "POST", body: { id: d.id, values } });
       toast("Nœud enregistré"); dlg.close(); loadGraph();
     } });

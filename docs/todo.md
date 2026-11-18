@@ -1,4 +1,4 @@
 - Formulaire d'édition des éléments :
     - supprimer les champs pour les positions
     - si on choisi élément lié et qu'il n'y a pas de résultat : créer un nouvel élément et le lié
-- permettre la copie de tous les type d'éléments
+- permettre la copie de tous les types d'éléments

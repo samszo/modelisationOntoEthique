@@ -18,7 +18,7 @@ import { attachDocuments } from "../workflow/runs/importSynthesis";
 import { saveWorkflowConfig, updateWorkflowStatus } from "../workflow/runs/saveWorkflowConfig";
 import { agentModelId } from "../agents/overrides";
 import { buildTemplateForm, itemPayload, type FormField, type FormValue } from "../lib/omeka/templateForm";
-import { checkPower, formTitle, powerTypeOf } from "../lib/ontoethique/omekaForms";
+import { checkPower, formTitle, managedTerms, powerTypeOf } from "../lib/ontoethique/omekaForms";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => Promise<void> | void;
 interface Ctx {
@@ -224,7 +224,10 @@ export function ontoEthiqueRoutes(ctx: Ctx): Record<string, Handler> {
           const opts: any[] = dt?.options ?? [];
           if (opts.length) types = f.powerTypes.map(pt => { const o = opts.find(o => powerTypeOf(o.title, ctx.config())?.id === pt.id); return o ? { ...pt, itemId: o.id, itemTitle: o.title, itemType: dt.type } : pt; });
         }
-        ctx.sendJson(res, 200, { ...form, ...(t.templateId === f.powerTemplateId ? { power: { intensity: f.intensity, typeTerm: f.powerTypeTerm, types } } : {}) });
+        // managed : champs gérés ailleurs (positions, journal), non affichés ; templates : types d'items qu'un champ
+        // d'item lié peut créer quand la recherche ne trouve rien (restreints par le resource_query du champ)
+        ctx.sendJson(res, 200, { ...form, managed: managedTerms(ctx.config()), templates: f.templates.map(x => ({ templateId: x.templateId, label: x.label, key: x.key })),
+          ...(t.templateId === f.powerTemplateId ? { power: { intensity: f.intensity, typeTerm: f.powerTypeTerm, types } } : {}) });
       } catch (e) { ctx.sendJson(res, 502, { error: (e as Error).message }); }
     },
 
@@ -273,9 +276,15 @@ export function ontoEthiqueRoutes(ctx: Ctx): Record<string, Handler> {
         const title = formTitle(form, values);
         if (!title) throw new Error("Titre obligatoire");
         if (t.templateId === config.omekaForms.powerTemplateId) checkPower(values, config);
-        const payload = itemPayload(form, values);
+        const payload: any = itemPayload(form, values);
         const existing = (await omk.searchItemsByProp(form.titleTerm, title, `resource_template_id=${t.templateId}`))[0];
         if (existing) return ctx.sendJson(res, 200, { created: false, id: existing["o:id"], title, adminUrl: omekaAdmin() + existing["o:id"] });
+        // eco : écosystème auquel rattacher le nouvel item (élément créé depuis un champ d'item lié dans EcoSpace / EcoNetwork)
+        const eco = Number(body.eco);
+        if (Number.isInteger(eco) && eco > 0) {
+          const ep = config.econetwork.ecoProperty, prop = (await omk.request(omk.url("properties", { term: ep })))[0];
+          if (prop) payload[ep] = [...(payload[ep] ?? []).filter((v: any) => v.value_resource_id !== eco), { type: "resource:item", property_id: prop["o:id"], value_resource_id: eco }];
+        }
         const item = await omk.request(omk.url("items"), "POST", payload);
         console.log(`📤 [OMEKA] ${t.label} : item ${item["o:id"]} créé (${title})`);
         ctx.sendJson(res, 200, { created: true, id: item["o:id"], title, adminUrl: omekaAdmin() + item["o:id"] });

@@ -369,6 +369,11 @@ const routes: Record<string, (req: http.IncomingMessage, res: http.ServerRespons
     res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
     res.end(fs.readFileSync(path.join(PUBLIC_DIR, "ecotext.js")));
   },
+  // module du journal de la génération (jdc:pipeline) dans les détails (EcoSpace, EcoNetwork)
+  "GET /pipelineJournal.js": (_req, res) => {
+    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+    res.end(fs.readFileSync(path.join(PUBLIC_DIR, "pipelineJournal.js")));
+  },
   // module des formulaires générés depuis les resource templates
   "GET /templateForm.js": (_req, res) => {
     res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });

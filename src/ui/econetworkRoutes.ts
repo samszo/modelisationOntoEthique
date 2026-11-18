@@ -10,7 +10,7 @@ import type { Omk } from "../lib/omeka/omk";
 import type { OntoEthiqueConfig } from "../config/ontoethique";
 import { buildTemplateForm, itemPayload, type FormValue } from "../lib/omeka/templateForm";
 import { deletionImpact, ecoGraph, formValues, itemProperties, linkableTypes, nextTitle, referencing, searchLinkable, toWritable, writeValues } from "../lib/omeka/network";
-import { checkPower } from "../lib/ontoethique/omekaForms";
+import { checkPower, managedTerms } from "../lib/ontoethique/omekaForms";
 import { omekaWebBase } from "../lib/omeka/proxy";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => Promise<void> | void;
@@ -209,6 +209,9 @@ export function econetworkRoutes(ctx: Ctx): Record<string, Handler> {
       const props = Object.fromEntries(Object.entries(itemProperties(item)).map(([k, vs]) => [k, vs.map(toWritable)]));
       const titleProp = await propId(omk, "dcterms:title");
       props["dcterms:title"] = [{ type: "literal", property_id: titleProp, "@value": title }];
+      // concept : la copie est une sœur (même parent), sans les enfants de l'original
+      const cs = (ctx.config().ecospace?.shapes ?? []).find((s: any) => s.key === "concept") as any;
+      if (cs && templateId === cs.templateId && cs.narrowerTerm) delete props[cs.narrowerTerm];
       const copy = await omk.request(omk.url("items"), "POST", {
         ...(templateId ? { "o:resource_template": { "o:id": templateId } } : {}),
         ...(item["o:resource_class"] ? { "o:resource_class": { "o:id": item["o:resource_class"]["o:id"] } } : {}),
@@ -258,7 +261,9 @@ export function econetworkRoutes(ctx: Ctx): Record<string, Handler> {
         }
       }
       // champs du template remplacés (un champ vidé est vidé dans Omeka S) ; propriétés hors template conservées
-      await writeValues(omk, id, Object.fromEntries(form.fields.map(f => [f.term, payload[f.term] ?? []])));
+      // champs gérés ailleurs (positions, journal de génération) conservés tels quels
+      const managed = new Set(managedTerms(ctx.config()));
+      await writeValues(omk, id, Object.fromEntries(form.fields.filter(f => !managed.has(f.term)).map(f => [f.term, payload[f.term] ?? []])));
       return { id, title: values[form.titleTerm]?.[0]?.value ?? item["o:title"] };
     }),
 
